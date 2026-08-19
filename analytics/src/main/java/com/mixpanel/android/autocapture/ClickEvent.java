@@ -36,14 +36,23 @@ public class ClickEvent {
     /**
      * A stable identifier for the tapped element, used to group clicks in analytics.
      *
-     * <p>Recommended sources (in order of preference):
+     * <p>Autocapture resolves this from the View hierarchy in the following order (see
+     * {@code DefaultElementIdExtractor}), and the same preferences apply when tracking manually:
      * <ul>
+     *   <li>React Native {@code nativeID} — the JS-side prop, stored as a view tag</li>
      *   <li>Resource ID name — stable and not user-visible
      *       ({@code view.getResources().getResourceEntryName(view.getId())})</li>
-     *   <li>{@code contentDescription} — if no resource ID is set</li>
-     *   <li>Compose {@code Modifier.testTag("...")} value</li>
-     *   <li>A custom string like {@code "buy_button"} or {@code "settings_row_notifications"}</li>
+     *   <li>{@code contentDescription} — only when the view is important for accessibility</li>
+     *   <li>{@code <SimpleClassName>_<hashCode>} as a last resort</li>
      * </ul>
+     *
+     * <p>For Jetpack Compose the order is {@code Modifier.testTag("...")}, then
+     * {@code contentDescription}, then {@code TagName_<hashCode>}.
+     *
+     * <p>Supply a
+     * {@link com.mixpanel.android.mpmetrics.AutocaptureOptions.Builder#elementIdExtractor(ElementIdExtractor)}
+     * to override the View-path resolution entirely — for example a custom string like
+     * {@code "buy_button"} or {@code "settings_row_notifications"}.
      *
      * <p>Avoid dynamic values (e.g., adapter position, timestamp) — they prevent meaningful grouping.
      */

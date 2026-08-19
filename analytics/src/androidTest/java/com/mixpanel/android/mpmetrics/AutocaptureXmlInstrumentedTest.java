@@ -778,6 +778,21 @@ public class AutocaptureXmlInstrumentedTest {
 
             InstrumentationRegistry.getInstrumentation().waitForIdleSync();
 
+            // The invisible button sits far down the activity's ScrollView, so its on-screen
+            // coordinates start out below the window. Scroll it into the viewport first:
+            // Android 14+ uses targeted input injection, which rejects events aimed at a point
+            // outside a window owned by this process ("Targeted input event injection ... was not
+            // directed at a window owned by uid ..."). INVISIBLE views still occupy layout space,
+            // so ScrollView scrolls to them normally.
+            scenario.onActivity(activity -> {
+                View v = activity.findViewById(AutocaptureXmlTestActivity.ID_INVISIBLE_BTN);
+                if (v != null && v.getWidth() > 0 && v.getHeight() > 0) {
+                    v.requestRectangleOnScreen(
+                            new android.graphics.Rect(0, 0, v.getWidth(), v.getHeight()), true);
+                }
+            });
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+
             // Get the location where the invisible button would be
             final int[] location = new int[2];
             final boolean[] found = {false};
@@ -787,12 +802,18 @@ public class AutocaptureXmlInstrumentedTest {
                     v.getLocationOnScreen(location);
                     location[0] += v.getWidth() / 2;
                     location[1] += v.getHeight() / 2;
-                    found[0] = true;
+                    // Only inject when the point lands inside this app's own content area.
+                    // Points over the system bars belong to another uid, and points off-screen
+                    // belong to no window at all — both make sendPointerSync throw.
+                    android.graphics.Rect contentFrame = new android.graphics.Rect();
+                    activity.getWindow().getDecorView()
+                            .getWindowVisibleDisplayFrame(contentFrame);
+                    found[0] = contentFrame.contains(location[0], location[1]);
                 }
             });
 
             if (!found[0]) {
-                // INVISIBLE view may have zero layout — still pass, nothing to tap
+                // INVISIBLE view has no tappable on-screen area — nothing to tap, nothing to assert
                 return;
             }
 

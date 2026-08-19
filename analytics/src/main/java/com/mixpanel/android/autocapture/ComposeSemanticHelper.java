@@ -268,20 +268,29 @@ final class ComposeSemanticHelper {
         String contentDesc = getStringProperty(config, SemanticsProperties.INSTANCE.getContentDescription());
         String testTag = getStringProperty(config, SemanticsProperties.INSTANCE.getTestTag());
 
-        // Element ID resolution (matching Android plan):
-        // 1. contentDescription (from semantics { contentDescription = ... })
-        // 2. testTag (from Modifier.testTag(...)) - equivalent to resource ID
-        // 3. ClassName_<hashCode>
+        // Element ID resolution — mirrors the View path's priority (DefaultElementIdExtractor),
+        // with testTag playing the role of the resource id:
+        // 1. testTag (from Modifier.testTag(...)) — developer-assigned and never user-visible
+        // 2. contentDescription (from semantics { contentDescription = ... })
+        // 3. TagName_<hashCode>
+        //
+        // The React Native nativeID lookup has no Compose equivalent and is deliberately absent:
+        // React Native renders through the legacy View hierarchy, not Compose.
         String elementId = null;
         String accessibleLabel = null;
 
+        // accessibleLabel ($attr-aria-label) always comes from contentDescription, regardless of
+        // which source won the element id — testTag is not an accessibility label.
         if (contentDesc != null && !contentDesc.isEmpty()) {
-            elementId = contentDesc;
             accessibleLabel = contentDesc;
         }
 
-        if (elementId == null && testTag != null && !testTag.isEmpty()) {
+        if (testTag != null && !testTag.isEmpty()) {
             elementId = testTag;
+        }
+
+        if (elementId == null && contentDesc != null && !contentDesc.isEmpty()) {
+            elementId = contentDesc;
         }
 
         if (elementId == null) {

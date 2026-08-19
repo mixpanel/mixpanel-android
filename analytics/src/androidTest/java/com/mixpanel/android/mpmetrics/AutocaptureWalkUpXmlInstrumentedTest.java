@@ -156,13 +156,37 @@ public class AutocaptureWalkUpXmlInstrumentedTest {
      * Sends a tap (DOWN + UP) at the center of the view with the given ID.
      */
     private void tapViewById(ActivityScenario<WalkUpXmlTestActivity> scenario, int viewId) {
+        // Scroll the target into the viewport first. These fixtures live in a ScrollView, and a
+        // view below the fold — or behind the system bars — has on-screen coordinates outside this
+        // app's window. Android 14+ uses targeted input injection, so such a tap either throws
+        // ("not directed at a window owned by uid ...") or lands on a system view and silently
+        // reports that view's $el_id.
+        scenario.onActivity(activity -> {
+            View view = activity.findViewById(viewId);
+            if (view != null) {
+                view.requestRectangleOnScreen(
+                        new android.graphics.Rect(0, 0, view.getWidth(), view.getHeight()), true);
+            }
+        });
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+
         final int[] location = new int[2];
+        final android.graphics.Rect contentFrame = new android.graphics.Rect();
         scenario.onActivity(activity -> {
             View view = activity.findViewById(viewId);
             view.getLocationOnScreen(location);
             location[0] += view.getWidth() / 2;
             location[1] += view.getHeight() / 2;
+            activity.getWindow().getDecorView().getWindowVisibleDisplayFrame(contentFrame);
         });
+
+        // Fail loudly rather than injecting at a point another window owns — otherwise the
+        // assertion that follows reports a confusing mismatch (e.g. "navigationBarBackground")
+        // instead of the real problem.
+        assertTrue(
+                "Tap point " + location[0] + "," + location[1] + " for view " + viewId
+                        + " is outside the app's visible content area " + contentFrame,
+                contentFrame.contains(location[0], location[1]));
 
         android.app.Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
         long downTime = android.os.SystemClock.uptimeMillis();

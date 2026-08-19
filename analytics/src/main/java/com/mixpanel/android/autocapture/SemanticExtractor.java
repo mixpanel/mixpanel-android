@@ -65,10 +65,13 @@ final class SemanticExtractor {
      * @param rootView           The root view to search within.
      * @param x                  Screen X coordinate.
      * @param y                  Screen Y coordinate.
+     * @param options            Autocapture configuration; supplies the optional custom
+     *                           {@link ElementIdExtractor} used to resolve {@code $el_id}.
      * @return A ClickEvent with extracted semantics, or null if no view found.
      */
     @Nullable
-    static ClickEvent extract(@NonNull View rootView, float x, float y) {
+    static ClickEvent extract(@NonNull View rootView, float x, float y,
+                              @NonNull AutocaptureOptions options) {
         try {
             // Single-pass descent: finds target view, compose root, and hierarchy in one traversal
             HitResult hit = findTargetView(rootView, (int) x, (int) y);
@@ -102,11 +105,11 @@ final class SemanticExtractor {
             }
 
             // Fall back to direct view extraction (XML views)
-            ClickEvent.Builder viewResult = extractFromView(hit.target, hit.hierarchy, x, y);
+            ClickEvent.Builder viewResult = extractFromView(hit.target, hit.hierarchy, x, y, options);
 
             // Walk up to clickable parent if the tapped view is not interactive
             if (viewResult != null) {
-                viewResult = walkUpToClickableParent(hit.target, viewResult, hit.hierarchy, x, y);
+                viewResult = walkUpToClickableParent(hit.target, viewResult, hit.hierarchy, x, y, options);
             }
 
             return viewResult != null ? viewResult.build() : null;
@@ -458,15 +461,14 @@ final class SemanticExtractor {
      * @param view      The target view to extract from.
      * @param hierarchy Pre-built hierarchy string from {@link #findTargetView}, or null
      *                  to build on demand (fallback for callers that don't have it).
+     * @param options   Autocapture configuration; supplies the optional custom
+     *                  {@link ElementIdExtractor}.
      */
     @Nullable
     private static ClickEvent.Builder extractFromView(@NonNull View view, @Nullable String hierarchy,
-                                                      float x, float y) {
-        // Element ID resolution: contentDescription > resource ID > fallback
-        String elementId = resolveElementId(view);
-        if (elementId == null) {
-            elementId = "unknown_" + Integer.toHexString(view.hashCode());
-        }
+                                                      float x, float y,
+                                                      @NonNull AutocaptureOptions options) {
+        String elementId = resolveElementId(view, options);
 
         ClickEvent.Builder builder = new ClickEvent.Builder(x, y, elementId);
 
@@ -584,46 +586,33 @@ final class SemanticExtractor {
     }
 
     /**
-     * Returns the view's meaningful identity (contentDescription or resource ID name),
-     * or null if the view has no identity and would fall back to a hash.
+     * Resolves the {@code $el_id} for a view.
      *
-     * <p>Resolution order:
-     * 1. contentDescription (via {@link #getGuardedContentDescription})
-     * 2. Resource ID name (R.id.xxx)
-     */
-    @Nullable
-    private static String resolveIdentity(@NonNull View view) {
-        String guardedDesc = getGuardedContentDescription(view);
-        if (guardedDesc != null) {
-            return guardedDesc;
-        }
-        int id = view.getId();
-        if (id != View.NO_ID) {
-            try {
-                String resourceName = view.getResources().getResourceEntryName(id);
-                if (resourceName != null && !resourceName.isEmpty()) {
-                    return resourceName;
-                }
-            } catch (Exception ignored) {
-                // Resource not found
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Resolves the element ID according to the priority:
-     * 1. contentDescription (if non-empty)
-     * 2. Resource ID name (R.id.xxx)
-     * 3. ClassName_<hashCode>
+     * <p>When the host app supplied an {@link ElementIdExtractor} via
+     * {@link AutocaptureOptions.Builder#elementIdExtractor(ElementIdExtractor)}, that extractor is
+     * the only source of the identifier: a null/empty return (or a thrown exception) yields the
+     * anonymous {@code <SimpleClassName>_<hash>} identifier rather than silently falling back to view metadata
+     * the developer chose not to expose.
+     *
+     * <p>Otherwise {@link DefaultElementIdExtractor} resolves it (React Native {@code nativeID} >
+     * resource id > content description > {@code <SimpleClassName>_<hash>}).
      */
     @NonNull
-    private static String resolveElementId(@NonNull View view) {
-        String identity = resolveIdentity(view);
-        if (identity != null) {
-            return identity;
+    private static String resolveElementId(@NonNull View view, @NonNull AutocaptureOptions options) {
+        ElementIdExtractor custom = options.getElementIdExtractor();
+        if (custom != null) {
+            try {
+                String customId = custom.extractElementId(view);
+                if (customId != null && !customId.isEmpty()) {
+                    return customId;
+                }
+            } catch (Exception e) {
+                // Never let a host-app implementation crash the app or drop the event.
+                MPLog.e(TAG, "Custom ElementIdExtractor threw, using anonymous element id", e);
+            }
+            return DefaultElementIdExtractor.anonymousId(view);
         }
-        return view.getClass().getSimpleName() + "_" + Integer.toHexString(view.hashCode());
+        return DefaultElementIdExtractor.INSTANCE.extractElementId(view);
     }
 
     /**
@@ -798,7 +787,8 @@ final class SemanticExtractor {
     @NonNull
     private static ClickEvent.Builder walkUpToClickableParent(
             @NonNull View tappedView, @NonNull ClickEvent.Builder original,
-            @Nullable String hierarchy, float x, float y) {
+            @Nullable String hierarchy, float x, float y,
+            @NonNull AutocaptureOptions options) {
         // Only walk up if the tapped view is not interactive
         if (tappedView.isClickable() || tappedView.isLongClickable() || tappedView instanceof Checkable) {
             return original;
@@ -811,7 +801,7 @@ final class SemanticExtractor {
             View ancestor = (View) parent;
             if (ancestor.isClickable() || ancestor.isLongClickable() || ancestor instanceof Checkable) {
                 // Found an interactive ancestor — rebuild hierarchy from its perspective
-                return extractFromView(ancestor, buildHierarchyString(ancestor), x, y);
+                return extractFromView(ancestor, buildHierarchyString(ancestor), x, y, options);
             }
             parent = ancestor.getParent();
             depth++;

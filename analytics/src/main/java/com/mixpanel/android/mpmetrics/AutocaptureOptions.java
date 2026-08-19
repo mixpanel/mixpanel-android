@@ -1,6 +1,9 @@
 package com.mixpanel.android.mpmetrics;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
+import com.mixpanel.android.autocapture.ElementIdExtractor;
 
 /**
  * Configuration options for Mixpanel autocapture.
@@ -44,11 +47,13 @@ public class AutocaptureOptions {
     private final ClickOptions mClickOptions;
     private final RageClickOptions mRageClickOptions;
     private final DeadClickOptions mDeadClickOptions;
+    private final ElementIdExtractor mElementIdExtractor;
 
     private AutocaptureOptions(Builder builder) {
         this.mClickOptions = builder.mClickOptions;
         this.mRageClickOptions = builder.mRageClickOptions;
         this.mDeadClickOptions = builder.mDeadClickOptions;
+        this.mElementIdExtractor = builder.mElementIdExtractor;
     }
 
     /**
@@ -96,6 +101,20 @@ public class AutocaptureOptions {
     }
 
     /**
+     * Returns the custom element id extractor, if one was provided.
+     *
+     * <p>When {@code null}, the SDK resolves {@code $el_id} with its internal default
+     * implementation (React Native {@code nativeID}, then Android resource id, then content
+     * description, then an anonymous {@code <SimpleClassName>_<hash>} identifier).
+     *
+     * @return The {@link ElementIdExtractor} supplied by the host app, or {@code null}.
+     */
+    @Nullable
+    public ElementIdExtractor getElementIdExtractor() {
+        return mElementIdExtractor;
+    }
+
+    /**
      * Builder for creating {@link AutocaptureOptions} instances.
      *
      * <p>When built, all event types are enabled by default with their respective default settings.
@@ -105,6 +124,7 @@ public class AutocaptureOptions {
         private ClickOptions mClickOptions = new ClickOptions.Builder().build();
         private RageClickOptions mRageClickOptions = new RageClickOptions.Builder().build();
         private DeadClickOptions mDeadClickOptions = new DeadClickOptions.Builder().build();
+        private ElementIdExtractor mElementIdExtractor = null;
 
         /**
          * Creates a Builder with all event types enabled by default.
@@ -125,6 +145,7 @@ public class AutocaptureOptions {
             this.mClickOptions = source.mClickOptions;
             this.mRageClickOptions = source.mRageClickOptions;
             this.mDeadClickOptions = source.mDeadClickOptions;
+            this.mElementIdExtractor = source.mElementIdExtractor;
         }
 
         /**
@@ -160,6 +181,22 @@ public class AutocaptureOptions {
         public Builder deadClickOptions(@NonNull DeadClickOptions deadClickOptions) {
             if (deadClickOptions == null) return this;
             this.mDeadClickOptions = deadClickOptions;
+            return this;
+        }
+
+        /**
+         * Sets a custom extractor that resolves the {@code $el_id} reported for a tapped view.
+         *
+         * <p>Use this to control exactly which identifier autocapture reports and to keep
+         * personally identifiable information out of the payload. Pass {@code null} (the default)
+         * to use the SDK's internal default resolution.
+         *
+         * @param elementIdExtractor The {@link ElementIdExtractor} to use, or {@code null} for the
+         *                           SDK default.
+         * @return This Builder instance for chaining.
+         */
+        public Builder elementIdExtractor(@Nullable ElementIdExtractor elementIdExtractor) {
+            this.mElementIdExtractor = elementIdExtractor;
             return this;
         }
 
