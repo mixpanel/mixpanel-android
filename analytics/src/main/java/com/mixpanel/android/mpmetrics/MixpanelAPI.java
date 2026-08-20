@@ -26,7 +26,6 @@ import androidx.lifecycle.ProcessLifecycleOwner;
 import com.mixpanel.android.autocapture.AutocaptureManager;
 import com.mixpanel.android.autocapture.ClickEvent;
 import com.mixpanel.android.util.HttpService;
-import com.mixpanel.android.annotation.ExperimentalMixpanelApi;
 import com.mixpanel.android.util.MPLog;
 import com.mixpanel.android.util.MixpanelNetworkErrorListener;
 import com.mixpanel.android.util.ProxyServerInteractor;
@@ -1047,13 +1046,11 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      * Return the Autocapture instance associated with this MixpanelAPI instance.
      * Use this to track autocapture events such as screen views and screen leaves.
      *
-     * @return an instance of {@link Autocapture}
+     * <p><b>Experimental (beta).</b> Autocapture may contain issues, and its API and the
+     * properties it captures may change in a future release before general availability.
      *
-     * <p><b>Experimental (beta).</b> Autocapture may contain issues, and its API and captured
-     * properties may change before general availability. See
-     * {@link com.mixpanel.android.annotation.ExperimentalMixpanelApi}.
+     * @return an instance of {@link Autocapture}
      */
-    @ExperimentalMixpanelApi
     public Autocapture getAutocapture() {
         return mAutocapture;
     }
@@ -2277,11 +2274,9 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      *
      * <p>Access this via {@link MixpanelAPI#getAutocapture()}.
      *
-     * <p><b>Experimental (beta).</b> Autocapture may contain issues, and its API and captured
-     * properties may change before general availability. See
-     * {@link com.mixpanel.android.annotation.ExperimentalMixpanelApi}.
+     * <p><b>Experimental (beta).</b> Autocapture may contain issues, and its API and the
+     * properties it captures may change in a future release before general availability.
      */
-    @ExperimentalMixpanelApi
     public class Autocapture {
 
         /**

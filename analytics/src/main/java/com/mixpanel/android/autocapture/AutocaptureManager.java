@@ -11,7 +11,6 @@ import androidx.annotation.MainThread;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.mixpanel.android.annotation.ExperimentalMixpanelApi;
 
 import com.mixpanel.android.mpmetrics.AutocaptureOptions;
 import com.mixpanel.android.mpmetrics.MixpanelAPI;
@@ -33,11 +32,10 @@ import java.util.WeakHashMap;
  * <p>Thread safety: All public methods must be called from the main thread.
  * {@link #start()} and {@link #stop()} are idempotent — duplicate calls are no-ops.
  *
- * <p><b>Experimental (beta).</b> Autocapture may contain issues, and its API and captured properties
- * may change before general availability. See
- * {@link com.mixpanel.android.annotation.ExperimentalMixpanelApi}.
+ * <p><b>Experimental (beta).</b> Autocapture may contain issues, and its API and the properties it
+ * captures may change in a future release before general availability. Pin your SDK version if you
+ * build reports on autocaptured events.
  */
-@ExperimentalMixpanelApi
 public final class AutocaptureManager implements
         Application.ActivityLifecycleCallbacks,
         WindowSpy.OnRootViewChangedListener,

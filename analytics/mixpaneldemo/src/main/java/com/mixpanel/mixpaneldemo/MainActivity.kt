@@ -13,8 +13,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.*
-import androidx.annotation.OptIn
-import com.mixpanel.android.annotation.ExperimentalMixpanelApi
 import com.mixpanel.android.mpmetrics.MixpanelAPI
 import com.mixpanel.mixpaneldemo.ui.theme.MixpanelandroidTheme
 
@@ -31,8 +29,6 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// Autocapture is experimental; acknowledged here so this composable builds warning-free.
-@OptIn(markerClass = [ExperimentalMixpanelApi::class])
 @Composable
 fun MyApp() {
     val context = LocalContext.current

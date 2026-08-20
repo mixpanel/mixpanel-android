@@ -3,7 +3,6 @@ package com.mixpanel.android.autocapture;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.mixpanel.android.annotation.ExperimentalMixpanelApi;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -15,13 +14,12 @@ import org.json.JSONObject;
  * Create a {@code ClickEvent} using the {@link Builder} and pass it to
  * {@code mixpanel.getAutocapture().trackClick()} to track click events with full element metadata.
  *
- * <p><b>Experimental (beta).</b> Autocapture may contain issues, and its API and captured properties
- * may change before general availability. See
- * {@link com.mixpanel.android.annotation.ExperimentalMixpanelApi}.
+ * <p><b>Experimental (beta).</b> Autocapture may contain issues, and its API and the properties it
+ * captures may change in a future release before general availability. Pin your SDK version if you
+ * build reports on autocaptured events.
  *
  * @see ComposeClickEvent
  */
-@ExperimentalMixpanelApi
 public class ClickEvent {
 
     /**
