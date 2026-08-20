@@ -265,28 +265,16 @@ final class ComposeSemanticHelper {
     private static ClickEvent.Builder extractFromNode(@NonNull SemanticsNode node, float x, float y) {
         SemanticsConfiguration config = node.getConfig();
 
-        String contentDesc = getStringProperty(config, SemanticsProperties.INSTANCE.getContentDescription());
         String testTag = getStringProperty(config, SemanticsProperties.INSTANCE.getTestTag());
         String tagName = getTagName(config);
         String role = getRoleString(config);
 
         ComposeElementInfo element = new ComposeElementInfo(
-                testTag, contentDesc, role, tagName,
-                tagName + "_" + Integer.toHexString(node.hashCode()));
+                testTag, role, tagName,
+                tagName + "_" + Integer.toHexString(structuralPath(node).hashCode()));
         String elementId = DefaultComposeElementIdExtractor.INSTANCE.extractElementId(element);
 
-        // accessibleLabel ($attr-aria-label) always comes from contentDescription, regardless of
-        // which source won the element id — testTag is not an accessibility label.
-        String accessibleLabel = null;
-        if (contentDesc != null && !contentDesc.isEmpty()) {
-            accessibleLabel = contentDesc;
-        }
-
         ClickEvent.Builder builder = new ClickEvent.Builder(x, y, elementId);
-
-        if (accessibleLabel != null) {
-            builder.accessibleLabel(accessibleLabel);
-        }
 
         // Tag name from role
         builder.tagName(tagName);
@@ -301,6 +289,47 @@ final class ComposeSemanticHelper {
                 ", tag: " + tagName + ", role: " + role);
 
         return builder;
+    }
+
+    /**
+     * Builds a stable, PII-free description of where a semantics node sits in the tree, used as the
+     * input to the anonymous {@code $el_id} hash — the Compose counterpart of
+     * {@link AutocaptureDefaults#structuralPath(android.view.View)}.
+     *
+     * <p>Format: the node's tag name, then each ancestor with the child index that leads back down
+     * to the previous node, e.g. {@code Button@Column[0]/Column[2]}. Node identity hashes are not
+     * usable here: they change on every launch and on recomposition, so an element without a testTag
+     * would never group.
+     */
+    @NonNull
+    private static String structuralPath(@NonNull SemanticsNode node) {
+        StringBuilder path = new StringBuilder(getTagName(node.getConfig())).append('@');
+
+        SemanticsNode current = node;
+        SemanticsNode parent = node.getParent();
+        int depth = 0;
+        while (parent != null && depth < AutocaptureDefaults.MAX_HIERARCHY_DEPTH) {
+            if (depth > 0) {
+                path.append('/');
+            }
+            int index = -1;
+            List<SemanticsNode> siblings = parent.getChildren();
+            for (int i = 0; i < siblings.size(); i++) {
+                if (siblings.get(i).getId() == current.getId()) {
+                    index = i;
+                    break;
+                }
+            }
+            path.append(getTagName(parent.getConfig())).append('[').append(index).append(']');
+            current = parent;
+            parent = parent.getParent();
+            depth++;
+        }
+
+        if (depth == 0) {
+            path.append("root");
+        }
+        return path.toString();
     }
 
     /**

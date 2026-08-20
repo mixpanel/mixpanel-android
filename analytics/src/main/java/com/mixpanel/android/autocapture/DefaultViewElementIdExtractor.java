@@ -18,10 +18,12 @@ import com.mixpanel.android.util.MPLog;
  *       dynamically so the SDK does not need a compile-time dependency on React Native.</li>
  *   <li><b>Android resource id</b> — the entry name of {@code view.getId()}
  *       (e.g. {@code checkout_button} for {@code @+id/checkout_button}).</li>
- *   <li><b>Content description</b> — only when the view is important for accessibility, so
- *       framework-derived descriptions (which may contain user data) are not reported.</li>
- *   <li><b>Anonymous fallback</b> — {@code <SimpleClassName>_<hashCode>}.</li>
+ *   <li><b>Anonymous fallback</b> — {@code <SimpleClassName>_<hash>}, hashed from the view's
+ *       position in the hierarchy.</li>
  * </ol>
+ *
+ * <p>{@code contentDescription} is deliberately not a source: it is localized, so the same element
+ * would report a different identifier per language, and it can carry user data.
  *
  * <p>Every step is defensive: any exception thrown while resolving an identifier is swallowed and
  * resolution continues with the next step, so this class can never crash the host app.
@@ -56,11 +58,6 @@ final class DefaultViewElementIdExtractor {
         String resourceName = resolveResourceEntryName(view);
         if (resourceName != null) {
             return resourceName;
-        }
-
-        String contentDescription = resolveContentDescription(view);
-        if (contentDescription != null) {
-            return contentDescription;
         }
 
         return anonymousId(view);
@@ -119,29 +116,22 @@ final class DefaultViewElementIdExtractor {
     }
 
     /**
-     * Returns the view's content description when the developer intentionally exposed it.
-     *
-     * <p>Delegates to {@link AutocaptureDefaults#intentionalContentDescription(View)}, which guards
-     * both on {@link View#isImportantForAccessibility()} and — for React Native views — on
-     * focusability, since React Native expresses {@code accessible={false}} by clearing
-     * focusability while leaving the content description in place.
-     */
-    @Nullable
-    private static String resolveContentDescription(@NonNull View view) {
-        try {
-            return AutocaptureDefaults.intentionalContentDescription(view);
-        } catch (Exception e) {
-            MPLog.d(TAG, "Unable to resolve content description", e);
-        }
-        return null;
-    }
-
-    /**
      * Returns the anonymous, PII-free identifier used when nothing else resolves:
-     * {@code <SimpleClassName>_<hashCode>} (e.g. {@code AppCompatButton_3f2a1b}).
+     * {@code <SimpleClassName>_<hash>} (e.g. {@code AppCompatButton_3f2a1b}).
+     *
+     * <p>The hash is derived from the view's <b>position in the hierarchy</b>, not from its identity.
+     * {@code View.hashCode()} is an identity hash: it changes on every launch and as list rows are
+     * recycled, so an element with no id would get a different {@code $el_id} every session and
+     * could never be grouped. A structural hash is stable for the same layout across launches.
+     *
+     * <p>It identifies a <i>position</i> rather than a row: reordering siblings changes the id, and
+     * two rows of the same list are distinguished by their index, not their content.
      */
     @NonNull
     static String anonymousId(@NonNull View view) {
-        return view.getClass().getSimpleName() + "_" + Integer.toHexString(view.hashCode());
+        String path = AutocaptureDefaults.structuralPath(view);
+        // String.hashCode() is specified by the JDK, so it is stable across processes and devices —
+        // unlike Object.hashCode(), which is identity-based.
+        return view.getClass().getSimpleName() + "_" + Integer.toHexString(path.hashCode());
     }
 }

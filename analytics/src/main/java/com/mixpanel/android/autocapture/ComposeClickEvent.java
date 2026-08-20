@@ -26,12 +26,11 @@ final class ComposeClickEvent extends ClickEvent {
             float y,
             @NonNull String elementId,
             @Nullable String tagName,
-            @Nullable String accessibleLabel,
             @Nullable String role,
             @Nullable String elements,
             boolean isInteractive,
             @NonNull View composeRoot) {
-        super(x, y, elementId, tagName, accessibleLabel, role, elements, isInteractive);
+        super(x, y, elementId, tagName, role, elements, isInteractive);
         this.composeRootRef = new WeakReference<>(composeRoot);
     }
 

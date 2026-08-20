@@ -70,15 +70,22 @@ class ComposeElementIdInstrumentedTest {
     }
 
     @Test
-    fun testDefaultResolution_TestTagWinsOverContentDescription() {
-        // testTag is developer-assigned and never user-visible; contentDescription is user-facing
-        // accessibility text that can carry personal data. The safer source must win.
+    fun testDefaultResolution_ReportsTestTagAndNeverTheContentDescription() {
+        // The fixture carries both a testTag and a contentDescription. testTag is developer-assigned
+        // and never user-visible, so it is reported; the contentDescription is localized accessibility
+        // text that can carry personal data, so it must not reach the payload at all.
         initMixpanel(AutocaptureOptions.Builder().build())
 
         val properties = tapBothButtonAndAwaitClick()
         val elId = properties.getString("\$el_id")
         assert(elId == ElementIdComposeTestActivity.TEST_TAG) {
-            "Expected the testTag to win, got: $elId"
+            "Expected the testTag to be reported, got: $elId"
+        }
+        assert(!elId.contains(ElementIdComposeTestActivity.CONTENT_DESCRIPTION)) {
+            "contentDescription must never appear in \$el_id. Got: $elId"
+        }
+        assert(properties.optString("\$attr-aria-label", "").isEmpty()) {
+            "contentDescription must not be reported as \$attr-aria-label either"
         }
     }
 

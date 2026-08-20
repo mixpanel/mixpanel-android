@@ -7,13 +7,12 @@ import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
 import android.view.View;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 import androidx.test.platform.app.InstrumentationRegistry;
-
-import com.facebook.react.views.view.FakeReactViewGroup;
 
 import com.mixpanel.android.test.R;
 
@@ -104,13 +103,16 @@ public class DefaultViewElementIdExtractorTest {
             return view;
         });
 
-        assertEquals("Checkout Label", elementId);
+        assertTrue("Expected the hash fallback, got: " + elementId,
+                elementId.matches(HASH_ID_PATTERN));
+        assertTrue("The label must not be used: " + elementId,
+                !elementId.contains("Checkout"));
     }
 
     // ============ Priority 2: Android resource entry name ============
 
     @Test
-    public void testResourceEntryNameWinsOverContentDescription() {
+    public void testResourceEntryNameIsUsedAndLabelIsIgnored() {
         String elementId = resolve(context -> {
             TextView view = new TextView(context);
             view.setId(R.id.mp_test_checkout_button);
@@ -122,107 +124,20 @@ public class DefaultViewElementIdExtractorTest {
     }
 
     @Test
-    public void testProgrammaticNumericIdFallsThroughToContentDescription() {
-        // Ids assigned as bare ints (or via View.generateViewId()) have no resource entry name.
+    public void testContentDescriptionIsNeverUsedAsIdentity() {
+        // Accessibility text is localized — the same element would report a different id per
+        // language — and it can carry user data, so it is not an identity source at any priority.
         String elementId = resolve(context -> {
             TextView view = new TextView(context);
-            view.setId(10001);
-            view.setContentDescription("Checkout Label");
-            return view;
-        });
-
-        assertEquals("Checkout Label", elementId);
-    }
-
-    // ============ Priority 3: contentDescription ============
-
-    @Test
-    public void testContentDescriptionUsedWhenNothingElseResolves() {
-        String elementId = resolve(context -> {
-            TextView view = new TextView(context);
-            view.setContentDescription("Checkout Label");
-            return view;
-        });
-
-        assertEquals("Checkout Label", elementId);
-    }
-
-    @Test
-    public void testContentDescriptionIgnoredWhenNotImportantForAccessibility() {
-        // Frameworks auto-derive contentDescription from child text even for views the developer
-        // excluded from accessibility; that text can carry user data, so it must not be reported.
-        String elementId = resolve(context -> {
-            TextView view = new TextView(context);
+            view.setId(10001);  // generated id: no resource entry name
             view.setContentDescription("Account ending 4321");
-            view.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
             return view;
         });
 
         assertTrue("Expected the hash fallback, got: " + elementId,
                 elementId.matches(HASH_ID_PATTERN));
-        assertTrue("Derived contentDescription must not leak into $el_id: " + elementId,
+        assertTrue("Label must not appear in the id: " + elementId,
                 !elementId.contains("4321"));
-    }
-
-    @Test
-    public void testEmptyContentDescriptionFallsThroughToHash() {
-        String elementId = resolve(context -> {
-            TextView view = new TextView(context);
-            view.setContentDescription("");
-            return view;
-        });
-
-        assertTrue("Expected the hash fallback, got: " + elementId,
-                elementId.matches(HASH_ID_PATTERN));
-    }
-
-    // ============ Priority 3: React Native accessible={false} ============
-
-    @Test
-    public void testReactNativeViewIgnoresContentDescriptionWhenNotFocusable() {
-        // React Native expresses accessible={false} by clearing focusability while leaving the view
-        // important for accessibility with its contentDescription intact, so the label must not be
-        // reported — it is exactly the shape that leaks user data into $el_id.
-        String elementId = resolve(context -> {
-            FakeReactViewGroup view = new FakeReactViewGroup(context);
-            view.setContentDescription("Account ending 4321");
-            view.setFocusable(false);
-            return view;
-        });
-
-        assertTrue("Expected the hash fallback, got: " + elementId,
-                elementId.matches(HASH_ID_PATTERN));
-        assertTrue("Label from an accessible={false} view must not leak: " + elementId,
-                !elementId.contains("4321"));
-    }
-
-    @Test
-    public void testReactNativeViewUsesContentDescriptionWhenFocusable() {
-        // accessible={true}, and a label with no accessible prop at all, both leave the view
-        // focusable — those labels are intentional and still resolve.
-        String elementId = resolve(context -> {
-            FakeReactViewGroup view = new FakeReactViewGroup(context);
-            view.setContentDescription("Checkout Label");
-            view.setFocusable(true);
-            return view;
-        });
-
-        assertEquals("Checkout Label", elementId);
-    }
-
-    @Test
-    public void testNativeViewUsesContentDescriptionEvenWhenNotFocusable() {
-        // The focusability guard is scoped to React Native views: a native Android view can be
-        // clickable without being focusable and still carry an intentional contentDescription.
-        String elementId = resolve(context -> {
-            TextView view = new TextView(context);
-            view.setContentDescription("Checkout Label");
-            view.setClickable(true);
-            view.setFocusable(false);
-            return view;
-        });
-
-        assertEquals("Checkout Label", elementId);
     }
 
     // ============ Priority 4: hash fallback ============
@@ -236,18 +151,42 @@ public class DefaultViewElementIdExtractorTest {
     }
 
     @Test
-    public void testHashFallbackIsStablePerViewAndDistinctAcrossViews() {
-        final String[] ids = new String[3];
+    public void testHashFallbackIsStableForTheSameStructure() {
+        // The hash describes where the view sits, not which instance it is, so an identical layout
+        // built twice — as happens on every launch, and every time a list row is recycled — resolves
+        // to the same id. An identity hash could not do this.
+        final String[] ids = new String[2];
         InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
-            View first = new TextView(mContext);
-            View second = new TextView(mContext);
-            ids[0] = DefaultViewElementIdExtractor.INSTANCE.extractElementId(first);
-            ids[1] = DefaultViewElementIdExtractor.INSTANCE.extractElementId(first);
-            ids[2] = DefaultViewElementIdExtractor.INSTANCE.extractElementId(second);
+            for (int i = 0; i < 2; i++) {
+                LinearLayout root = new LinearLayout(mContext);
+                LinearLayout row = new LinearLayout(mContext);
+                TextView leaf = new TextView(mContext);
+                row.addView(leaf);
+                root.addView(row);
+                ids[i] = DefaultViewElementIdExtractor.INSTANCE.extractElementId(leaf);
+            }
         });
 
-        assertEquals("Same view must resolve to the same id", ids[0], ids[1]);
-        assertNotEquals("Different views must resolve to different ids", ids[0], ids[2]);
+        assertEquals("The same structure must resolve to the same id", ids[0], ids[1]);
+        assertTrue("Expected TextView_<hex>, got: " + ids[0],
+                ids[0].matches("TextView_[0-9a-f]+"));
+    }
+
+    @Test
+    public void testHashFallbackDistinguishesSiblingPositions() {
+        final String[] ids = new String[2];
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+            LinearLayout root = new LinearLayout(mContext);
+            TextView first = new TextView(mContext);
+            TextView second = new TextView(mContext);
+            root.addView(first);
+            root.addView(second);
+            ids[0] = DefaultViewElementIdExtractor.INSTANCE.extractElementId(first);
+            ids[1] = DefaultViewElementIdExtractor.INSTANCE.extractElementId(second);
+        });
+
+        assertNotEquals("Siblings at different positions must resolve to different ids",
+                ids[0], ids[1]);
     }
 
     @Test

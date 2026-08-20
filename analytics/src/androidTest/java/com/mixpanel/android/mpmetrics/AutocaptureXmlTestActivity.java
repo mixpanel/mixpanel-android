@@ -9,6 +9,8 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import androidx.activity.ComponentActivity;
+
+import com.mixpanel.android.test.R;
 import androidx.compose.runtime.MutableIntState;
 import androidx.compose.ui.platform.ComposeView;
 
@@ -19,32 +21,37 @@ import androidx.compose.ui.platform.ComposeView;
  * <p>Includes mixed-framework elements (ComposeView inside XML) for cross-framework
  * dead click testing.
  */
+/*
+ * Fixtures that a test identifies by $el_id use real resource ids: identity now comes from the
+ * resource entry name, never from contentDescription, which is localized and can carry user data.
+ * The contentDescriptions are kept so the tests also prove the label is ignored.
+ */
 public class AutocaptureXmlTestActivity extends ComponentActivity {
 
-    public static final int ID_RULE1_BTN = 10001;
+    public static final int ID_RULE1_BTN = R.id.rule1_btn;
     public static final int ID_RULE2_BTN = android.R.id.button1;
     public static final int ID_RULE3_BTN = 10003;
-    public static final int ID_DEAD_XML_BTN = 10004;
-    public static final int ID_RAGE_ZONE = 10005;
-    public static final int ID_ALERT_DIALOG_BTN = 10006;
-    public static final int ID_BOTTOM_SHEET_BTN = 10007;
+    public static final int ID_DEAD_XML_BTN = R.id.dead_xml_btn;
+    public static final int ID_RAGE_ZONE = R.id.rage_zone;
+    public static final int ID_ALERT_DIALOG_BTN = R.id.test_alert_trigger;
+    public static final int ID_BOTTOM_SHEET_BTN = R.id.test_sheet_trigger;
     public static final int ID_NOT_IMPORTANT_VIEW = 10008;
 
     // Accessibility guard test IDs
     public static final int ID_ACCESSIBLE_NO_CD = 10020;
     public static final int ID_NOT_IMPORTANT_WITH_CD = 10021;
-    public static final int ID_ACCESSIBLE_WITH_CD = 10022;
+    public static final int ID_ACCESSIBLE_WITH_CD = R.id.accessible_with_cd;
 
     // Visibility test IDs
-    public static final int ID_INVISIBLE_BTN = 10030;
-    public static final int ID_GONE_BTN = 10031;
-    public static final int ID_ZERO_ALPHA_BTN = 10032;
+    public static final int ID_INVISIBLE_BTN = R.id.invisible_btn;
+    public static final int ID_GONE_BTN = R.id.gone_btn;
+    public static final int ID_ZERO_ALPHA_BTN = R.id.zero_alpha_btn;
 
     // Mixed-framework dead click test IDs
-    public static final int ID_XML_BTN_XML_TEXT = 10010;
-    public static final int ID_XML_TEXT_COUNTER = 10011;
-    public static final int ID_XML_BTN_COMPOSE_TEXT = 10012;
-    public static final int ID_COMPOSE_VIEW = 10013;
+    public static final int ID_XML_BTN_XML_TEXT = R.id.xml_btn_xml_text;
+    public static final int ID_XML_TEXT_COUNTER = R.id.xml_text_counter;
+    public static final int ID_XML_BTN_COMPOSE_TEXT = R.id.xml_btn_compose_text;
+    public static final int ID_COMPOSE_VIEW = R.id.compose_view_in_xml;
 
     // Counters for mixed-framework tests
     private int mXmlCounter = 0;

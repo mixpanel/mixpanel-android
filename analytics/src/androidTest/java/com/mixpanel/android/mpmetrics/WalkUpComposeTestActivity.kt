@@ -17,6 +17,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -26,6 +27,11 @@ import androidx.compose.ui.unit.dp
  *
  * <p>Tests Compose's implicit walk-up behavior where findNodeAtPosition prefers
  * clickable parents over non-clickable children in the accessibility/semantics tree.
+ */
+/*
+ * Fixtures carry a testTag as well as their contentDescription: $el_id resolves from the testTag
+ * because accessibility text is localized and can carry user data. Keeping both means these tests
+ * also prove the label is ignored.
  */
 class WalkUpComposeTestActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -48,6 +54,7 @@ private fun WalkUpTestContent() {
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable { }
+                .testTag("compose_card")
                 .semantics { contentDescription = "compose_card" }
                 .padding(16.dp)
         ) {
@@ -59,12 +66,14 @@ private fun WalkUpTestContent() {
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable { }
+                .testTag("compose_parent_of_labeled")
                 .semantics { contentDescription = "compose_parent_of_labeled" }
                 .padding(16.dp)
         ) {
             Text(
                 "Labeled text inside clickable row",
-                modifier = Modifier.semantics { contentDescription = "compose_leaf_label" }
+                modifier = Modifier.testTag("compose_leaf_label")
+                .semantics { contentDescription = "compose_leaf_label" }
             )
         }
 
@@ -73,13 +82,15 @@ private fun WalkUpTestContent() {
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable { }
+                .testTag("compose_parent_of_btn")
                 .semantics { contentDescription = "compose_parent_of_btn" }
         ) {
             Button(
                 onClick = {},
                 modifier = Modifier
                     .fillMaxWidth()
-                    .semantics { contentDescription = "compose_inner_btn" }
+                    .testTag("compose_inner_btn")
+                .semantics { contentDescription = "compose_inner_btn" }
             ) {
                 Text("Inner button with identity")
             }
@@ -96,6 +107,7 @@ private fun WalkUpTestContent() {
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable { }
+                .testTag("compose_outer")
                 .semantics { contentDescription = "compose_outer" }
                 .padding(16.dp)
         ) {
@@ -103,7 +115,8 @@ private fun WalkUpTestContent() {
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { }
-                    .semantics { contentDescription = "compose_inner" }
+                    .testTag("compose_inner")
+                .semantics { contentDescription = "compose_inner" }
                     .padding(8.dp)
             ) {
                 Text("Leaf inside nested clickables")
@@ -115,6 +128,7 @@ private fun WalkUpTestContent() {
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable { }
+                .testTag("compose_parent_of_anon")
                 .semantics { contentDescription = "compose_parent_of_anon" }
                 .padding(16.dp)
         ) {
@@ -133,6 +147,7 @@ private fun WalkUpTestContent() {
             "Labeled orphan text",
             modifier = Modifier
                 .padding(8.dp)
+                .testTag("compose_orphan_label")
                 .semantics { contentDescription = "compose_orphan_label" }
         )
 
@@ -141,6 +156,7 @@ private fun WalkUpTestContent() {
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable { }
+                .testTag("compose_deep_parent")
                 .semantics { contentDescription = "compose_deep_parent" }
                 .padding(16.dp)
         ) {

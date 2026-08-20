@@ -14,4 +14,58 @@
     <item name="view_tag_native_id" type="id" />
     <item name="mp_test_checkout_button" type="id" />
     <item name="mp_test_bare_button" type="id" />
+
+    <!--
+        Ids for the walk-up fixtures. These carry the same names their contentDescriptions used to
+        supply, because $el_id no longer reads accessibility text: identity has to come from a real
+        resource id. The fixtures keep their contentDescriptions so the tests also prove the label is
+        ignored when a resource id is present.
+    -->
+    <item name="card_container" type="id" />
+    <item name="basic_leaf" type="id" />
+    <item name="parent_of_labeled" type="id" />
+    <item name="leaf_label" type="id" />
+    <item name="clickable_leaf_no_id" type="id" />
+    <item name="parent_of_clickable_no_id" type="id" />
+    <item name="inner_clickable_btn" type="id" />
+    <item name="parent_of_clickable_with_id" type="id" />
+    <item name="non_clickable_container" type="id" />
+    <item name="non_clickable_leaf" type="id" />
+    <item name="orphan_label" type="id" />
+    <item name="outer_clickable" type="id" />
+    <item name="inner_clickable" type="id" />
+    <item name="inner_leaf" type="id" />
+    <item name="deep_parent" type="id" />
+    <item name="deep_leaf" type="id" />
+    <item name="disabled_parent" type="id" />
+    <item name="enabled_grandparent" type="id" />
+    <item name="disabled_leaf" type="id" />
+    <item name="my_checkbox" type="id" />
+    <item name="my_radio" type="id" />
+    <item name="checkable_parent" type="id" />
+
+    <!-- Ids for the XML autocapture fixtures, same rationale as the walk-up ids above. -->
+    <item name="rule1_btn" type="id" />
+    <item name="dead_xml_btn" type="id" />
+    <item name="rage_zone" type="id" />
+    <item name="test_alert_trigger" type="id" />
+    <item name="test_sheet_trigger" type="id" />
+    <item name="invisible_btn" type="id" />
+    <item name="gone_btn" type="id" />
+    <item name="zero_alpha_btn" type="id" />
+    <item name="accessible_with_cd" type="id" />
+
+    <!-- Ids for the mixed-framework fixtures (XML views hosted inside Compose and vice versa). -->
+    <item name="xml_btn_xml_text_in_compose" type="id" />
+    <item name="xml_text_counter_in_compose" type="id" />
+    <item name="xml_btn_compose_text_in_compose" type="id" />
+    <item name="xml_text_from_compose_btn" type="id" />
+    <item name="compose_btn_xml_text_in_compose" type="id" />
+    <item name="compose_btn_compose_text_in_compose" type="id" />
+    <item name="compose_text_counter_in_compose" type="id" />
+    <item name="xml_btn_xml_text" type="id" />
+    <item name="xml_text_counter" type="id" />
+    <item name="xml_btn_compose_text" type="id" />
+    <item name="compose_btn_xml_text" type="id" />
+    <item name="compose_view_in_xml" type="id" />
 </resources>

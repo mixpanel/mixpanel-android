@@ -9,9 +9,13 @@ import androidx.annotation.NonNull;
  * playing the role of the resource id:
  * <ol>
  *   <li><b>{@code Modifier.testTag("...")}</b> — developer-assigned and never user-visible</li>
- *   <li><b>contentDescription</b> — from {@code semantics { contentDescription = ... }}</li>
- *   <li><b>Anonymous fallback</b> — {@code <TagName>_<hash>}</li>
+ *   <li><b>Anonymous fallback</b> — {@code <TagName>_<hash>}, hashed from the node's position in
+ *       the semantics tree</li>
  * </ol>
+ *
+ * <p>{@code contentDescription} from {@code semantics { }} is deliberately not a source: it is
+ * localized, so the same element would report a different identifier per language, and it can carry
+ * user data.
  *
  * <p>There is no React Native {@code nativeID} step: React Native renders through the legacy View
  * hierarchy, so a Compose element can never carry one.
@@ -33,11 +37,6 @@ final class DefaultComposeElementIdExtractor {
         String testTag = element.getTestTag();
         if (testTag != null && !testTag.isEmpty()) {
             return testTag;
-        }
-
-        String contentDescription = element.getContentDescription();
-        if (contentDescription != null && !contentDescription.isEmpty()) {
-            return contentDescription;
         }
 
         return element.getAnonymousId();
