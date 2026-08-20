@@ -6,21 +6,15 @@ import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.view.View;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 import androidx.test.platform.app.InstrumentationRegistry;
-
-import com.mixpanel.android.autocapture.ViewElementIdExtractor;
 
 import org.json.JSONObject;
 import org.junit.After;
@@ -34,22 +28,18 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 /**
- * End-to-end tests for {@code $el_id} resolution: real taps through the autocapture pipeline, with
- * and without a host-app supplied {@link ViewElementIdExtractor}.
+ * End-to-end tests for {@code $el_id} resolution: real taps through the autocapture pipeline,
+ * resolved by the SDK's built-in rules.
  *
  * <p>Complements {@link com.mixpanel.android.autocapture.DefaultViewElementIdExtractorTest}, which
- * covers the full priority matrix at the extractor level. These tests prove the wiring —
- * {@link MixpanelOptions} to {@link AutocaptureOptions} to the hit-test path — and that a custom
- * extractor is authoritative even when it returns null or throws.
- *
- * <p>Mixpanel is initialized per test via {@link #initMixpanel(AutocaptureOptions)} rather than in
- * {@code @Before}, because each test needs different autocapture options.
+ * covers the full priority matrix directly. These tests prove the wiring — {@link MixpanelOptions}
+ * to {@link AutocaptureOptions} to the hit-test path — end to end on real taps.
  */
 @RunWith(AndroidJUnit4.class)
 @LargeTest
-public class ElementIdExtractorInstrumentedTest {
+public class ElementIdInstrumentedTest {
 
-    private static final String TEST_TOKEN = "EL_ID_EXTRACTOR_TEST_TOKEN";
+    private static final String TEST_TOKEN = "EL_ID_TEST_TOKEN";
 
     /** Matches the anonymous fallback: SimpleClassName_hexHash. */
     private static final String HASH_ID_PATTERN = "[A-Za-z0-9$_]+_[0-9a-f]+";
@@ -158,138 +148,6 @@ public class ElementIdExtractorInstrumentedTest {
             assertNull("Label must not be reported as $attr-aria-label",
                     properties.optString("$attr-aria-label", null));
         }
-    }
-
-    // ============ Custom extractor ============
-
-    @Test
-    public void testCustomExtractorReplacesDefaultResolution() throws Exception {
-        initMixpanel(new AutocaptureOptions.Builder()
-                .viewElementIdExtractor(view -> "custom_el_id")
-                .build());
-
-        try (ActivityScenario<ElementIdTestActivity> scenario =
-                     ActivityScenario.launch(ElementIdTestActivity.class)) {
-            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
-
-            onView(withId(ElementIdTestActivity.ID_CHECKOUT_BTN)).perform(click());
-
-            JSONObject properties = awaitClickProperties();
-            assertEquals("custom_el_id", properties.getString("$el_id"));
-        }
-    }
-
-    @Test
-    public void testCustomExtractorReceivesTheTappedView() throws Exception {
-        // The extractor is handed the hit-tested view, so it can key off the app's own metadata.
-        initMixpanel(new AutocaptureOptions.Builder()
-                .viewElementIdExtractor(view ->
-                        view.getId() == ElementIdTestActivity.ID_CHECKOUT_BTN ? "saw_checkout" : null)
-                .build());
-
-        try (ActivityScenario<ElementIdTestActivity> scenario =
-                     ActivityScenario.launch(ElementIdTestActivity.class)) {
-            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
-
-            onView(withId(ElementIdTestActivity.ID_CHECKOUT_BTN)).perform(click());
-
-            JSONObject properties = awaitClickProperties();
-            assertEquals("saw_checkout", properties.getString("$el_id"));
-        }
-    }
-
-    @Test
-    public void testCustomExtractorReturningNullFallsBackToAnonymousId() throws Exception {
-        // A null return means "report nothing identifying" — the SDK must NOT quietly fall back to
-        // the view metadata the developer declined to expose.
-        initMixpanel(new AutocaptureOptions.Builder()
-                .viewElementIdExtractor(view -> null)
-                .build());
-
-        try (ActivityScenario<ElementIdTestActivity> scenario =
-                     ActivityScenario.launch(ElementIdTestActivity.class)) {
-            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
-
-            onView(withId(ElementIdTestActivity.ID_CHECKOUT_BTN)).perform(click());
-
-            JSONObject properties = awaitClickProperties();
-            String elId = properties.getString("$el_id");
-            assertTrue("Expected the anonymous hash id, got: " + elId,
-                    elId.matches(HASH_ID_PATTERN));
-            assertTrue("Resource entry name must not leak: " + elId,
-                    !elId.contains("mp_test_checkout_button"));
-            assertTrue("contentDescription must not leak into $el_id: " + elId,
-                    !elId.contains("Checkout"));
-        }
-    }
-
-    @Test
-    public void testCustomExtractorReturningEmptyStringFallsBackToAnonymousId() throws Exception {
-        initMixpanel(new AutocaptureOptions.Builder()
-                .viewElementIdExtractor(view -> "")
-                .build());
-
-        try (ActivityScenario<ElementIdTestActivity> scenario =
-                     ActivityScenario.launch(ElementIdTestActivity.class)) {
-            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
-
-            onView(withId(ElementIdTestActivity.ID_CHECKOUT_BTN)).perform(click());
-
-            JSONObject properties = awaitClickProperties();
-            String elId = properties.getString("$el_id");
-            assertTrue("Expected the anonymous hash id, got: " + elId,
-                    elId.matches(HASH_ID_PATTERN));
-        }
-    }
-
-    @Test
-    public void testThrowingCustomExtractorDoesNotBreakTracking() throws Exception {
-        initMixpanel(new AutocaptureOptions.Builder()
-                .viewElementIdExtractor(view -> {
-                    throw new IllegalStateException("host app bug");
-                })
-                .build());
-
-        try (ActivityScenario<ElementIdTestActivity> scenario =
-                     ActivityScenario.launch(ElementIdTestActivity.class)) {
-            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
-
-            onView(withId(ElementIdTestActivity.ID_CHECKOUT_BTN)).perform(click());
-
-            // The event still lands, with an anonymous id — a host-app bug must never drop events
-            // or crash the app.
-            JSONObject properties = awaitClickProperties();
-            String elId = properties.getString("$el_id");
-            assertTrue("Expected the anonymous hash id, got: " + elId,
-                    elId.matches(HASH_ID_PATTERN));
-        }
-    }
-
-    // ============ Options plumbing ============
-
-    @Test
-    public void testOptionsDefaultToNoExtractor() {
-        assertNull(new AutocaptureOptions.Builder().build().getViewElementIdExtractor());
-    }
-
-    @Test
-    public void testOptionsRetainAndCopyTheExtractor() {
-        ViewElementIdExtractor extractor = new ViewElementIdExtractor() {
-            @Nullable
-            @Override
-            public String extractElementId(@NonNull View view) {
-                return "id";
-            }
-        };
-
-        AutocaptureOptions options = new AutocaptureOptions.Builder()
-                .viewElementIdExtractor(extractor)
-                .build();
-        assertSame(extractor, options.getViewElementIdExtractor());
-
-        AutocaptureOptions copy = new AutocaptureOptions.Builder(options).build();
-        assertSame("Builder(source) must carry the extractor over",
-                extractor, copy.getViewElementIdExtractor());
     }
 
     // ============ Helpers ============

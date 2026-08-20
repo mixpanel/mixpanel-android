@@ -49,10 +49,7 @@ public class ClickEvent {
      * <p>For Jetpack Compose the order is {@code Modifier.testTag("...")}, then
      * {@code contentDescription}, then {@code TagName_<hashCode>}.
      *
-     * <p>Supply a
-     * {@link com.mixpanel.android.mpmetrics.AutocaptureOptions.Builder#viewElementIdExtractor(ViewElementIdExtractor)}
-     * (or {@code composeElementIdExtractor} for Compose)
-     * to override the View-path resolution entirely — for example a custom string like
+     * <p>When tracking manually, prefer a stable, developer-assigned string such as
      * {@code "buy_button"} or {@code "settings_row_notifications"}.
      *
      * <p>Avoid dynamic values (e.g., adapter position, timestamp) — they prevent meaningful grouping.

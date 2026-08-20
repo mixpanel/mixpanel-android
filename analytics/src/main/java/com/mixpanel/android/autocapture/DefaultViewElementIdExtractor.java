@@ -8,7 +8,8 @@ import androidx.annotation.Nullable;
 import com.mixpanel.android.util.MPLog;
 
 /**
- * Default {@link ViewElementIdExtractor} used when the host app does not supply its own.
+ * Resolves the {@code $el_id} reported for a tapped <b>View</b> — traditional XML layouts, and
+ * anything React Native renders, since React Native draws through the legacy View hierarchy.
  *
  * <p>Resolution priority:
  * <ol>
@@ -24,8 +25,10 @@ import com.mixpanel.android.util.MPLog;
  *
  * <p>Every step is defensive: any exception thrown while resolving an identifier is swallowed and
  * resolution continues with the next step, so this class can never crash the host app.
+ *
+ * <p>This resolution is internal to the SDK and not configurable by the host app.
  */
-final class DefaultViewElementIdExtractor implements ViewElementIdExtractor {
+final class DefaultViewElementIdExtractor {
 
     private static final String TAG = "MP.DefaultViewElementIdExtractor";
 
@@ -40,9 +43,11 @@ final class DefaultViewElementIdExtractor implements ViewElementIdExtractor {
     private DefaultViewElementIdExtractor() {
     }
 
-    @Override
+    /**
+     * Returns the {@code $el_id} to report for the given view. Never null.
+     */
     @NonNull
-    public String extractElementId(@NonNull View view) {
+    String extractElementId(@NonNull View view) {
         String reactNativeId = resolveReactNativeId(view);
         if (reactNativeId != null) {
             return reactNativeId;

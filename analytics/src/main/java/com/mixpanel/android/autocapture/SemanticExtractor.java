@@ -65,14 +65,10 @@ final class SemanticExtractor {
      * @param rootView           The root view to search within.
      * @param x                  Screen X coordinate.
      * @param y                  Screen Y coordinate.
-     * @param options            Autocapture configuration; supplies the optional custom
-     *                           {@link ViewElementIdExtractor} / {@link ComposeElementIdExtractor}
-     *                           used to resolve {@code $el_id}.
      * @return A ClickEvent with extracted semantics, or null if no view found.
      */
     @Nullable
-    static ClickEvent extract(@NonNull View rootView, float x, float y,
-                              @NonNull AutocaptureOptions options) {
+    static ClickEvent extract(@NonNull View rootView, float x, float y) {
         try {
             // Single-pass descent: finds target view, compose root, and hierarchy in one traversal
             HitResult hit = findTargetView(rootView, (int) x, (int) y);
@@ -84,7 +80,7 @@ final class SemanticExtractor {
                     ", composeRoot=" + (hit.composeRoot != null ? hit.composeRoot.getClass().getSimpleName() : "null"));
 
             if (hit.composeRoot != null) {
-                ClickEvent.Builder composeResult = extractFromCompose(hit.composeRoot, x, y, options);
+                ClickEvent.Builder composeResult = extractFromCompose(hit.composeRoot, x, y);
                 MPLog.d(TAG, "extractFromCompose result: " + (composeResult != null ? "found" : "not found"));
 
                 if (composeResult != null) {
@@ -106,11 +102,11 @@ final class SemanticExtractor {
             }
 
             // Fall back to direct view extraction (XML views)
-            ClickEvent.Builder viewResult = extractFromView(hit.target, hit.hierarchy, x, y, options);
+            ClickEvent.Builder viewResult = extractFromView(hit.target, hit.hierarchy, x, y);
 
             // Walk up to clickable parent if the tapped view is not interactive
             if (viewResult != null) {
-                viewResult = walkUpToClickableParent(hit.target, viewResult, hit.hierarchy, x, y, options);
+                viewResult = walkUpToClickableParent(hit.target, viewResult, hit.hierarchy, x, y);
             }
 
             return viewResult != null ? viewResult.build() : null;
@@ -125,10 +121,9 @@ final class SemanticExtractor {
      * Extracts semantics from a Compose root using Compose's SemanticsNode API.
      */
     @Nullable
-    private static ClickEvent.Builder extractFromCompose(@NonNull View composeRoot, float x, float y,
-                                                         @NonNull AutocaptureOptions options) {
+    private static ClickEvent.Builder extractFromCompose(@NonNull View composeRoot, float x, float y) {
         try {
-            return ComposeSemanticHelper.extract(composeRoot, x, y, options);
+            return ComposeSemanticHelper.extract(composeRoot, x, y);
         } catch (NoClassDefFoundError e) {
             // Compose not available at runtime
             composeAvailable = false;
@@ -463,14 +458,11 @@ final class SemanticExtractor {
      * @param view      The target view to extract from.
      * @param hierarchy Pre-built hierarchy string from {@link #findTargetView}, or null
      *                  to build on demand (fallback for callers that don't have it).
-     * @param options   Autocapture configuration; supplies the optional custom
-     *                  {@link ViewElementIdExtractor}.
      */
     @Nullable
     private static ClickEvent.Builder extractFromView(@NonNull View view, @Nullable String hierarchy,
-                                                      float x, float y,
-                                                      @NonNull AutocaptureOptions options) {
-        String elementId = resolveElementId(view, options);
+                                                      float x, float y) {
+        String elementId = DefaultViewElementIdExtractor.INSTANCE.extractElementId(view);
 
         ClickEvent.Builder builder = new ClickEvent.Builder(x, y, elementId);
 
@@ -577,37 +569,6 @@ final class SemanticExtractor {
     @Nullable
     private static String getGuardedContentDescription(@NonNull View view) {
         return AutocaptureDefaults.intentionalContentDescription(view);
-    }
-
-    /**
-     * Resolves the {@code $el_id} for a view.
-     *
-     * <p>When the host app supplied a {@link ViewElementIdExtractor} via
-     * {@link AutocaptureOptions.Builder#viewElementIdExtractor(ViewElementIdExtractor)}, that
-     * extractor is
-     * the only source of the identifier: a null/empty return (or a thrown exception) yields the
-     * anonymous {@code <SimpleClassName>_<hash>} identifier rather than silently falling back to view metadata
-     * the developer chose not to expose.
-     *
-     * <p>Otherwise {@link DefaultViewElementIdExtractor} resolves it (React Native {@code nativeID} >
-     * resource id > content description > {@code <SimpleClassName>_<hash>}).
-     */
-    @NonNull
-    private static String resolveElementId(@NonNull View view, @NonNull AutocaptureOptions options) {
-        ViewElementIdExtractor custom = options.getViewElementIdExtractor();
-        if (custom != null) {
-            try {
-                String customId = custom.extractElementId(view);
-                if (customId != null && !customId.isEmpty()) {
-                    return customId;
-                }
-            } catch (Exception e) {
-                // Never let a host-app implementation crash the app or drop the event.
-                MPLog.e(TAG, "Custom ViewElementIdExtractor threw, using anonymous element id", e);
-            }
-            return DefaultViewElementIdExtractor.anonymousId(view);
-        }
-        return DefaultViewElementIdExtractor.INSTANCE.extractElementId(view);
     }
 
     /**
@@ -782,8 +743,7 @@ final class SemanticExtractor {
     @NonNull
     private static ClickEvent.Builder walkUpToClickableParent(
             @NonNull View tappedView, @NonNull ClickEvent.Builder original,
-            @Nullable String hierarchy, float x, float y,
-            @NonNull AutocaptureOptions options) {
+            @Nullable String hierarchy, float x, float y) {
         // Only walk up if the tapped view is not interactive
         if (tappedView.isClickable() || tappedView.isLongClickable() || tappedView instanceof Checkable) {
             return original;
@@ -796,7 +756,7 @@ final class SemanticExtractor {
             View ancestor = (View) parent;
             if (ancestor.isClickable() || ancestor.isLongClickable() || ancestor instanceof Checkable) {
                 // Found an interactive ancestor — rebuild hierarchy from its perspective
-                return extractFromView(ancestor, buildHierarchyString(ancestor), x, y, options);
+                return extractFromView(ancestor, buildHierarchyString(ancestor), x, y);
             }
             parent = ancestor.getParent();
             depth++;

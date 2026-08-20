@@ -4,18 +4,15 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 /**
- * The semantics of a tapped Jetpack Compose element, handed to a
- * {@link ComposeElementIdExtractor} so it can decide what {@code $el_id} to report.
+ * The semantics of a tapped Jetpack Compose element, handed to
+ * {@link DefaultComposeElementIdExtractor} so it can decide what {@code $el_id} to report.
  *
  * <p>A Compose element is a semantics node rather than an {@link android.view.View}, so there is no
- * view to inspect. This class carries the node's semantics as plain values instead, which also keeps
- * the public API free of Compose types — apps that don't use Compose never load a Compose class
- * because of it.
- *
- * <p>Instances are created by the SDK only. Fields may be added in future releases, so treat this as
- * read-only input.
+ * view to inspect. This class carries the node's semantics as plain values instead, which keeps the
+ * id resolution free of Compose types — it can be exercised without a Compose runtime, and apps that
+ * don't use Compose never load a Compose class because of it.
  */
-public final class ComposeElementInfo {
+final class ComposeElementInfo {
 
     @Nullable private final String mTestTag;
     @Nullable private final String mContentDescription;
@@ -43,7 +40,7 @@ public final class ComposeElementInfo {
      * user, which makes it the safest identifier to report.
      */
     @Nullable
-    public String getTestTag() {
+    String getTestTag() {
         return mTestTag;
     }
 
@@ -54,7 +51,7 @@ public final class ComposeElementInfo {
      * screen content, so prefer {@link #getTestTag()} when both are present.
      */
     @Nullable
-    public String getContentDescription() {
+    String getContentDescription() {
         return mContentDescription;
     }
 
@@ -63,7 +60,7 @@ public final class ComposeElementInfo {
      * {@code null} when Compose reports none.
      */
     @Nullable
-    public String getRole() {
+    String getRole() {
         return mRole;
     }
 
@@ -72,19 +69,15 @@ public final class ComposeElementInfo {
      * {@code "Text"}. Never null.
      */
     @NonNull
-    public String getTagName() {
+    String getTagName() {
         return mTagName;
     }
 
     /**
      * The anonymous, PII-free identifier the SDK falls back to: {@code <TagName>_<hash>}.
-     *
-     * <p>Returning this from
-     * {@link ComposeElementIdExtractor#extractElementId(ComposeElementInfo)} is equivalent to
-     * returning {@code null} — both report an identifier that carries no user data.
      */
     @NonNull
-    public String getAnonymousId() {
+    String getAnonymousId() {
         return mAnonymousId;
     }
 

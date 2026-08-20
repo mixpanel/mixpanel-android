@@ -3,8 +3,7 @@ package com.mixpanel.android.autocapture;
 import androidx.annotation.NonNull;
 
 /**
- * Default {@link ComposeElementIdExtractor} used when the host app configures neither element id
- * extractor.
+ * Resolves the {@code $el_id} reported for a tapped <b>Jetpack Compose</b> element.
  *
  * <p>Resolution priority, mirroring {@link DefaultViewElementIdExtractor} with {@code testTag}
  * playing the role of the resource id:
@@ -16,17 +15,21 @@ import androidx.annotation.NonNull;
  *
  * <p>There is no React Native {@code nativeID} step: React Native renders through the legacy View
  * hierarchy, so a Compose element can never carry one.
+ *
+ * <p>This resolution is internal to the SDK and not configurable by the host app.
  */
-final class DefaultComposeElementIdExtractor implements ComposeElementIdExtractor {
+final class DefaultComposeElementIdExtractor {
 
     static final DefaultComposeElementIdExtractor INSTANCE = new DefaultComposeElementIdExtractor();
 
     private DefaultComposeElementIdExtractor() {
     }
 
-    @Override
+    /**
+     * Returns the {@code $el_id} to report for the given Compose element. Never null.
+     */
     @NonNull
-    public String extractElementId(@NonNull ComposeElementInfo element) {
+    String extractElementId(@NonNull ComposeElementInfo element) {
         String testTag = element.getTestTag();
         if (testTag != null && !testTag.isEmpty()) {
             return testTag;
