@@ -5,6 +5,7 @@ import static com.mixpanel.android.mpmetrics.ConfigurationChecker.LOGTAG;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.mixpanel.android.annotation.ExperimentalMixpanelApi;
 import com.mixpanel.android.util.MPLog;
 import com.mixpanel.android.util.ProxyServerInteractor;
 
@@ -95,8 +96,13 @@ public class MixpanelOptions {
      * {@link Builder#autocaptureOptions(AutocaptureOptions)}.
      *
      * @return The {@link AutocaptureOptions} configuration, or null if not enabled.
+     *
+     * <p><b>Experimental (beta).</b> Autocapture may contain issues, and its API and captured
+     * properties may change before general availability. See
+     * {@link com.mixpanel.android.annotation.ExperimentalMixpanelApi}.
      */
     @Nullable
+    @ExperimentalMixpanelApi
     public AutocaptureOptions getAutocaptureOptions() {
         return mAutocaptureOptions;
     }
@@ -271,7 +277,12 @@ public class MixpanelOptions {
          * @param autocaptureOptions The AutocaptureOptions configuration.
          * @return This Builder instance for chaining.
          * @see AutocaptureOptions
+         *
+         * <p><b>Experimental (beta).</b> Autocapture may contain issues, and its API and captured
+         * properties may change before general availability. See
+         * {@link com.mixpanel.android.annotation.ExperimentalMixpanelApi}.
          */
+        @ExperimentalMixpanelApi
         public Builder autocaptureOptions(@NonNull AutocaptureOptions autocaptureOptions) {
             if (autocaptureOptions == null) {
                 MPLog.w(LOGTAG, "autocaptureOptions must not be null, ignoring");

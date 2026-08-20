@@ -1,5 +1,7 @@
 package com.mixpanel.android.mpmetrics;
 
+import com.mixpanel.android.annotation.ExperimentalMixpanelApi;
+
 /**
  * Configuration options for dead click detection in autocapture.
  *
@@ -13,8 +15,13 @@ package com.mixpanel.android.mpmetrics;
  *     .build();
  * }</pre>
  *
+ * <p><b>Experimental (beta).</b> Autocapture may contain issues, and its API and captured properties
+ * may change before general availability. See
+ * {@link com.mixpanel.android.annotation.ExperimentalMixpanelApi}.
+ *
  * @see AutocaptureOptions.Builder#deadClickOptions(DeadClickOptions)
  */
+@ExperimentalMixpanelApi
 public class DeadClickOptions {
 
     private final boolean mEnabled;

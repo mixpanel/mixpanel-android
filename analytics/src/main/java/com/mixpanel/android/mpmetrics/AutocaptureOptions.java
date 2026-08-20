@@ -2,6 +2,8 @@ package com.mixpanel.android.mpmetrics;
 
 import androidx.annotation.NonNull;
 
+import com.mixpanel.android.annotation.ExperimentalMixpanelApi;
+
 /**
  * Configuration options for Mixpanel autocapture.
  *
@@ -34,11 +36,16 @@ import androidx.annotation.NonNull;
  * MixpanelAPI mixpanel = MixpanelAPI.getInstance(context, "YOUR_TOKEN", true, options);
  * }</pre>
  *
+ * <p><b>Experimental (beta).</b> Autocapture may contain issues, and its API and captured properties
+ * may change before general availability. See
+ * {@link com.mixpanel.android.annotation.ExperimentalMixpanelApi}.
+ *
  * @see MixpanelOptions.Builder#autocaptureOptions(AutocaptureOptions)
  * @see ClickOptions
  * @see RageClickOptions
  * @see DeadClickOptions
  */
+@ExperimentalMixpanelApi
 public class AutocaptureOptions {
 
     private final ClickOptions mClickOptions;

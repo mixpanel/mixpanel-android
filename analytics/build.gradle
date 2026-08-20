@@ -152,6 +152,9 @@ dependencies {
     // or use below for local testing
     // implementation project(':common')
     implementation "androidx.annotation:annotation:1.8.2"
+    // api, not implementation: @ExperimentalAutocaptureApi is part of the public API surface,
+    // and consumers need @OptIn (plus the artifact's lint checks) to acknowledge it.
+    api "androidx.annotation:annotation-experimental:1.4.1"
     implementation 'androidx.core:core:1.13.1'
     implementation 'androidx.lifecycle:lifecycle-process:2.6.2'
     implementation 'io.github.jamsesso:json-logic-java:1.1.0'

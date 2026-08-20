@@ -11,6 +11,8 @@ import androidx.annotation.MainThread;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.mixpanel.android.annotation.ExperimentalMixpanelApi;
+
 import com.mixpanel.android.mpmetrics.AutocaptureOptions;
 import com.mixpanel.android.mpmetrics.MixpanelAPI;
 import com.mixpanel.android.util.MPLog;
@@ -30,7 +32,12 @@ import java.util.WeakHashMap;
  *
  * <p>Thread safety: All public methods must be called from the main thread.
  * {@link #start()} and {@link #stop()} are idempotent — duplicate calls are no-ops.
+ *
+ * <p><b>Experimental (beta).</b> Autocapture may contain issues, and its API and captured properties
+ * may change before general availability. See
+ * {@link com.mixpanel.android.annotation.ExperimentalMixpanelApi}.
  */
+@ExperimentalMixpanelApi
 public final class AutocaptureManager implements
         Application.ActivityLifecycleCallbacks,
         WindowSpy.OnRootViewChangedListener,
@@ -38,6 +45,11 @@ public final class AutocaptureManager implements
         DeadClickDetector.DeadClickListener {
 
     private static final String TAG = "MP.AutocaptureManager";
+
+    private static final String EXPERIMENTAL_WARNING =
+            "Autocapture is experimental (beta): it may contain issues, and its API and captured "
+                    + "properties may change before general availability. Pin your SDK version if "
+                    + "you build reports on autocaptured events.";
 
     private final Context mContext;
     private final AutocaptureOptions mOptions;
@@ -119,6 +131,9 @@ public final class AutocaptureManager implements
 
             mStarted = true;
             MPLog.d(TAG, "Autocapture started");
+            // Logged at warn level, once per start, so developers who never read the annotation or
+            // the docs still learn that this feature is not yet GA.
+            MPLog.w(TAG, EXPERIMENTAL_WARNING);
 
         } catch (Exception e) {
             MPLog.e(TAG, "Failed to start autocapture", e);
