@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Test-only id resources.
+
+    view_tag_native_id mirrors the resource React Native declares to stash the JS-side `nativeID`
+    prop as a view tag. Declaring it here lets DefaultElementIdExtractor's dynamic
+    getIdentifier("view_tag_native_id", "id", packageName) lookup resolve inside instrumented tests
+    without adding a React Native dependency — and without shipping the resource in the SDK.
+
+    mp_test_checkout_button stands in for a real @+id/... so tests can verify the resource-entry-name
+    step of the resolution order (programmatically assigned numeric ids have no entry name).
+-->
+<resources>
+    <item name="view_tag_native_id" type="id" />
+    <item name="mp_test_checkout_button" type="id" />
+    <item name="mp_test_bare_button" type="id" />
+</resources>

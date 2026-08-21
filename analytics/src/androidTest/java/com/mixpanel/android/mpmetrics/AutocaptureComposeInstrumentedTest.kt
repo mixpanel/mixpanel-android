@@ -255,6 +255,42 @@ class AutocaptureComposeInstrumentedTest {
         }
     }
 
+    /**
+     * testTag is the Compose analogue of a resource id: developer-assigned and never user-visible,
+     * so it outranks contentDescription for $el_id. contentDescription still supplies
+     * $attr-aria-label.
+     */
+    @Test
+    fun testComposeElementIdTestTagWinsOverContentDescription() {
+        // Uses its own single-button activity: the shared Compose test activity is a long scrolling
+        // column whose elements are tapped by coordinate, so inserting a fixture there pushes later
+        // elements off-screen and their injected touches miss the app window entirely.
+        ActivityScenario.launch(ElementIdComposeTestActivity::class.java).use { scenario ->
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+
+            tapNode(
+                composeTestRule.onNodeWithTag(ElementIdComposeTestActivity.TEST_TAG),
+                scenario
+            )
+
+            val event = mEvents.poll(10, TimeUnit.SECONDS)
+            assert(event != null) { "Event should be captured" }
+            event!!
+
+            val properties = event.getJSONObject("properties")
+            assert(properties.getString("\$el_id") == ElementIdComposeTestActivity.TEST_TAG) {
+                "Expected testTag to win, got: ${properties.getString("\$el_id")}"
+            }
+            assert(
+                properties.getString("\$attr-aria-label") ==
+                    ElementIdComposeTestActivity.CONTENT_DESCRIPTION
+            ) {
+                "contentDescription should still be the aria-label, got: " +
+                    properties.getString("\$attr-aria-label")
+            }
+        }
+    }
+
     @Test
     fun testComposeElementIdHashFallback() {
         ActivityScenario.launch(AutocaptureComposeTestActivity::class.java).use { scenario ->

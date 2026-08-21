@@ -16,5 +16,11 @@
         <activity
             android:name="com.mixpanel.android.mpmetrics.WalkUpComposeTestActivity"
             android:exported="false" />
+        <activity
+            android:name="com.mixpanel.android.mpmetrics.ElementIdTestActivity"
+            android:exported="false" />
+        <activity
+            android:name="com.mixpanel.android.mpmetrics.ElementIdComposeTestActivity"
+            android:exported="false" />
     </application>
 </manifest>

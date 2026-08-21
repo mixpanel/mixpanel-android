@@ -267,26 +267,19 @@ final class ComposeSemanticHelper {
 
         String contentDesc = getStringProperty(config, SemanticsProperties.INSTANCE.getContentDescription());
         String testTag = getStringProperty(config, SemanticsProperties.INSTANCE.getTestTag());
+        String tagName = getTagName(config);
+        String role = getRoleString(config);
 
-        // Element ID resolution (matching Android plan):
-        // 1. contentDescription (from semantics { contentDescription = ... })
-        // 2. testTag (from Modifier.testTag(...)) - equivalent to resource ID
-        // 3. ClassName_<hashCode>
-        String elementId = null;
+        ComposeElementInfo element = new ComposeElementInfo(
+                testTag, contentDesc, role, tagName,
+                tagName + "_" + Integer.toHexString(node.hashCode()));
+        String elementId = DefaultComposeElementIdExtractor.INSTANCE.extractElementId(element);
+
+        // accessibleLabel ($attr-aria-label) always comes from contentDescription, regardless of
+        // which source won the element id — testTag is not an accessibility label.
         String accessibleLabel = null;
-
         if (contentDesc != null && !contentDesc.isEmpty()) {
-            elementId = contentDesc;
             accessibleLabel = contentDesc;
-        }
-
-        if (elementId == null && testTag != null && !testTag.isEmpty()) {
-            elementId = testTag;
-        }
-
-        if (elementId == null) {
-            String tagName = getTagName(config);
-            elementId = tagName + "_" + Integer.toHexString(node.hashCode());
         }
 
         ClickEvent.Builder builder = new ClickEvent.Builder(x, y, elementId);
@@ -296,11 +289,9 @@ final class ComposeSemanticHelper {
         }
 
         // Tag name from role
-        String tagName = getTagName(config);
         builder.tagName(tagName);
 
         // Role
-        String role = getRoleString(config);
         builder.role(role);
 
         // Interactive check

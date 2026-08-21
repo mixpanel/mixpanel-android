@@ -462,11 +462,7 @@ final class SemanticExtractor {
     @Nullable
     private static ClickEvent.Builder extractFromView(@NonNull View view, @Nullable String hierarchy,
                                                       float x, float y) {
-        // Element ID resolution: contentDescription > resource ID > fallback
-        String elementId = resolveElementId(view);
-        if (elementId == null) {
-            elementId = "unknown_" + Integer.toHexString(view.hashCode());
-        }
+        String elementId = DefaultViewElementIdExtractor.INSTANCE.extractElementId(view);
 
         ClickEvent.Builder builder = new ClickEvent.Builder(x, y, elementId);
 
@@ -564,66 +560,15 @@ final class SemanticExtractor {
     }
 
     /**
-     * Returns the view's contentDescription only when the view is important for accessibility,
-     * or null otherwise.
+     * Returns the view's contentDescription only when the developer intentionally exposed it.
      *
-     * <p>Frameworks like React Native auto-derive contentDescription from child text content
-     * even when accessible={false}. That text may contain sensitive information (e.g., account
-     * numbers, personal details). Guarding on isImportantForAccessibility() ensures we only
-     * capture labels the developer intentionally exposed.
+     * <p>Delegates to {@link AutocaptureDefaults#intentionalContentDescription(View)} so that
+     * {@code $attr-aria-label} and {@code $el_id} apply exactly the same guards — a label that is
+     * unsafe to use as an identifier is equally unsafe to report as the accessibility label.
      */
     @Nullable
     private static String getGuardedContentDescription(@NonNull View view) {
-        if (view.isImportantForAccessibility()) {
-            CharSequence contentDesc = view.getContentDescription();
-            if (contentDesc != null && contentDesc.length() > 0) {
-                return contentDesc.toString();
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Returns the view's meaningful identity (contentDescription or resource ID name),
-     * or null if the view has no identity and would fall back to a hash.
-     *
-     * <p>Resolution order:
-     * 1. contentDescription (via {@link #getGuardedContentDescription})
-     * 2. Resource ID name (R.id.xxx)
-     */
-    @Nullable
-    private static String resolveIdentity(@NonNull View view) {
-        String guardedDesc = getGuardedContentDescription(view);
-        if (guardedDesc != null) {
-            return guardedDesc;
-        }
-        int id = view.getId();
-        if (id != View.NO_ID) {
-            try {
-                String resourceName = view.getResources().getResourceEntryName(id);
-                if (resourceName != null && !resourceName.isEmpty()) {
-                    return resourceName;
-                }
-            } catch (Exception ignored) {
-                // Resource not found
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Resolves the element ID according to the priority:
-     * 1. contentDescription (if non-empty)
-     * 2. Resource ID name (R.id.xxx)
-     * 3. ClassName_<hashCode>
-     */
-    @NonNull
-    private static String resolveElementId(@NonNull View view) {
-        String identity = resolveIdentity(view);
-        if (identity != null) {
-            return identity;
-        }
-        return view.getClass().getSimpleName() + "_" + Integer.toHexString(view.hashCode());
+        return AutocaptureDefaults.intentionalContentDescription(view);
     }
 
     /**
