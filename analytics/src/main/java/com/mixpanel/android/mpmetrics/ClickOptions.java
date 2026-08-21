@@ -1,5 +1,6 @@
 package com.mixpanel.android.mpmetrics;
 
+
 /**
  * Configuration options for click event autocapture.
  *
@@ -14,6 +15,10 @@ package com.mixpanel.android.mpmetrics;
  *     .enabled(true)
  *     .build();
  * }</pre>
+ *
+ * <p><b>Experimental (beta).</b> Autocapture may contain issues, and its API and the properties it
+ * captures may change in a future release before general availability. Pin your SDK version if you
+ * build reports on autocaptured events.
  *
  * @see AutocaptureOptions.Builder#clickOptions(ClickOptions)
  */

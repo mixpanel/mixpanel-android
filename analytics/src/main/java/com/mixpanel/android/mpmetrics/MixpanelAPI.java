@@ -1046,6 +1046,9 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      * Return the Autocapture instance associated with this MixpanelAPI instance.
      * Use this to track autocapture events such as screen views and screen leaves.
      *
+     * <p><b>Experimental (beta).</b> Autocapture may contain issues, and its API and the
+     * properties it captures may change in a future release before general availability.
+     *
      * @return an instance of {@link Autocapture}
      */
     public Autocapture getAutocapture() {
@@ -2270,6 +2273,9 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      * to appear with an "[Auto]" prefix in the Mixpanel web app.
      *
      * <p>Access this via {@link MixpanelAPI#getAutocapture()}.
+     *
+     * <p><b>Experimental (beta).</b> Autocapture may contain issues, and its API and the
+     * properties it captures may change in a future release before general availability.
      */
     public class Autocapture {
 
