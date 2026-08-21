@@ -227,7 +227,9 @@ class AutocaptureComposeInstrumentedTest {
             assert(event.getString("event") == "\$mp_click")
 
             val properties = event.getJSONObject("properties")
+            // Resolved from the testTag; the identical contentDescription is ignored
             assert(properties.getString("\$el_id") == "compose_rule1_btn")
+            assert(!properties.has("\$attr-aria-label")) { "\$attr-aria-label must never be present" }
             assert(properties.getString("\$el_tag_name") == "Button")
             assert(properties.getDouble("\$x") >= 0)
             assert(properties.getDouble("\$y") >= 0)
@@ -256,9 +258,9 @@ class AutocaptureComposeInstrumentedTest {
     }
 
     /**
-     * testTag is the Compose analogue of a resource id: developer-assigned and never user-visible,
-     * so it outranks contentDescription for $el_id. contentDescription still supplies
-     * $attr-aria-label.
+     * testTag is the Compose analogue of a resource id: developer-assigned and never user-visible.
+     * contentDescription is neither an identity source nor reported, because it is localized and can
+     * carry user data.
      */
     @Test
     fun testComposeElementIdTestTagWinsOverContentDescription() {
@@ -281,12 +283,11 @@ class AutocaptureComposeInstrumentedTest {
             assert(properties.getString("\$el_id") == ElementIdComposeTestActivity.TEST_TAG) {
                 "Expected testTag to win, got: ${properties.getString("\$el_id")}"
             }
-            assert(
-                properties.getString("\$attr-aria-label") ==
-                    ElementIdComposeTestActivity.CONTENT_DESCRIPTION
-            ) {
-                "contentDescription should still be the aria-label, got: " +
-                    properties.getString("\$attr-aria-label")
+            assert(!properties.has("\$attr-aria-label")) {
+                "\$attr-aria-label must never be present"
+            }
+            assert(!properties.toString().contains(ElementIdComposeTestActivity.CONTENT_DESCRIPTION)) {
+                "contentDescription must not appear anywhere in the payload"
             }
         }
     }
@@ -473,11 +474,12 @@ class AutocaptureComposeInstrumentedTest {
     }
 
     /**
-     * Positive case: Button with explicit contentDescription.
-     * contentDescription SHOULD be captured in $el_id and $attr-aria-label.
+     * An explicit, intentional contentDescription must still never be captured: it is localized, so
+     * the same element would report a different $el_id per language, and it can carry user data.
+     * Identity comes from the testTag instead, and no aria-label is emitted.
      */
     @Test
-    fun testComposeButtonWithCd_ContentDescIsCaptured() {
+    fun testComposeButtonWithCd_ContentDescIsNeverCaptured() {
         ActivityScenario.launch(AutocaptureComposeTestActivity::class.java).use { scenario ->
             InstrumentationRegistry.getInstrumentation().waitForIdleSync()
 
@@ -492,11 +494,11 @@ class AutocaptureComposeInstrumentedTest {
             assert(event.getString("event") == "\$mp_click")
 
             val properties = event.getJSONObject("properties")
-            assert(properties.getString("\$el_id") == "Intended Label") {
-                "Expected 'Intended Label' as \$el_id, got: ${properties.getString("\$el_id")}"
+            assert(properties.getString("\$el_id") == "compose_intended_label_btn") {
+                "Expected the testTag as \$el_id, got: ${properties.getString("\$el_id")}"
             }
-            assert(properties.getString("\$attr-aria-label") == "Intended Label") {
-                "Expected 'Intended Label' as \$attr-aria-label"
+            assert(!properties.toString().contains("Intended Label")) {
+                "An intentional contentDescription must still never be reported: $properties"
             }
         }
     }

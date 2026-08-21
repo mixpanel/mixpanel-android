@@ -1,6 +1,8 @@
 package com.mixpanel.android.autocapture;
 
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.ViewParent;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -79,11 +81,6 @@ final class AutocaptureDefaults {
     static final String PROP_EL_TAG_NAME = "$el_tag_name";
 
     /**
-     * Property name for accessibility label (contentDescription).
-     */
-    static final String PROP_ARIA_LABEL = "$attr-aria-label";
-
-    /**
      * Property name for element role.
      */
     static final String PROP_ROLE = "$attr-role";
@@ -99,56 +96,43 @@ final class AutocaptureDefaults {
     static final String HIERARCHY_SEPARATOR = " > ";
 
     /**
-     * Class-name prefix of every view React Native manages.
+     * Builds a stable, PII-free description of where a view sits in the hierarchy, used as the input
+     * to the anonymous {@code $el_id} hash.
      *
-     * <p>React Native's {@code BaseViewManager} applies accessibility props to the views it creates,
-     * and the view a tap resolves to in a React Native app is the Pressable/Touchable's own
-     * {@code ReactViewGroup}, so this prefix identifies the views whose accessibility metadata
-     * follows React Native's conventions rather than the platform's.
+     * <p>Format: the view's own class, then each ancestor with the child index that leads back down
+     * to the previous element, up to {@link #MAX_HIERARCHY_DEPTH} levels:
+     *
+     * <pre>{@code Button@FrameLayout[0]/ScrollView[2]/LinearLayout[1]}</pre>
+     *
+     * <p>Only class names and sibling indices — never text — so it cannot carry user data, and it is
+     * identical across launches for the same layout, which an identity hash is not.
      */
-    private static final String REACT_NATIVE_VIEW_PACKAGE = "com.facebook.react.";
+    @NonNull
+    static String structuralPath(@NonNull View view) {
+        StringBuilder path = new StringBuilder(view.getClass().getSimpleName()).append('@');
 
-    /**
-     * Returns the view's content description only when the developer intentionally exposed it, or
-     * null otherwise. Shared by {@code $el_id} resolution and the {@code $attr-aria-label} property
-     * so the two can never disagree about whether a label is safe to report.
-     *
-     * <p>Two guards, because the two UI stacks signal intent differently:
-     *
-     * <ul>
-     *   <li><b>{@link View#isImportantForAccessibility()}</b> — the platform's own signal. Android
-     *       frameworks auto-derive a container's content description from child text; that text may
-     *       contain sensitive information (account numbers, personal details), and a view the
-     *       developer marked unimportant for accessibility is not an intentional label.</li>
-     *   <li><b>{@link View#isFocusable()}, for React Native views only</b> — React Native expresses
-     *       {@code accessible={false}} by clearing focusability and leaves the view important for
-     *       accessibility with its content description intact, so importance alone does not reflect
-     *       intent there. {@code accessible={true}}, and a label with no {@code accessible} prop at
-     *       all, both leave the view focusable.</li>
-     * </ul>
-     *
-     * <p>The focusability guard is deliberately scoped to React Native views: a native Android view
-     * can be clickable without being focusable while still carrying a perfectly intentional
-     * {@code android:contentDescription}.
-     */
-    @Nullable
-    static String intentionalContentDescription(@NonNull View view) {
-        if (!view.isImportantForAccessibility()) {
-            return null;
+        View current = view;
+        ViewParent parent = view.getParent();
+        int depth = 0;
+        while (parent instanceof ViewGroup && depth < MAX_HIERARCHY_DEPTH) {
+            ViewGroup group = (ViewGroup) parent;
+            if (depth > 0) {
+                path.append('/');
+            }
+            path.append(group.getClass().getSimpleName())
+                    .append('[')
+                    .append(group.indexOfChild(current))
+                    .append(']');
+            current = group;
+            parent = group.getParent();
+            depth++;
         }
-        if (isReactNativeView(view) && !view.isFocusable()) {
-            return null;
-        }
-        CharSequence contentDescription = view.getContentDescription();
-        if (contentDescription != null && contentDescription.length() > 0) {
-            return contentDescription.toString();
-        }
-        return null;
-    }
 
-    /** Returns whether the view is one React Native created and manages. */
-    static boolean isReactNativeView(@NonNull View view) {
-        return view.getClass().getName().startsWith(REACT_NATIVE_VIEW_PACKAGE);
+        if (depth == 0) {
+            // Detached view, or a root with no ViewGroup parent: nothing structural to describe.
+            path.append("detached");
+        }
+        return path.toString();
     }
 
     private AutocaptureDefaults() {

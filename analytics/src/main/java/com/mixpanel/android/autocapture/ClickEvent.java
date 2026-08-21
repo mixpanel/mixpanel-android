@@ -42,12 +42,16 @@ public class ClickEvent {
      *   <li>React Native {@code nativeID} — the JS-side prop, stored as a view tag</li>
      *   <li>Resource ID name — stable and not user-visible
      *       ({@code view.getResources().getResourceEntryName(view.getId())})</li>
-     *   <li>{@code contentDescription} — only when the view is important for accessibility</li>
-     *   <li>{@code <SimpleClassName>_<hashCode>} as a last resort</li>
+     *   <li>{@code <SimpleClassName>_<hash>} as a last resort, where the hash describes the
+     *       element's position in the hierarchy so it stays stable across launches</li>
      * </ul>
      *
      * <p>For Jetpack Compose the order is {@code Modifier.testTag("...")}, then
-     * {@code contentDescription}, then {@code TagName_<hashCode>}.
+     * {@code TagName_<hash>}.
+     *
+     * <p>Accessibility text — {@code contentDescription} on views, {@code contentDescription} in
+     * Compose semantics — is deliberately not used. It is localized, so the same element would
+     * report a different identifier per language, and it can carry personal data.
      *
      * <p>When tracking manually, prefer a stable, developer-assigned string such as
      * {@code "buy_button"} or {@code "settings_row_notifications"}.
@@ -66,16 +70,6 @@ public class ClickEvent {
      */
     @Nullable
     public final String tagName;
-
-    /**
-     * The human-readable accessibility label of the element.
-     *
-     * <p>This is the text read aloud by TalkBack — typically the view's {@code contentDescription}.
-     * Examples: {@code "Add to cart"}, {@code "Play video"}, {@code "Close"}.
-     * Set to {@code null} if the element has no accessibility label.
-     */
-    @Nullable
-    public final String accessibleLabel;
 
     /**
      * The semantic role describing what the element does.
@@ -108,7 +102,6 @@ public class ClickEvent {
             float y,
             @NonNull String elementId,
             @Nullable String tagName,
-            @Nullable String accessibleLabel,
             @Nullable String role,
             @Nullable String elements,
             boolean isInteractive) {
@@ -116,7 +109,6 @@ public class ClickEvent {
         this.y = y;
         this.elementId = elementId;
         this.tagName = tagName;
-        this.accessibleLabel = accessibleLabel;
         this.role = role;
         this.elements = elements;
         this.isInteractive = isInteractive;
@@ -136,9 +128,6 @@ public class ClickEvent {
             props.put(AutocaptureDefaults.PROP_EL_ID, elementId);
             if (tagName != null) {
                 props.put(AutocaptureDefaults.PROP_EL_TAG_NAME, tagName);
-            }
-            if (accessibleLabel != null) {
-                props.put(AutocaptureDefaults.PROP_ARIA_LABEL, accessibleLabel);
             }
             if (role != null) {
                 props.put(AutocaptureDefaults.PROP_ROLE, role);
@@ -168,7 +157,6 @@ public class ClickEvent {
      * <pre>{@code
      * ClickEvent click = new ClickEvent.Builder(motionEvent.getRawX(), motionEvent.getRawY(), "buy_button")
      *     .tagName(view.getClass().getSimpleName())
-     *     .accessibleLabel(view.getContentDescription().toString())
      *     .role("button")
      *     .elements("MaterialButton > LinearLayout > CardView")
      *     .build();
@@ -180,7 +168,6 @@ public class ClickEvent {
         private final float y;
         private final String elementId;
         private String tagName;
-        private String accessibleLabel;
         private String role;
         private String elements;
         private boolean isInteractive;
@@ -201,14 +188,6 @@ public class ClickEvent {
          */
         public Builder tagName(@Nullable String tagName) {
             this.tagName = tagName;
-            return this;
-        }
-
-        /**
-         * @param accessibleLabel The element's accessibility label (contentDescription)
-         */
-        public Builder accessibleLabel(@Nullable String accessibleLabel) {
-            this.accessibleLabel = accessibleLabel;
             return this;
         }
 
@@ -234,7 +213,7 @@ public class ClickEvent {
         }
 
         public ClickEvent build() {
-            return new ClickEvent(x, y, elementId, tagName, accessibleLabel, role, elements, isInteractive);
+            return new ClickEvent(x, y, elementId, tagName, role, elements, isInteractive);
         }
     }
 }

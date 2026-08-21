@@ -15,19 +15,16 @@ import androidx.annotation.Nullable;
 final class ComposeElementInfo {
 
     @Nullable private final String mTestTag;
-    @Nullable private final String mContentDescription;
     @Nullable private final String mRole;
     @NonNull private final String mTagName;
     @NonNull private final String mAnonymousId;
 
     ComposeElementInfo(
             @Nullable String testTag,
-            @Nullable String contentDescription,
             @Nullable String role,
             @NonNull String tagName,
             @NonNull String anonymousId) {
         mTestTag = testTag;
-        mContentDescription = contentDescription;
         mRole = role;
         mTagName = tagName;
         mAnonymousId = anonymousId;
@@ -42,17 +39,6 @@ final class ComposeElementInfo {
     @Nullable
     String getTestTag() {
         return mTestTag;
-    }
-
-    /**
-     * The value of {@code semantics { contentDescription = "..." }}, or {@code null} when unset.
-     *
-     * <p>This is user-facing accessibility text. It can carry personal data when it is derived from
-     * screen content, so prefer {@link #getTestTag()} when both are present.
-     */
-    @Nullable
-    String getContentDescription() {
-        return mContentDescription;
     }
 
     /**
@@ -85,7 +71,6 @@ final class ComposeElementInfo {
     @NonNull
     public String toString() {
         return "ComposeElementInfo{testTag=" + mTestTag
-                + ", contentDescription=" + mContentDescription
                 + ", role=" + mRole
                 + ", tagName=" + mTagName + "}";
     }

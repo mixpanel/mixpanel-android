@@ -716,11 +716,13 @@ public class AutocaptureXmlInstrumentedTest {
     }
 
     /**
-     * Positive case: View IS important for accessibility AND HAS contentDescription.
-     * The contentDescription SHOULD appear in both $el_id and $attr-aria-label.
+     * A view that is important for accessibility and has an intentional contentDescription still
+     * must not have that text reported. Accessibility text is localized — the same element would
+     * report a different $el_id per language — and it can carry user data, so identity comes from
+     * the resource id and the label is not emitted at all.
      */
     @Test
-    public void testAccessibleWithCd_ContentDescIsCaptured() throws Exception {
+    public void testAccessibleWithCd_ContentDescIsNeverCaptured() throws Exception {
         try (ActivityScenario<AutocaptureXmlTestActivity> scenario =
                      ActivityScenario.launch(AutocaptureXmlTestActivity.class)) {
 
@@ -756,11 +758,14 @@ public class AutocaptureXmlInstrumentedTest {
 
             JSONObject properties = event.getJSONObject("properties");
 
-            // contentDescription SHOULD be used as $el_id
-            assertEquals("Intended Label", properties.getString("$el_id"));
+            // Identity comes from the resource entry name, not the label
+            assertEquals("accessible_with_cd", properties.getString("$el_id"));
 
-            // $attr-aria-label SHOULD be present
-            assertEquals("Intended Label", properties.getString("$attr-aria-label"));
+            // The label is not reported anywhere in the payload
+            assertTrue("$attr-aria-label must never be present",
+                    !properties.has("$attr-aria-label"));
+            assertTrue("contentDescription must not appear in any property: " + properties,
+                    !properties.toString().contains("Intended Label"));
         }
     }
 
@@ -898,8 +903,8 @@ public class AutocaptureXmlInstrumentedTest {
 
             InstrumentationRegistry.getInstrumentation().waitForIdleSync();
 
-            // Click button with no contentDescription and invalid resource ID (10003)
-            // This forces resolveElementId to fall through Rule 1 and Rule 2 to the hash fallback
+            // Click a button with no nativeID and a generated id (no resource entry name), which
+            // falls through to the structural hash fallback
             onView(withId(AutocaptureXmlTestActivity.ID_RULE3_BTN)).perform(click());
 
             JSONObject event = mEvents.poll(10, TimeUnit.SECONDS);
@@ -907,7 +912,7 @@ public class AutocaptureXmlInstrumentedTest {
 
             JSONObject properties = event.getJSONObject("properties");
 
-            // Verify $el_id uses hash fallback format: ClassName_<hexHashCode>
+            // Verify $el_id uses the hash fallback format: ClassName_<hash of structural path>
             String elId = properties.getString("$el_id");
             assertTrue("$el_id should start with 'Button_' for hash fallback, got: " + elId,
                     elId.matches("Button_[0-9a-f]+"));

@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.ComponentActivity
+import com.mixpanel.android.test.R
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -43,6 +44,11 @@ class AutocaptureComposeTestActivity : ComponentActivity() {
     }
 }
 
+/*
+ * Elements a test identifies by $el_id carry a testTag: $el_id no longer reads contentDescription,
+ * which is localized and can carry user data. The contentDescriptions stay so the tests also prove
+ * the label is neither used as identity nor reported.
+ */
 @Composable
 private fun TestContent() {
     val composeTextCounter = remember { mutableIntStateOf(0) }
@@ -58,6 +64,7 @@ private fun TestContent() {
             onClick = {},
             modifier = Modifier
                 .fillMaxWidth()
+                .testTag("compose_rule1_btn")
                 .semantics { contentDescription = "compose_rule1_btn" }
         ) {
             Text("Rule 1 - contentDescription")
@@ -92,6 +99,7 @@ private fun TestContent() {
             onClick = {},
             modifier = Modifier
                 .fillMaxWidth()
+                .testTag("compose_dead_btn")
                 .semantics { contentDescription = "compose_dead_btn" }
         ) {
             Text("Dead Button (no effect)")
@@ -105,6 +113,7 @@ private fun TestContent() {
                 .fillMaxWidth()
                 .height(80.dp)
                 .clickable {}
+                .testTag("compose_rage_zone")
                 .semantics { contentDescription = "compose_rage_zone" }
         )
 
@@ -141,12 +150,13 @@ private fun TestContent() {
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Positive case: Button with explicit contentDescription.
-        // contentDescription SHOULD be captured in $el_id and $attr-aria-label.
+        // Explicit, intentional contentDescription. It must NOT be captured: identity comes from
+        // the testTag, and the label is not reported at all.
         Button(
             onClick = {},
             modifier = Modifier
                 .fillMaxWidth()
+                .testTag("compose_intended_label_btn")
                 .semantics { contentDescription = "Intended Label" }
         ) {
             Text("Some Button Text")
@@ -162,6 +172,7 @@ private fun TestContent() {
             modifier = Modifier
                 .fillMaxWidth()
                 .alpha(0f)
+                .testTag("compose_zero_alpha_btn")
                 .semantics { contentDescription = "compose_zero_alpha_btn" }
         ) {
             Text("Zero Alpha Button")
@@ -182,12 +193,14 @@ private fun TestContent() {
                     // XML button that changes XML text
                     val xmlTextCounter = TextView(ctx).apply {
                         text = "XML counter: 0"
+                        id = R.id.xml_text_counter_in_compose
                         this.contentDescription = "xml_text_counter_in_compose"
                         setPadding(0, dp8, 0, 0)
                     }
 
                     val xmlBtnXmlText = android.widget.Button(ctx).apply {
                         text = "XML Btn -> XML Text"
+                        id = R.id.xml_btn_xml_text_in_compose
                         this.contentDescription = "xml_btn_xml_text_in_compose"
                         setOnClickListener {
                             val current = xmlTextCounter.text.toString()
@@ -207,6 +220,7 @@ private fun TestContent() {
                     // XML button that changes Compose text
                     val xmlBtnComposeText = android.widget.Button(ctx).apply {
                         text = "XML Btn -> Compose Text"
+                        id = R.id.xml_btn_compose_text_in_compose
                         this.contentDescription = "xml_btn_compose_text_in_compose"
                         layoutParams = LinearLayout.LayoutParams(
                             LinearLayout.LayoutParams.MATCH_PARENT,
@@ -232,6 +246,7 @@ private fun TestContent() {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 8.dp)
+                .testTag("compose_btn_xml_text_in_compose")
                 .semantics { contentDescription = "compose_btn_xml_text_in_compose" }
         ) {
             Text("Compose Btn -> XML Text")
@@ -243,7 +258,8 @@ private fun TestContent() {
                 .padding(top = 4.dp),
             factory = { ctx ->
                 TextView(ctx).apply {
-                    this.contentDescription = "xml_text_from_compose_btn"
+                    id = R.id.xml_text_from_compose_btn
+                        this.contentDescription = "xml_text_from_compose_btn"
                 }
             },
             update = { textView ->
@@ -259,6 +275,7 @@ private fun TestContent() {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 8.dp)
+                .testTag("compose_btn_compose_text_in_compose")
                 .semantics { contentDescription = "compose_btn_compose_text_in_compose" }
         ) {
             Text("Compose Btn -> Compose Text")
@@ -269,6 +286,7 @@ private fun TestContent() {
             text = "Compose counter: ${composeTextCounter.intValue}",
             modifier = Modifier
                 .padding(top = 4.dp)
+                .testTag("compose_text_counter_in_compose")
                 .semantics { contentDescription = "compose_text_counter_in_compose" }
         )
     }

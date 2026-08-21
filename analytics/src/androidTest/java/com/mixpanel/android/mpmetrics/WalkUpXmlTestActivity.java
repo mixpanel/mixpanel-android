@@ -11,6 +11,8 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import androidx.activity.ComponentActivity;
 
+import com.mixpanel.android.test.R;
+
 /**
  * Test activity for walk-up-to-clickable-parent instrumentation tests.
  * UI is created programmatically to avoid R class issues in library modules.
@@ -21,29 +23,34 @@ import androidx.activity.ComponentActivity;
  */
 public class WalkUpXmlTestActivity extends ComponentActivity {
 
-    // Use IDs starting from 20001 to avoid conflicts
-    public static final int ID_BASIC_CONTAINER = 20001;
-    public static final int ID_BASIC_LEAF = 20002;
-    public static final int ID_LABELED_LEAF_CONTAINER = 20003;
-    public static final int ID_LABELED_LEAF = 20004;
+    // Real resource ids, not bare ints: $el_id resolves a view's identity from its resource entry
+    // name, and generated ids have none. The names match what each fixture's contentDescription used
+    // to supply, so the walk-up expectations are unchanged while the labels are now ignored.
+    public static final int ID_BASIC_CONTAINER = R.id.card_container;
+    public static final int ID_BASIC_LEAF = R.id.basic_leaf;
+    public static final int ID_LABELED_LEAF_CONTAINER = R.id.parent_of_labeled;
+    public static final int ID_LABELED_LEAF = R.id.leaf_label;
+    // Deliberately a bare int: this fixture must have no resource entry name, because the
+    // test that taps it asserts the structural hash fallback.
     public static final int ID_CLICKABLE_LEAF_NO_ID = 20005;
-    public static final int ID_CLICKABLE_LEAF_PARENT = 20006;
-    public static final int ID_CLICKABLE_LEAF_WITH_ID = 20007;
-    public static final int ID_CLICKABLE_LEAF_WITH_ID_PARENT = 20008;
-    public static final int ID_NON_CLICKABLE_CONTAINER = 20009;
+    public static final int ID_CLICKABLE_LEAF_PARENT = R.id.parent_of_clickable_no_id;
+    public static final int ID_CLICKABLE_LEAF_WITH_ID = R.id.inner_clickable_btn;
+    public static final int ID_CLICKABLE_LEAF_WITH_ID_PARENT = R.id.parent_of_clickable_with_id;
+    public static final int ID_NON_CLICKABLE_CONTAINER = R.id.non_clickable_container;
+    // Bare int for the same reason as ID_CLICKABLE_LEAF_NO_ID.
     public static final int ID_NON_CLICKABLE_LEAF = 20010;
-    public static final int ID_NON_CLICKABLE_LABELED_LEAF = 20011;
-    public static final int ID_OUTER_CLICKABLE = 20012;
-    public static final int ID_INNER_CLICKABLE = 20013;
-    public static final int ID_INNER_LEAF = 20014;
-    public static final int ID_DEEP_PARENT = 20015;
-    public static final int ID_DEEP_LEAF = 20016;
-    public static final int ID_DISABLED_PARENT = 20017;
-    public static final int ID_ENABLED_GRANDPARENT = 20018;
-    public static final int ID_DISABLED_LEAF = 20019;
-    public static final int ID_CHECKBOX = 20020;
-    public static final int ID_RADIO_BUTTON = 20021;
-    public static final int ID_CHECKABLE_CONTAINER = 20022;
+    public static final int ID_NON_CLICKABLE_LABELED_LEAF = R.id.orphan_label;
+    public static final int ID_OUTER_CLICKABLE = R.id.outer_clickable;
+    public static final int ID_INNER_CLICKABLE = R.id.inner_clickable;
+    public static final int ID_INNER_LEAF = R.id.inner_leaf;
+    public static final int ID_DEEP_PARENT = R.id.deep_parent;
+    public static final int ID_DEEP_LEAF = R.id.deep_leaf;
+    public static final int ID_DISABLED_PARENT = R.id.disabled_parent;
+    public static final int ID_ENABLED_GRANDPARENT = R.id.enabled_grandparent;
+    public static final int ID_DISABLED_LEAF = R.id.disabled_leaf;
+    public static final int ID_CHECKBOX = R.id.my_checkbox;
+    public static final int ID_RADIO_BUTTON = R.id.my_radio;
+    public static final int ID_CHECKABLE_CONTAINER = R.id.checkable_parent;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

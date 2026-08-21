@@ -26,7 +26,6 @@ import androidx.annotation.Nullable;
 import com.mixpanel.android.mpmetrics.AutocaptureOptions;
 import com.mixpanel.android.util.MPLog;
 
-
 /**
  * Extracts semantic information from Views and AccessibilityNodeInfo for autocapture.
  *
@@ -88,8 +87,7 @@ final class SemanticExtractor {
                     ClickEvent baseEvent = composeResult.build();
                     return new ComposeClickEvent(
                             baseEvent.x, baseEvent.y, baseEvent.elementId,
-                            baseEvent.tagName, baseEvent.accessibleLabel,
-                            baseEvent.role, baseEvent.elements,
+                            baseEvent.tagName, baseEvent.role, baseEvent.elements,
                             baseEvent.isInteractive, hit.composeRoot);
                 }
 
@@ -297,15 +295,13 @@ final class SemanticExtractor {
      */
     @Nullable
     private static ClickEvent.Builder extractFromNode(@NonNull AccessibilityNodeInfo node, float x, float y) {
-        CharSequence contentDesc = node.getContentDescription();
-
-        // Element ID resolution for Compose:
-        // 1. viewIdResourceName (from Modifier.testTag)
-        // 2. contentDescription (from Modifier.semantics { contentDescription = ... })
-        // 3. text content (from Text composable)
-        // 4. Class name fallback
+        // Element ID resolution for the accessibility-node fallback:
+        // 1. viewIdResourceName (from Modifier.testTag, when testTagsAsResourceId is on)
+        // 2. Class name fallback
+        //
+        // contentDescription is deliberately not a source: it is localized user-facing text and can
+        // carry personal data.
         String elementId = null;
-        String accessibleLabel = null;
 
         // Try viewIdResourceName first (Compose testTag)
         String viewId = node.getViewIdResourceName();
@@ -313,12 +309,6 @@ final class SemanticExtractor {
             // viewIdResourceName format: "package:id/name" - extract just the name
             int slashIndex = viewId.lastIndexOf('/');
             elementId = slashIndex >= 0 ? viewId.substring(slashIndex + 1) : viewId;
-        }
-
-        // Try contentDescription
-        if (elementId == null && contentDesc != null && contentDesc.length() > 0) {
-            elementId = contentDesc.toString();
-            accessibleLabel = contentDesc.toString();
         }
 
         // Fallback to class name + hash
@@ -335,10 +325,6 @@ final class SemanticExtractor {
         }
 
         ClickEvent.Builder builder = new ClickEvent.Builder(x, y, elementId);
-
-        if (accessibleLabel != null) {
-            builder.accessibleLabel(accessibleLabel);
-        }
 
         // Tag name - for Compose, try to get a meaningful name
         CharSequence className = node.getClassName();
@@ -469,12 +455,6 @@ final class SemanticExtractor {
         // Tag name
         builder.tagName(view.getClass().getSimpleName());
 
-        // Content description (aria-label) — only when explicitly set
-        String guardedDesc = getGuardedContentDescription(view);
-        if (guardedDesc != null) {
-            builder.accessibleLabel(guardedDesc);
-        }
-
         // Role
         builder.role(inferRoleFromView(view));
 
@@ -557,18 +537,6 @@ final class SemanticExtractor {
         // This view is the deepest match — build hierarchy by walking up (only once, at the leaf)
         String hierarchy = buildHierarchyString(view);
         return new HitResult(view, currentComposeRoot, hierarchy);
-    }
-
-    /**
-     * Returns the view's contentDescription only when the developer intentionally exposed it.
-     *
-     * <p>Delegates to {@link AutocaptureDefaults#intentionalContentDescription(View)} so that
-     * {@code $attr-aria-label} and {@code $el_id} apply exactly the same guards — a label that is
-     * unsafe to use as an identifier is equally unsafe to report as the accessibility label.
-     */
-    @Nullable
-    private static String getGuardedContentDescription(@NonNull View view) {
-        return AutocaptureDefaults.intentionalContentDescription(view);
     }
 
     /**

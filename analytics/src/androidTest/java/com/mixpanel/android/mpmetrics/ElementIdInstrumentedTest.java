@@ -90,9 +90,12 @@ public class ElementIdInstrumentedTest {
 
             JSONObject properties = awaitClickProperties();
             assertEquals("mp_test_checkout_button", properties.getString("$el_id"));
-            // The contentDescription still travels as the accessibility label — only $el_id changed.
-            assertEquals(ElementIdTestActivity.CHECKOUT_CONTENT_DESCRIPTION,
-                    properties.getString("$attr-aria-label"));
+            // The contentDescription is not reported at all — no $attr-aria-label property exists.
+            assertTrue("$attr-aria-label must never be present",
+                    !properties.has("$attr-aria-label"));
+            assertTrue("contentDescription must not appear in the payload: " + properties,
+                    !properties.toString().contains(
+                            ElementIdTestActivity.CHECKOUT_CONTENT_DESCRIPTION));
         }
     }
 
@@ -112,7 +115,7 @@ public class ElementIdInstrumentedTest {
     }
 
     @Test
-    public void testDefaultResolution_ContentDescriptionWhenIdHasNoEntryName() throws Exception {
+    public void testDefaultResolution_ContentDescriptionIsNeverUsed() throws Exception {
         initMixpanel(new AutocaptureOptions.Builder().build());
 
         try (ActivityScenario<ElementIdTestActivity> scenario =
@@ -122,15 +125,18 @@ public class ElementIdInstrumentedTest {
             onView(withId(ElementIdTestActivity.ID_CONTENT_DESC_ONLY_BTN)).perform(click());
 
             JSONObject properties = awaitClickProperties();
-            assertEquals(ElementIdTestActivity.CONTENT_DESC_ONLY_LABEL,
-                    properties.getString("$el_id"));
+            String elId = properties.getString("$el_id");
+            assertTrue("Expected the structural hash fallback, got: " + elId,
+                    elId.matches(HASH_ID_PATTERN));
+            assertTrue("contentDescription must not appear in the payload: " + properties,
+                    !properties.toString().contains(ElementIdTestActivity.CONTENT_DESC_ONLY_LABEL));
         }
     }
 
     @Test
-    public void testReactNativeInaccessibleLabelIsNotReported() throws Exception {
-        // accessible={false} in React Native leaves the view important for accessibility with its
-        // contentDescription intact, so neither $el_id nor $attr-aria-label may carry that label.
+    public void testReactNativeLabelIsNotReported() throws Exception {
+        // React Native sets contentDescription from accessibilityLabel regardless of the accessible
+        // prop. No accessibility text is read any more, so no variant of this shape can leak.
         initMixpanel(new AutocaptureOptions.Builder().build());
 
         try (ActivityScenario<ElementIdTestActivity> scenario =
