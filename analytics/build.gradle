@@ -138,7 +138,7 @@ tasks.register("androidJavadocs", Javadoc) {
 
 dependencies {
     // official release
-    implementation 'com.mixpanel.android:mixpanel-android-common:1.0.1'
+    implementation 'com.mixpanel.android:mixpanel-android-common:1.0.2'
     signature 'net.sf.androidscents.signature:android-api-level-21:5.0.1_r2@signature'
     // or use below for local testing
     // implementation project(':common')
@@ -148,7 +148,6 @@ dependencies {
     implementation 'io.github.jamsesso:json-logic-java:1.1.0'
     // json-logic-java pulls in an outdated json with cve
     implementation 'com.google.code.gson:gson:2.13.2'
-    implementation 'org.semver4j:semver4j:5.4.1'
     // AndroidJUnitRunner and JUnit Rules
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test:core:1.6.1'
