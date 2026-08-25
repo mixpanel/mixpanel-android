@@ -23,6 +23,11 @@ object SemanticVersion {
     // SemVer 2.0.0 requires major.minor.patch; partial versions are zero-padded to this.
     private const val SEMVER_PARTS = 3
 
+    // Longest operand the regex above is allowed to see. A real version never approaches this; the
+    // bound matches MAX_LENGTH in node-semver, and keeps an arbitrarily long property value off the
+    // regex regardless of how the engine schedules backtracking.
+    private const val MAX_SEMVER_LENGTH = 256
+
     /**
      * Orders two versions, returning a negative number, zero, or a positive number.
      *
@@ -35,6 +40,9 @@ object SemanticVersion {
         actual: String,
         target: String
     ): Int? {
+        if (actual.length > MAX_SEMVER_LENGTH || target.length > MAX_SEMVER_LENGTH) {
+            return null
+        }
         val normalizedActual = normalize(actual)
         val normalizedTarget = normalize(target)
         if (!SEMVER.matches(normalizedActual) || !SEMVER.matches(normalizedTarget)) {
