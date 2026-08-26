@@ -69,6 +69,9 @@ class CustomOperatorVectorsTest(
                 val name = "$index $section: $subject $symbol $target"
                 cases.add(arrayOf(name, operator, subject, symbol, target, row.getBoolean(3)))
             }
+            // A parameterized class with no cases reports no failures, so an empty or
+            // heading-only file would leave the operator untested against a green build.
+            check(cases.isNotEmpty()) { "$fileName produced no cases" }
             return cases
         }
     }
