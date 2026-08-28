@@ -12,6 +12,7 @@ import androidx.annotation.RequiresApi
 import androidx.annotation.VisibleForTesting
 import com.mixpanel.android.sessionreplay.logging.Logger
 import com.mixpanel.android.sessionreplay.sensitive_views.SensitiveViewManager
+import com.mixpanel.android.sessionreplay.utils.CapturedViewport
 import curtains.phoneWindow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -366,6 +367,10 @@ internal class ScreenRecorder {
             } else {
                 image
             } ?: return@withContext null
+
+            // The player scales each frame to the meta viewport, so the meta event must describe
+            // this bitmap rather than the system display metrics.
+            CapturedViewport.record(bitmap.width, bitmap.height)
 
             try {
                 bitmap.compressToByteArray().also {
