@@ -3,6 +3,7 @@ package com.mixpanel.android.sessionreplay.tracking
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Rect
 import android.os.Build
 import android.os.Handler
 import android.os.HandlerThread
@@ -12,6 +13,8 @@ import androidx.annotation.RequiresApi
 import androidx.annotation.VisibleForTesting
 import com.mixpanel.android.sessionreplay.logging.Logger
 import com.mixpanel.android.sessionreplay.sensitive_views.SensitiveViewManager
+import com.mixpanel.android.sessionreplay.wireframe.WireframeElement
+import com.mixpanel.android.sessionreplay.wireframe.WireframeEmitter
 import curtains.phoneWindow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -61,6 +64,12 @@ internal class ScreenRecorder {
     // Bitmap pool for reusing bitmaps across screenshot captures
     // Initialized lazily when first screenshot is captured
     private var bitmapPool: BitmapPool? = null
+
+    // When non-null, every successful capture emits a structural wireframe as an rrweb
+    // Custom event via the existing replay event stream. Installed by
+    // [MPSessionReplayInstance] when [MPSessionReplayConfig.wireframesOptions] is non-null.
+    @Volatile
+    var wireframeEmitter: WireframeEmitter? = null
 
     // Flag to track if content may have changed since last screenshot
     // Used to potentially skip revalidation when content is static
@@ -127,6 +136,29 @@ internal class ScreenRecorder {
     }
 
     /**
+     * A compressed frame and the wall-clock instant its pixels were read off the surface.
+     *
+     * The timestamp travels with the bytes so the screenshot event reports when the frame was
+     * on screen rather than when it reached the event queue — compression and queueing add an
+     * unbounded, load-dependent lag, and touches are timestamped accurately at the source
+     * (`MotionEvent.eventTime`), so a late stamp mis-orders a screen against the tap that
+     * produced it.
+     */
+    data class CapturedScreenshot(
+        val data: ByteArray,
+        val capturedAtMs: Long
+    ) {
+        // ByteArray identity: data class equals() would compare the array by reference.
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other !is CapturedScreenshot) return false
+            return capturedAtMs == other.capturedAtMs && data.contentEquals(other.data)
+        }
+
+        override fun hashCode(): Int = 31 * data.contentHashCode() + capturedAtMs.hashCode()
+    }
+
+    /**
      * Info needed to composite a sub-window onto a full-screen bitmap.
      * Captured on the main thread (view access), consumed on a background thread.
      */
@@ -135,7 +167,15 @@ internal class ScreenRecorder {
         val screenX: Float,
         val screenY: Float,
         val fullWidth: Int,
-        val fullHeight: Int
+        val fullHeight: Int,
+        // Raw-device-pixel counterparts of the four values above, for the wireframe path.
+        // The bitmap fields are pre-scaled to 1x logical px because the composite draws
+        // straight onto the scaled bitmap; wireframe bounds arrive raw and are scaled by
+        // density later in WireframeEmitter, so they need the offset in raw px.
+        val offsetXPx: Int = 0,
+        val offsetYPx: Int = 0,
+        val fullWidthPx: Int = 0,
+        val fullHeightPx: Int = 0
     )
 
     /**
@@ -159,11 +199,18 @@ internal class ScreenRecorder {
         val subWindowLocation = IntArray(2)
         rootView.getLocationOnScreen(subWindowLocation)
 
+        val offsetXPx = subWindowLocation[0] - mainWindowLocation[0]
+        val offsetYPx = subWindowLocation[1] - mainWindowLocation[1]
+
         return SubWindowInfo(
-            screenX = (subWindowLocation[0] - mainWindowLocation[0]) * fullScale.scale,
-            screenY = (subWindowLocation[1] - mainWindowLocation[1]) * fullScale.scale,
+            screenX = offsetXPx * fullScale.scale,
+            screenY = offsetYPx * fullScale.scale,
             fullWidth = fullScale.width,
-            fullHeight = fullScale.height
+            fullHeight = fullScale.height,
+            offsetXPx = offsetXPx,
+            offsetYPx = offsetYPx,
+            fullWidthPx = fullScreenView.width,
+            fullHeightPx = fullScreenView.height
         )
     }
 
@@ -270,16 +317,50 @@ internal class ScreenRecorder {
         }
     }
 
+    /**
+     * A wireframe gathered during the view walk, held until the screenshot it describes is
+     * known to ship. See [renderViewHierarchyAsImage] for why emission is deferred.
+     */
+    private class PendingWireframe(
+        val elements: List<WireframeElement>,
+        val viewportWidthPx: Int,
+        val viewportHeightPx: Int,
+        val density: Float,
+        val maskBounds: Set<Rect>
+    )
+
+    /**
+     * A rendered frame plus the wireframe describing it, if wireframe capture is enabled.
+     *
+     * [capturedAtMs] is wall-clock time read the moment the pixels came off the surface —
+     * the closest available proxy for when this frame was on screen. Both the screenshot
+     * event and the wireframe event are stamped with it, so the two describe the same instant
+     * and sort correctly against touches (which carry `MotionEvent.eventTime`, accurate at the
+     * source). Stamping later — after JPEG compression, or on the event serial queue — puts an
+     * unbounded, load-dependent lag between when a screen was shown and when it claims to have
+     * been shown, which is enough to sort a pre-tap screen after the tap it preceded.
+     */
+    private class RenderedFrame(
+        val bitmap: Bitmap,
+        val wireframe: PendingWireframe?,
+        val capturedAtMs: Long
+    )
+
     private suspend fun renderViewHierarchyAsImage(
         view: View,
-        pool: BitmapPool
-    ): Bitmap? {
+        pool: BitmapPool,
+        subWindowInfo: SubWindowInfo?
+    ): RenderedFrame? {
         // Reset content change state. If this value is true after creating the bitmap
         // we will need to re-validate the view content for sensitivity changes
         contentMayHaveChanged = false
 
-        // Process subviews to detect sensitive content before capture
-        val initialSummary = SensitiveViewManager.processSubviews(view)
+        // Process subviews to detect sensitive content before capture. If wireframe capture is
+        // enabled, also accumulate a structural element list during the same traversal so the
+        // wireframe stays time-aligned with the screenshot without requiring a second walk.
+        val emitter = wireframeEmitter
+        val wireframeBuffer: MutableList<WireframeElement>? = if (emitter != null) mutableListOf() else null
+        val initialSummary = SensitiveViewManager.processSubviews(view, wireframeBuffer)
 
         // Skip capture during screen transitions to prevent sensitive content leaks.
         // Transitioning views are rendered but not in the hierarchy for masking detection.
@@ -288,8 +369,57 @@ internal class ScreenRecorder {
             return null
         }
 
+        // Hold the wireframe rather than emitting it here. A wireframe is only meaningful
+        // paired with the screenshot it describes, so it must not ship on any path that
+        // discards the frame — bitmap failure below, or the bounds-changed discard, which
+        // fires precisely because the mask rects this wireframe was stripped against are no
+        // longer accurate. [captureScreenshot] emits it once the image is confirmed.
+        //
+        // Mask bounds are captured here so the emitter can geometrically strip element text
+        // that overlaps any rect the screenshot is about to paint over. Density is captured
+        // so emit can convert raw px bounds/viewport to 1x logical px — the same space as the
+        // screenshot (captured at 1/density) and scaled touches.
+        val pendingWireframe = if (emitter != null && wireframeBuffer != null) {
+            // A sub-window (dialog, popup, separate-window bottom sheet) is captured on its own
+            // and then composited onto a full-screen bitmap at its offset from the main window.
+            // The wireframe has to describe *that* image, per the wire contract ("bounds — the
+            // bounding box of the element within the screenshot image"), so the viewport becomes
+            // the full screen and every element shifts by the same offset. Touch points already
+            // live in this space — scalePoint subtracts the main window's origin — so all three
+            // signals agree. Without the shift, a dialog's elements land at the wrong place in
+            // the image and the viewport claims the dialog's size.
+            val dx = subWindowInfo?.offsetXPx ?: 0
+            val dy = subWindowInfo?.offsetYPx ?: 0
+            PendingWireframe(
+                elements = if (dx == 0 && dy == 0) {
+                    wireframeBuffer
+                } else {
+                    wireframeBuffer.map { it.copy(x = it.x + dx, y = it.y + dy) }
+                },
+                viewportWidthPx = subWindowInfo?.fullWidthPx ?: view.width,
+                viewportHeightPx = subWindowInfo?.fullHeightPx ?: view.height,
+                density = view.context.resources.displayMetrics.density.takeIf { it > 0f } ?: 1f,
+                // Shifted to match the elements so the Layer 2 geometric strip still lines up.
+                // The unshifted set stays in initialSummary for maskSensitiveViews, which paints
+                // the sub-window's own bitmap before compositing.
+                maskBounds = if (dx == 0 && dy == 0) {
+                    initialSummary.boundsSnapshot
+                } else {
+                    initialSummary.boundsSnapshot.mapTo(mutableSetOf()) { rect ->
+                        Rect(rect).apply { offset(dx, dy) }
+                    }
+                }
+            )
+        } else {
+            null
+        }
+
         // Create the bitmap at 1x scale (may return null if both canvas.draw and PixelCopy fail)
         val bitmapWithScale = createBitmapFromView(view, pool)
+        // Stamped here, right after the pixels are read off the surface and before any
+        // compression or queueing, so both events carry when the frame was on screen rather
+        // than when the SDK got around to encoding it. See [RenderedFrame.capturedAtMs].
+        val capturedAtMs = System.currentTimeMillis()
         val bitmap = bitmapWithScale?.bitmap
         try {
             if (bitmap == null) {
@@ -316,7 +446,7 @@ internal class ScreenRecorder {
                 SensitiveViewManager.maskSensitiveViews(view, canvas, initialSummary.boundsSnapshot)
             }
 
-            return bitmap
+            return RenderedFrame(bitmap, pendingWireframe, capturedAtMs)
         } catch (e: Exception) {
             bitmap?.let { pool.release(it) }
             Logger.warn("Failed to render view as image: ${e.message}")
@@ -341,22 +471,28 @@ internal class ScreenRecorder {
      * @param fullScreenView Optional view (e.g., activity root) used to determine full-screen
      *   dimensions when capturing sub-windows (dialogs, popups). If provided and larger than
      *   rootView, the sub-window is composited onto a full-screen bitmap.
-     * @return A [ByteArray] containing the compressed JPEG image, or `null` if capture fails.
+     * @return The compressed JPEG image paired with the instant it was captured, or `null` if
+     *   capture fails. The caller must stamp the screenshot event with
+     *   [CapturedScreenshot.capturedAtMs] rather than the time it happens to publish, so the
+     *   event reports when the frame was on screen.
      */
-    suspend fun captureScreenshot(rootView: View, fullScreenView: View? = null): ByteArray? {
+    suspend fun captureScreenshot(rootView: View, fullScreenView: View? = null): CapturedScreenshot? {
         // Initialize bitmap pool if not already done
         val pool = acquireBitmapPool(rootView.context)
 
+        // Gather sub-window info on main thread (view access required). Resolved before the
+        // walk so the wireframe built during it can be expressed in the same coordinate space
+        // as the composited screenshot.
+        val subWindowInfo = getSubWindowInfo(rootView, fullScreenView)
+
         // Process subviews and render bitmap (must be called from main thread)
-        val image = try {
-            renderViewHierarchyAsImage(rootView, pool)
+        val rendered = try {
+            renderViewHierarchyAsImage(rootView, pool, subWindowInfo)
         } catch (e: Exception) {
             Logger.warn("Failed to capture screenshot: ${e.message}")
             null
         } ?: return null
-
-        // Gather sub-window info on main thread (view access required)
-        val subWindowInfo = getSubWindowInfo(rootView, fullScreenView)
+        val image = rendered.bitmap
 
         // Compositing and compression on background thread (CPU-intensive operations)
         return withContext(Dispatchers.Default) {
@@ -368,11 +504,31 @@ internal class ScreenRecorder {
             } ?: return@withContext null
 
             try {
-                bitmap.compressToByteArray().also {
-                    Logger.debug { "Compressed screenshot size: %.2f KB".format(it.size / 1024.0) }
+                CapturedScreenshot(bitmap.compressToByteArray(), rendered.capturedAtMs).also {
+                    // The image is now guaranteed to ship (a non-null return is always
+                    // published as a screenshot event), so the wireframe describing it can
+                    // go out. Both events carry the frame's capture instant, so they stay
+                    // aligned no matter how long compression or the event queue takes.
+                    // Failures are swallowed: a wireframe problem must never cost us the
+                    // screenshot.
+                    rendered.wireframe?.let { pending ->
+                        try {
+                            wireframeEmitter?.emit(
+                                elements = pending.elements,
+                                viewportWidthPx = pending.viewportWidthPx,
+                                viewportHeightPx = pending.viewportHeightPx,
+                                density = pending.density,
+                                maskBounds = pending.maskBounds,
+                                capturedAtMs = rendered.capturedAtMs
+                            )
+                        } catch (e: Exception) {
+                            Logger.warn("Failed to emit wireframe: ${e.message}")
+                        }
+                    }
+                    Logger.debug { "Compressed screenshot size: %.2f KB".format(it.data.size / 1024.0) }
 //                     saveToLocalFilesystem(
 //                         rootView.context.applicationContext,
-//                         it,
+//                         it.data,
 //                         "screenshot-${System.currentTimeMillis()}.jpg"
 //                     )
                 }

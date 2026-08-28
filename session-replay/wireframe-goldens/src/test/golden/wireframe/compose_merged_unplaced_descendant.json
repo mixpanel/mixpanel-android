@@ -1,0 +1,19 @@
+{
+  "viewport": [
+    1080,
+    2340
+  ],
+  "elements": [
+    {
+      "role": "text",
+      "text": "Placed label Measured but unplaced",
+      "bounds": [
+        0,
+        0,
+        395,
+        45
+      ],
+      "maskDecision": "NONE"
+    }
+  ]
+}

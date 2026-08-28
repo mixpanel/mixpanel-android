@@ -62,7 +62,7 @@ internal class MockRemoteSettingsService(
     private val mockTriggers: Map<String, RecordingEventTrigger>
 ) : RemoteSettingsService(context, version = version, mpLib = mpLib, serverUrl = serverUrl) {
 
-    override suspend fun fetchRemoteSettings(token: String): RemoteSettingsResult = RemoteSettingsResult(
+    override suspend fun fetchRemoteSettings(token: String, wireframesRequested: Boolean): RemoteSettingsResult = RemoteSettingsResult(
         isRecordingEnabled = true,
         sdkConfig = SdkConfig(
             recordSessionsPercent = 100.0,

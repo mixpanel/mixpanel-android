@@ -10,6 +10,7 @@ import android.webkit.WebView
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.annotation.RestrictTo
 import androidx.compose.ui.node.RootForTest
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.semantics.Role
@@ -18,10 +19,16 @@ import androidx.compose.ui.semantics.SemanticsConfiguration
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import android.widget.Button
 import androidx.lifecycle.findViewTreeLifecycleOwner
 import com.mixpanel.android.sessionreplay.extensions.SensitiveViewNode
 import com.mixpanel.android.sessionreplay.extensions.mpReplaySensitivePropKey
+import com.mixpanel.android.sessionreplay.extensions.mpReplayWireframeTextPropKey
+import com.mixpanel.android.sessionreplay.wireframe.WireframeElement
+import com.mixpanel.android.sessionreplay.wireframe.WireframeType
+import com.mixpanel.android.sessionreplay.wireframe.MaskDecision
 import java.util.Collections
+import java.util.WeakHashMap
 import java.util.concurrent.ConcurrentHashMap
 
 data class SubviewSummary(
@@ -46,12 +53,20 @@ enum class AutoMaskedView {
  * Type of mask applied to a region.
  * Ordered by priority (lowest to highest ordinal = lowest to highest priority).
  */
-internal enum class MaskDecision {
+internal enum class InternalMaskDecision {
     NONE, // No masking applied
     UNMASK, // Explicitly marked as safe via addSafeView
-    AUTO, // Auto-masked based on view type (text, images, web views)
-    MASK, // Explicitly marked sensitive by developer (addSensitiveView, mpSensitive modifier)
+    AUTO, // Auto-masked based on AutoMaskedView (text, images, web views)
+    MASK, // Explicitly marked sensitive by developer (addSensitiveView, mpReplaySensitive(true), addSensitiveClass)
     TEXT_ENTRY; // Text entry fields (EditText) - security enforced, cannot be overridden
+
+    /** Maps this internal decision onto the wireframe-facing [MaskDecision]. */
+    fun toWire(): MaskDecision = when (this) {
+        TEXT_ENTRY -> MaskDecision.TEXT_ENTRY
+        MASK -> MaskDecision.EXPLICIT
+        AUTO -> MaskDecision.AUTO
+        UNMASK, NONE -> MaskDecision.NONE
+    }
 }
 
 /**
@@ -62,7 +77,7 @@ internal fun interface MaskRegionsListener {
      * Called when mask regions have been detected.
      * @param entries Map of bounds to mask decision type
      */
-    fun onMaskRegionsDetected(entries: Map<Rect, MaskDecision>)
+    fun onMaskRegionsDetected(entries: Map<Rect, InternalMaskDecision>)
 }
 
 object SensitiveViewManager {
@@ -92,14 +107,32 @@ object SensitiveViewManager {
     private val sensitiveViews = Collections.synchronizedSet(HashSet<View>())
     private val safeViews = Collections.synchronizedSet(HashSet<View>())
 
+    // Developer-declared wireframe text set via View.mpWireframeText(...). Weak keys
+    // so annotating a view never prevents it from being garbage collected (matching the
+    // identity-map idiom used elsewhere here rather than View.setTag). Declared text is
+    // authored, not scraped, so it is emitted even when the view is masked — see
+    // MaskDecision.DECLARED.
+    private val declaredWireframeText = Collections.synchronizedMap(WeakHashMap<View, String>())
+
     // Use concurrent hash set for faster lookups and better thread safety
     private val _sensitiveClasses =
         Collections.newSetFromMap(ConcurrentHashMap<Class<*>, Boolean>()).apply {
             add(EditText::class.java)
         }
 
+    // Classes the developer registered through addSensitiveClass, tracked separately from the
+    // AutoMaskedView classes that also live in _sensitiveClasses. Masking treats both the same,
+    // but the ERD reports a customer-registered class as EXPLICIT and an AutoMaskedView class as
+    // AUTO, so the two have to stay distinguishable. Also lets updateSensitiveClasses avoid
+    // dropping a class the developer asked for when the matching AutoMaskedView is turned off.
+    private val _customerSensitiveClasses =
+        Collections.newSetFromMap(ConcurrentHashMap<Class<*>, Boolean>())
+
     // Cache for view class sensitivity checks to avoid repeated isAssignableFrom calls
     private val viewClassSensitivityCache = ConcurrentHashMap<Class<*>, Boolean>()
+
+    // Same, for the "was this a customer-registered class?" question
+    private val customerClassSensitivityCache = ConcurrentHashMap<Class<*>, Boolean>()
 
     // Track Modifier.Node based sensitive/safe views (bypasses semantics merging)
     private val sensitiveNodes = Collections.synchronizedSet(HashSet<SensitiveViewNode>())
@@ -131,14 +164,41 @@ object SensitiveViewManager {
     /**
      * Clears all registered nodes and cached state.
      * Called during SDK deinitialization to prevent memory leaks.
+     *
+     * `@RestrictTo` rather than `internal` so the off-device coordinate goldens in
+     * `:session-replay:wireframe-goldens` can reset this singleton between cases from their own
+     * Gradle module. Not public API — see [com.mixpanel.android.sessionreplay.wireframe.WireframeEmitter].
      */
-    internal fun deinitialize() {
+    @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
+    fun deinitialize() {
         sensitiveNodes.clear()
         safeNodes.clear()
         sensitiveViews.clear()
         safeViews.clear()
+        declaredWireframeText.clear()
+        // Registered classes go too: a new initialization is a new initialization, so the
+        // incoming config decides what is masked and nothing survives from the last one.
+        //
+        // These used to persist, on the reasoning that masking a class is a standing
+        // instruction outliving a session — but `addSensitiveView` and `mpWireframeText` are
+        // equally standing instructions and are cleared three lines above, and iOS already
+        // clears its equivalent by replacing the whole manager in `deinitializeInstance`. The
+        // visible cost of keeping them was that a narrowed `autoMaskedViews` could not take
+        // effect on re-initialize: React Native implements auto-masking *through*
+        // `addSensitiveClass`, so the first initialize's registrations kept masking for the
+        // life of the process and `syncAutoMaskedClass` refuses to drop a customer-registered
+        // class, leaving no way to undo it.
+        //
+        // `EditText` is deliberately kept. It is not a developer registration but the
+        // always-masked text-entry guarantee, seeded at construction and refused by
+        // `removeSensitiveClass`; dropping it here would silently unmask every input until the
+        // next `autoMaskedViews` assignment re-seeded it.
+        _sensitiveClasses.retainAll(setOf(EditText::class.java))
+        _customerSensitiveClasses.clear()
         viewClassSensitivityCache.clear()
+        customerClassSensitivityCache.clear()
         autoMaskedViews = AutoMaskedView.defaultSet()
+        useAccessibilityLabelFallback = false
         maskRegionsListener = null
     }
 
@@ -155,11 +215,11 @@ object SensitiveViewManager {
      * Collects current bounds from all registered Modifier.Node based tracking.
      * Called at screenshot capture time to get fresh coordinates.
      */
-    private fun collectNodeBounds(accumulator: MutableMap<Rect, MaskDecision>) {
+    private fun collectNodeBounds(accumulator: MutableMap<Rect, InternalMaskDecision>) {
         synchronized(sensitiveNodes) {
             for (node in sensitiveNodes) {
                 node.getCurrentBounds()?.let { bounds ->
-                    addOrUpdateEntry(accumulator, bounds, MaskDecision.MASK)
+                    addOrUpdateEntry(accumulator, bounds, InternalMaskDecision.MASK)
                 }
             }
         }
@@ -168,7 +228,7 @@ object SensitiveViewManager {
             synchronized(safeNodes) {
                 for (node in safeNodes) {
                     node.getCurrentBounds()?.let { bounds ->
-                        addOrUpdateEntry(accumulator, bounds, MaskDecision.UNMASK)
+                        addOrUpdateEntry(accumulator, bounds, InternalMaskDecision.UNMASK)
                     }
                 }
             }
@@ -179,9 +239,9 @@ object SensitiveViewManager {
      * Adds or updates a mask entry, keeping the highest priority type for each bounds.
      */
     private fun addOrUpdateEntry(
-        accumulator: MutableMap<Rect, MaskDecision>,
+        accumulator: MutableMap<Rect, InternalMaskDecision>,
         bounds: Rect,
-        newType: MaskDecision
+        newType: InternalMaskDecision
     ) {
         val existingType = accumulator[bounds]
         if (existingType == null || newType.ordinal > existingType.ordinal) {
@@ -195,6 +255,20 @@ object SensitiveViewManager {
             _autoMaskedViews = value.toMutableSet()
             updateSensitiveClasses()
         }
+
+    /**
+     * Mirrors [com.mixpanel.android.sessionreplay.models.WireframesOptions.useAccessibilityLabelFallback],
+     * set from `MPSessionReplayInstance` at init and reset by [deinitialize].
+     *
+     * Wireframe text only — masking never consults it, so turning it off changes what a
+     * wireframe says, never which pixels are grayed.
+     *
+     * `@RestrictTo` rather than `internal` so the `*_fallbackOff_*` goldens in
+     * `:session-replay:wireframe-goldens` can flip it. Not public API — customers set it through
+     * [com.mixpanel.android.sessionreplay.models.WireframesOptions].
+     */
+    @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
+    var useAccessibilityLabelFallback: Boolean = false
 
     private val sensitiveClasses: Set<Class<*>>
         get() = _sensitiveClasses
@@ -214,26 +288,25 @@ object SensitiveViewManager {
         )
 
     private fun updateSensitiveClasses() {
-        if (AutoMaskedView.Text in autoMaskedViews) {
-            _sensitiveClasses.add(TextView::class.java)
-        } else {
-            _sensitiveClasses.remove(TextView::class.java)
-        }
-
-        if (AutoMaskedView.Image in autoMaskedViews) {
-            _sensitiveClasses.add(ImageView::class.java)
-        } else {
-            _sensitiveClasses.remove(ImageView::class.java)
-        }
-
-        if (AutoMaskedView.Web in autoMaskedViews) {
-            _sensitiveClasses.add(WebView::class.java)
-        } else {
-            _sensitiveClasses.remove(WebView::class.java)
-        }
+        syncAutoMaskedClass(AutoMaskedView.Text, TextView::class.java)
+        syncAutoMaskedClass(AutoMaskedView.Image, ImageView::class.java)
+        syncAutoMaskedClass(AutoMaskedView.Web, WebView::class.java)
 
         // Clear the cache when sensitive classes change
         viewClassSensitivityCache.clear()
+    }
+
+    /**
+     * Adds [aClass] to [_sensitiveClasses] while [autoMaskedView] is enabled and removes it when
+     * it isn't — unless the developer registered the same class through `addSensitiveClass`, in
+     * which case their registration outlives the auto-mask toggle.
+     */
+    private fun syncAutoMaskedClass(autoMaskedView: AutoMaskedView, aClass: Class<*>) {
+        if (autoMaskedView in autoMaskedViews) {
+            _sensitiveClasses.add(aClass)
+        } else if (aClass !in _customerSensitiveClasses) {
+            _sensitiveClasses.remove(aClass)
+        }
     }
 
     /**
@@ -256,6 +329,22 @@ object SensitiveViewManager {
         return isSensitive
     }
 
+    /**
+     * Whether [viewClass] matches a class the developer registered via `addSensitiveClass`, as
+     * opposed to one of the [AutoMaskedView] classes. Both mask identically; they differ only in
+     * the [InternalMaskDecision] reported to the wireframe and the debug overlay.
+     */
+    private fun isViewClassCustomerSensitive(viewClass: Class<*>): Boolean {
+        customerClassSensitivityCache[viewClass]?.let { return it }
+
+        val isSensitive =
+            _customerSensitiveClasses.any { sensitiveClass ->
+                sensitiveClass.isAssignableFrom(viewClass)
+            }
+        customerClassSensitivityCache[viewClass] = isSensitive
+        return isSensitive
+    }
+
     fun addSensitiveView(view: View) = sensitiveViews.add(view)
 
     fun removeSensitiveView(view: View) = sensitiveViews.remove(view)
@@ -268,11 +357,37 @@ object SensitiveViewManager {
 
     private fun containsSafeView(view: View): Boolean = safeViews.contains(view)
 
+    /**
+     * Records (or, when [text] is null/blank, clears) developer-declared wireframe text for
+     * [view]. Called by `View.mpWireframeText(...)`. The text is authored by the
+     * developer, not scraped from the view, so it survives masking in the wireframe.
+     */
+    internal fun setWireframeText(view: View, text: String?) {
+        if (text.isNullOrBlank()) {
+            declaredWireframeText.remove(view)
+        } else {
+            declaredWireframeText[view] = text
+        }
+    }
+
+    private fun wireframeTextFor(view: View): String? =
+        declaredWireframeText[view]?.takeIf { it.isNotBlank() }
+
+    /**
+     * Masks every view that is an instance of [aClass].
+     *
+     * **Registrations do not survive re-initialization.** `MPSessionReplay.initialize`
+     * deinitializes any previous instance first, and that clears registered classes so the
+     * incoming config decides what is masked. Register again after re-initializing — the same
+     * rule iOS has always had, where the manager is replaced outright on deinitialize.
+     */
     fun addSensitiveClass(aClass: Class<*>?) {
         aClass?.let {
             _sensitiveClasses.add(it)
-            // Clear the cache when sensitive classes change
+            _customerSensitiveClasses.add(it)
+            // Clear the caches when sensitive classes change
             viewClassSensitivityCache.clear()
+            customerClassSensitivityCache.clear()
         }
     }
 
@@ -280,8 +395,10 @@ object SensitiveViewManager {
         aClass?.let {
             if (it != EditText::class.java) {
                 _sensitiveClasses.remove(it)
-                // Clear the cache when sensitive classes change
+                _customerSensitiveClasses.remove(it)
+                // Clear the caches when sensitive classes change
                 viewClassSensitivityCache.clear()
+                customerClassSensitivityCache.clear()
             }
         }
     }
@@ -291,8 +408,9 @@ object SensitiveViewManager {
      */
     private fun collectMaskableNodes(
         rootView: View,
-        boundsAccumulator: MutableMap<Rect, MaskDecision>,
-        processedSemanticsOwners: MutableSet<Int>
+        boundsAccumulator: MutableMap<Rect, InternalMaskDecision>,
+        processedSemanticsOwners: MutableSet<Int>,
+        wireframeOut: MutableList<WireframeElement>? = null
     ) {
         val composeRoots = ArrayList<RootForTest>(5) // Preallocate with expected size
 
@@ -321,7 +439,11 @@ object SensitiveViewManager {
             if (!processedSemanticsOwners.add(ownerHash)) {
                 continue
             }
-            traverseSemanticsNode(root.semanticsOwner.rootSemanticsNode, boundsAccumulator)
+            traverseSemanticsNode(
+                node = root.semanticsOwner.rootSemanticsNode,
+                boundsAccumulator = boundsAccumulator,
+                wireframeOut = wireframeOut
+            )
         }
     }
 
@@ -389,20 +511,17 @@ object SensitiveViewManager {
 
     fun SemanticsConfiguration.isSensitiveView(): Boolean? = this.getOrNull(mpReplaySensitivePropKey)
 
-    private fun markNodeForMasking(
-        node: SemanticsNode,
-        accumulator: MutableMap<Rect, MaskDecision>,
-        maskDecision: MaskDecision
-    ) {
-        // Skip nodes not placed in layout (e.g., LazyColumn items outside viewport buffer)
-        if (!node.layoutInfo.isPlaced) return
+    // The node's window bounds, or null when it occupies no pixels.
+    private fun SemanticsNode.visibleBounds(): Rect? {
+        // Skip nodes not placed in layout (e.g. LazyColumn items outside the viewport buffer)
+        if (!layoutInfo.isPlaced) return null
 
         // Skip nodes clipped by scroll containers (boundsInRoot has clipping applied)
-        if (node.boundsInRoot.isEmpty) return
+        if (boundsInRoot.isEmpty) return null
 
         // Skip nodes with no visible area in the window
-        val bounds = node.boundsInWindow
-        if (bounds.isEmpty) return
+        val bounds = boundsInWindow
+        if (bounds.isEmpty) return null
 
         val rect = Rect(
             bounds.left.toInt(),
@@ -412,9 +531,9 @@ object SensitiveViewManager {
         )
 
         // Skip nodes with zero or negative dimensions after int conversion
-        if (rect.width() <= 0 || rect.height() <= 0) return
+        if (rect.width() <= 0 || rect.height() <= 0) return null
 
-        addOrUpdateEntry(accumulator, rect, maskDecision)
+        return rect
     }
 
     private data class ViewContext(
@@ -424,7 +543,8 @@ object SensitiveViewManager {
 
     private fun traverseSemanticsNode(
         node: SemanticsNode,
-        boundsAccumulator: MutableMap<Rect, MaskDecision>,
+        boundsAccumulator: MutableMap<Rect, InternalMaskDecision>,
+        wireframeOut: MutableList<WireframeElement>? = null,
         parentIsSafe: Boolean = false
     ) {
         val config = node.config
@@ -439,30 +559,201 @@ object SensitiveViewManager {
         // Cheap boolean checks first, then more expensive content checks
         val maskDecision =
             when {
-                isInputField -> MaskDecision.TEXT_ENTRY
+                isInputField -> InternalMaskDecision.TEXT_ENTRY
 
-                config.isSensitiveView() == true -> MaskDecision.MASK
+                config.isSensitiveView() == true -> InternalMaskDecision.MASK
 
                 isSafe -> {
-                    if (trackUnmask) MaskDecision.UNMASK else MaskDecision.NONE
+                    if (trackUnmask) InternalMaskDecision.UNMASK else InternalMaskDecision.NONE
                 }
 
-                (AutoMaskedView.Text in autoMaskedViews) && config.hasText() -> MaskDecision.AUTO
+                (AutoMaskedView.Text in autoMaskedViews) && config.hasText() -> InternalMaskDecision.AUTO
 
-                (AutoMaskedView.Image in autoMaskedViews) && config.hasImage() -> MaskDecision.AUTO
+                (AutoMaskedView.Image in autoMaskedViews) && config.hasImage() -> InternalMaskDecision.AUTO
 
-                (AutoMaskedView.Web in autoMaskedViews) && config.hasWebView() -> MaskDecision.AUTO
+                (AutoMaskedView.Web in autoMaskedViews) && config.hasWebView() -> InternalMaskDecision.AUTO
 
-                else -> MaskDecision.NONE
+                else -> InternalMaskDecision.NONE
             }
 
-        if (maskDecision != MaskDecision.NONE) {
-            markNodeForMasking(node, boundsAccumulator, maskDecision)
+        // boundsInWindow resolves the node's position by walking its layout-coordinate chain, so
+        // it's the priciest call in this traversal and both consumers below want the same rect.
+        // Resolve it once, and only when something actually consumes it.
+        val bounds = if (maskDecision != InternalMaskDecision.NONE || wireframeOut != null) {
+            node.visibleBounds()
+        } else {
+            null
+        }
+
+        if (bounds != null) {
+            if (maskDecision != InternalMaskDecision.NONE) {
+                addOrUpdateEntry(boundsAccumulator, bounds, maskDecision)
+            }
+
+            if (wireframeOut != null) {
+                collectWireframeForNode(node, bounds, isInputField, maskDecision, wireframeOut)
+            }
         }
 
         for (child in node.children) {
-            traverseSemanticsNode(child, boundsAccumulator, isSafe)
+            traverseSemanticsNode(child, boundsAccumulator, wireframeOut, isSafe)
         }
+    }
+
+    /**
+     * Appends a [WireframeElement] for the given semantics node if the node carries content
+     * worth recording (text, content description, image role, input field).
+     */
+    private fun collectWireframeForNode(
+        node: SemanticsNode,
+        rect: Rect,
+        isInputField: Boolean,
+        maskDecision: InternalMaskDecision,
+        wireframeOut: MutableList<WireframeElement>
+    ) {
+        val config = node.config
+
+        // Detect text-bearing nodes from the raw semantics BEFORE applying the masking filter.
+        // Otherwise a masked Text composable would lose its `visibleText`, fail the text-type
+        // check below, and get dropped from the wireframe entirely — instead we want to keep
+        // the element (with redacted text) so the layout is still visible to consumers.
+        val rawText = config.getOrNull(SemanticsProperties.Text)?.joinToString(" ") { it.text }
+        // Gated at the read so the label can't reach classification either: a node whose only
+        // content is a label is a node we only know is content *because of* the label, so with
+        // the fallback off it falls through to `else -> return` rather than becoming an empty
+        // text shell. Nodes that carry a role (an Icon, an image button) still emit textless.
+        val rawContentDesc = if (useAccessibilityLabelFallback) {
+            config.getOrNull(SemanticsProperties.ContentDescription)?.joinToString(" ")
+        } else {
+            null
+        }
+        val hasTextContent = !rawText.isNullOrBlank() || !rawContentDesc.isNullOrBlank()
+
+        // Developer-declared text via Modifier.mpWireframeText(...). Authored, not
+        // scraped from the node's semantics.
+        val declaredText = config.getOrNull(mpReplayWireframeTextPropKey)?.takeIf { it.isNotBlank() }
+
+        val role = config.getOrNull(SemanticsProperties.Role)
+        val type: WireframeType = when {
+            isInputField -> WireframeType.Input
+            role == Role.Image -> WireframeType.Image
+            role == Role.Button -> WireframeType.Button
+            hasTextContent -> WireframeType.Text
+            declaredText != null -> WireframeType.Text
+            else -> return // skip nodes with no meaningful content
+        }
+
+        if (declaredText != null) {
+            // Layer 3 substitution. Emitted even when the node is masked; DECLARED exempts it
+            // from the Layer 2 geometric strip so it survives to describe the view for the AI
+            // summary. Masking still grays the pixels via the mask region recorded by
+            // traverseSemanticsNode.
+            wireframeOut.add(
+                WireframeElement.fromRect(type, declaredText, rect, MaskDecision.DECLARED)
+            )
+            return
+        }
+
+        // Suppress text on any form of masking. Leaking text that's been masked in the
+        // screenshot would defeat the privacy guarantee. Only NONE (unmonitored) and
+        // UNMASK (explicitly safe) decisions pass text through.
+        val isMasked = maskDecision != InternalMaskDecision.NONE && maskDecision != InternalMaskDecision.UNMASK
+        val visibleText: String? = if (isMasked) {
+            null
+        } else {
+            rawText?.takeIf { it.isNotBlank() }
+                ?: rawContentDesc?.takeIf { it.isNotBlank() }
+        }
+
+        wireframeOut.add(WireframeElement.fromRect(type, visibleText, rect, maskDecision.toWire()))
+    }
+
+    private fun classifyAndroidView(view: View): WireframeType? = when {
+        view is EditText -> WireframeType.Input
+        view is ImageView -> WireframeType.Image
+        view is Button -> WireframeType.Button
+        view is TextView -> WireframeType.Text
+        // Last: a role the developer declared through accessibility. Intent, not inference, and
+        // the only signal available for a control that is a plain view — which is what React
+        // Native's `Pressable`/`TouchableOpacity` produce.
+        else -> accessibilityRole(view)
+    }
+
+    /**
+     * Role implied by a view's declared accessibility role, or `null` if it declares none we
+     * honor.
+     *
+     * React Native stores `accessibilityRole` as an `AccessibilityRole` **enum** in a view tag,
+     * so what is read here is an enum name and never developer-authored text — nothing can reach
+     * the `role` field that would bypass masking. See [WireframeType].
+     *
+     * Android can distinguish the full set; iOS collapses most of these to
+     * `UIAccessibilityTraitNone` and reports only button/link/header. That asymmetry is
+     * deliberate: reporting what a platform can actually see beats reporting the intersection.
+     */
+    private fun accessibilityRole(view: View): WireframeType? {
+        val tagId = reactRoleTagId(view)
+        if (tagId == 0) return null
+        val role = runCatching { view.getTag(tagId) }.getOrNull() ?: return null
+        return when (role.toString().uppercase()) {
+            "BUTTON", "IMAGEBUTTON", "TOGGLEBUTTON" -> WireframeType.Button
+            "LINK" -> WireframeType.Link
+            "HEADER", "HEADING" -> WireframeType.Header
+            "CHECKBOX" -> WireframeType.Checkbox
+            "SWITCH" -> WireframeType.Switch
+            "RADIO" -> WireframeType.Radio
+            "TAB" -> WireframeType.Tab
+            // Every other role in React Native's enum is deliberately unmapped: an allowlist,
+            // so a new upstream value can never appear in the payload unreviewed.
+            else -> null
+        }
+    }
+
+    /**
+     * Id of React Native's `accessibility_role` view tag, resolved once and cached.
+     *
+     * Looked up by name rather than referenced directly because this module does not depend on
+     * React Native — and `0`, meaning "this is not a React Native app", is the common case and
+     * is cached just as firmly. `getIdentifier` walks the resource table by string, which is far
+     * too expensive to repeat for every unclassified view on every captured frame.
+     */
+    @Volatile
+    private var cachedReactRoleTagId: Int = -1
+
+    private fun reactRoleTagId(view: View): Int {
+        val cached = cachedReactRoleTagId
+        if (cached != -1) return cached
+        val resolved = runCatching {
+            val packageName = view.context?.packageName ?: return@runCatching 0
+            view.resources?.getIdentifier("accessibility_role", "id", packageName) ?: 0
+        }.getOrDefault(0)
+        cachedReactRoleTagId = resolved
+        return resolved
+    }
+
+    // No text absorption here, deliberately — unlike iOS.
+    //
+    // A roled container on Android does *not* become a wireframe leaf: the walk keeps emitting
+    // its children, so a `<Pressable accessibilityRole="button">` wrapping a `<Text>` already
+    // ships both a `button` element and the `text` element carrying the label. Borrowing the
+    // descendants' text into the parent as well produced the label *twice*, which for a summary
+    // is worse than either shape alone.
+    //
+    // iOS *does* close the subtree once a role is emitted (`newInsideLeaf = role != nil`), so it
+    // absorbs there or the control would ship textless. The two platforms therefore describe the
+    // same markup differently — one element carrying the label on iOS, a roled shell plus a text
+    // element on Android. A capability difference, not a defect.
+
+    private fun extractAndroidViewText(view: View, wasMasked: Boolean): String? {
+        // Never return text that the screenshot has redacted — would defeat masking.
+        if (wasMasked) return null
+        val text = when (view) {
+            is TextView -> view.text?.toString()
+            else -> null
+        }
+        if (!text.isNullOrBlank()) return text
+        if (!useAccessibilityLabelFallback) return null
+        return view.contentDescription?.toString()?.takeIf { it.isNotBlank() }
     }
 
     /**
@@ -471,10 +762,19 @@ object SensitiveViewManager {
      *
      * @param view The root view to process
      */
-    fun processSubviews(view: View?): SubviewSummary {
+    fun processSubviews(view: View?): SubviewSummary = processSubviews(view, null)
+
+    /**
+     * Same as [processSubviews] but additionally appends a [WireframeElement] for every
+     * visible, content-bearing view (Android or Compose) into [wireframeOut].
+     *
+     * Pass `null` for [wireframeOut] to skip wireframe collection (the existing one-arg
+     * overload does this).
+     */
+    fun processSubviews(view: View?, wireframeOut: MutableList<WireframeElement>?): SubviewSummary {
         if (view == null) return SubviewSummary()
 
-        val boundsAccumulator = mutableMapOf<Rect, MaskDecision>()
+        val boundsAccumulator = mutableMapOf<Rect, InternalMaskDecision>()
         val viewsToProcess = ArrayDeque<ViewContext>()
 
         // Track processed SemanticsOwners to avoid duplicate Compose tree traversal
@@ -488,6 +788,14 @@ object SensitiveViewManager {
 
             // Skip views that aren't visible (including children of GONE/INVISIBLE parents)
             if (!currentView.isShown) continue
+
+            // A fully transparent view paints nothing, so neither its pixels nor its text may
+            // reach the replay — `isShown` only covers GONE/INVISIBLE. Alpha is multiplicative
+            // down the hierarchy, so `continue` correctly drops the whole subtree: children are
+            // only enqueued at the bottom of this loop. It also means such a view contributes no
+            // mask region, which is right — there is nothing painted to cover.
+            // Matches Flutter's `Opacity(0)` filter (reference suite fixture 44).
+            if (currentView.alpha <= 0f) continue
 
             // Check for active screen transitions (transitionAlpha != 1.0f indicates animation in progress)
             val hasTransitionAlpha = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q && currentView.transitionAlpha != 1.0f
@@ -514,34 +822,91 @@ object SensitiveViewManager {
 
             val isExplicitlySensitive = containsSensitiveView(currentView)
             val isClassSensitive = isViewClassSensitive(currentView::class.java)
+            val isInputField = EditText::class.java.isAssignableFrom(currentView::class.java)
 
-            if (isExplicitlySensitive || isClassSensitive) {
-                val isSafe = isInsideSafeContainer || containsSafeView(currentView)
-                val isInputField = EditText::class.java.isAssignableFrom(currentView::class.java)
+            // Resolved once and shared by the mask decision, the UNMASK entry, and the safe flag
+            // propagated to children; the guard keeps plain leaf views out of the synchronized
+            // set lookup, as before.
+            val isSensitiveCandidate = isExplicitlySensitive || isClassSensitive
+            val isSelfSafe = (isSensitiveCandidate || trackUnmask || currentView is ViewGroup) &&
+                containsSafeView(currentView)
+            val isSafe = isInsideSafeContainer || isSelfSafe
 
-                // Explicitly sensitive, input fields, or non-safe class-sensitive views get masked
-                val shouldMask = isExplicitlySensitive || isInputField || !isSafe
+            // Explicitly sensitive, input fields, or non-safe class-sensitive views get masked
+            val shouldMask = isSensitiveCandidate &&
+                (isExplicitlySensitive || isInputField || !isSafe)
 
-                if (shouldMask) {
-                    val rect = Rect()
-                    if (currentView.getGlobalVisibleRect(rect)) {
-                        val maskDecision = when {
-                            isInputField -> MaskDecision.TEXT_ENTRY
-                            isExplicitlySensitive -> MaskDecision.MASK
-                            else -> MaskDecision.AUTO
-                        }
-                        addOrUpdateEntry(boundsAccumulator, Rect(rect), maskDecision)
+            // A safe view inside a sensitive one, or a standalone safe view, is worth an UNMASK
+            // entry only when we're tracking them. Note this leans on isSelfSafe, not isSafe:
+            // safety inherited from an ancestor doesn't earn its own entry.
+            val wantsUnmaskEntry = trackUnmask && !shouldMask && (isSensitiveCandidate || isSelfSafe)
+
+            // Wireframe classification resolved before the bounds lookup so both consumers can
+            // share one rect.
+            val declaredText = if (wireframeOut != null) wireframeTextFor(currentView) else null
+            val wireframeType = if (wireframeOut != null) classifyAndroidView(currentView) else null
+            val wantsWireframeElement = declaredText != null || wireframeType != null
+
+            // getGlobalVisibleRect walks the whole parent chain intersecting clips, making it the
+            // priciest per-view call in this loop — and with the default autoMaskedViews nearly
+            // every content view needs it for both a mask entry and a wireframe element. Resolve
+            // it at most once per view, and only when something actually consumes it.
+            val visibleRect = if (shouldMask || wantsUnmaskEntry || wantsWireframeElement) {
+                Rect().takeIf { currentView.getGlobalVisibleRect(it) }
+            } else {
+                null
+            }
+
+            // Mirrors the masking decision for this view so the wireframe path can suppress
+            // text on anything that ends up masked (otherwise we'd leak the same text the
+            // screenshot redacts).
+            val wasMasked = shouldMask
+            var wireDecision = MaskDecision.NONE
+
+            if (shouldMask) {
+                if (visibleRect != null) {
+                    val maskDecision = when {
+                        isInputField -> InternalMaskDecision.TEXT_ENTRY
+                        isExplicitlySensitive -> InternalMaskDecision.MASK
+                        // A class the developer registered via addSensitiveClass is EXPLICIT
+                        // per the ERD's Layer 1 table, not AUTO — only the AutoMaskedView
+                        // classes are AUTO. Reporting only; both mask the same pixels, and
+                        // addSafeView still overrides a class match (see shouldMask above).
+                        isViewClassCustomerSensitive(currentView::class.java) ->
+                            InternalMaskDecision.MASK
+                        else -> InternalMaskDecision.AUTO
                     }
-                } else if (trackUnmask) {
-                    val rect = Rect()
-                    if (currentView.getGlobalVisibleRect(rect)) {
-                        addOrUpdateEntry(boundsAccumulator, Rect(rect), MaskDecision.UNMASK)
-                    }
+                    addOrUpdateEntry(boundsAccumulator, Rect(visibleRect), maskDecision)
+                    wireDecision = maskDecision.toWire()
                 }
-            } else if (trackUnmask && containsSafeView(currentView)) {
-                val rect = Rect()
-                if (currentView.getGlobalVisibleRect(rect)) {
-                    addOrUpdateEntry(boundsAccumulator, Rect(rect), MaskDecision.UNMASK)
+            } else if (wantsUnmaskEntry && visibleRect != null) {
+                addOrUpdateEntry(boundsAccumulator, Rect(visibleRect), InternalMaskDecision.UNMASK)
+            }
+
+            if (wireframeOut != null && visibleRect != null &&
+                visibleRect.width() > 0 && visibleRect.height() > 0
+            ) {
+                if (declaredText != null) {
+                    // Layer 3 substitution. Developer-declared text
+                    // (View.mpWireframeText(...)) is authored, not scraped. Emit it even
+                    // when the view is masked, and even for views that don't map to one of the
+                    // four roles (fall back to Text). Masking still grays the pixels via the mask
+                    // region added above; DECLARED exempts the text from the Layer 2 geometric
+                    // strip so it survives to describe the view for the AI summary.
+                    wireframeOut.add(
+                        WireframeElement.fromRect(
+                            wireframeType ?: WireframeType.Text,
+                            declaredText,
+                            visibleRect,
+                            MaskDecision.DECLARED
+                        )
+                    )
+                } else if (wireframeType != null) {
+                    // Keep the element so layout is visible; drop content when masked.
+                    val text = extractAndroidViewText(currentView, wasMasked)
+                    wireframeOut.add(
+                        WireframeElement.fromRect(wireframeType, text, visibleRect, wireDecision)
+                    )
                 }
             }
 
@@ -550,13 +915,11 @@ object SensitiveViewManager {
             val isRootForTest = currentView is RootForTest
 
             if (isComposeView || isRootForTest) {
-                collectMaskableNodes(currentView, boundsAccumulator, processedSemanticsOwners)
+                collectMaskableNodes(currentView, boundsAccumulator, processedSemanticsOwners, wireframeOut)
             }
 
             // Then handle the ViewGroup case which happens regardless of jetpackComposeEnabled
             if (currentView is ViewGroup) {
-                // Calculate safe status to propagate to children
-                val isSafe = isInsideSafeContainer || containsSafeView(currentView)
                 for (i in 0 until currentView.childCount) {
                     currentView.getChildAt(i)?.let { child ->
                         viewsToProcess.add(ViewContext(child, isSafe))
@@ -574,7 +937,7 @@ object SensitiveViewManager {
         // Extract mask bounds for production use
         // When trackUnmask is false, no UNMASK entries exist so no filtering needed
         val maskBounds = if (trackUnmask) {
-            boundsAccumulator.filterValues { it != MaskDecision.UNMASK }.keys
+            boundsAccumulator.filterValues { it != InternalMaskDecision.UNMASK }.keys
         } else {
             boundsAccumulator.keys
         }

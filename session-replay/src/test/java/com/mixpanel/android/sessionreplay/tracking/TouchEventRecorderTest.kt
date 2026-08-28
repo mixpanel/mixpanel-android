@@ -1,42 +1,59 @@
 package com.mixpanel.android.sessionreplay.tracking
 
 import android.content.Context
-import android.os.SystemClock
 import android.view.MotionEvent
 import com.mixpanel.android.sessionreplay.models.RawScreenshotEvent
 import com.mixpanel.android.sessionreplay.models.RawTouchEvent
+import com.mixpanel.android.sessionreplay.utils.MouseInteraction
+import com.mixpanel.android.sessionreplay.utils.TouchSampling
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
-import org.robolectric.shadows.ShadowLooper
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
 class TouchEventRecorderTest {
     private lateinit var context: Context
-    private var capturedEvent: RawTouchEvent? = null
+    private val capturedEvents = mutableListOf<RawTouchEvent>()
     private val eventListener = object : EventListener {
         override fun receivedTouchEvent(rawEvent: RawTouchEvent) {
-            capturedEvent = rawEvent
+            capturedEvents += rawEvent
         }
 
         override fun receivedScreenshotEvent(rawEvent: RawScreenshotEvent) {}
     }
+
+    private var touchStartCount = 0
+    private var touchEndCount = 0
     private val touchListener = object : TouchEventListener {
-        override fun onTouchStart() {}
-        override fun onTouchEnd() {}
+        override fun onTouchStart() {
+            touchStartCount++
+        }
+
+        override fun onTouchEnd() {
+            touchEndCount++
+        }
     }
+
+    /** Fixed uptime -> wall clock delta, so emitted timestamps are exactly predictable. */
+    private val epochOffset = 1_700_000_000_000L
+
+    /** Arbitrary uptime base for the synthetic MotionEvents. */
+    private val downTime = 10_000L
 
     @Before
     fun setup() {
         context = RuntimeEnvironment.getApplication()
-        capturedEvent = null
+        capturedEvents.clear()
+        touchStartCount = 0
+        touchEndCount = 0
         EventPublisher.shared.subscribe(eventListener)
     }
 
@@ -54,28 +71,55 @@ class TouchEventRecorderTest {
         return TouchEventRecorder(
             context = context,
             touchEventListener = touchListener,
-            windowOffsetProvider = { intArrayOf(offsetX, offsetY) }
+            windowOffsetProvider = { intArrayOf(offsetX, offsetY) },
+            epochOffsetProvider = { epochOffset }
         )
     }
 
-    private fun simulateTap(recorder: TouchEventRecorder, rawX: Float, rawY: Float) {
-        val downTime = SystemClock.uptimeMillis()
-        val down = MotionEvent.obtain(downTime, downTime, MotionEvent.ACTION_DOWN, rawX, rawY, 0)
-        val up = MotionEvent.obtain(downTime, downTime + 50, MotionEvent.ACTION_UP, rawX, rawY, 0)
-        recorder.onTouchEvent(down)
-        recorder.onTouchEvent(up)
-        down.recycle()
-        up.recycle()
+    private fun TouchEventRecorder.send(
+        action: Int,
+        rawX: Float,
+        rawY: Float,
+        eventTimeOffset: Long = 0L
+    ) {
+        val event = MotionEvent.obtain(
+            downTime,
+            downTime + eventTimeOffset,
+            action,
+            rawX,
+            rawY,
+            0
+        )
+        onTouchEvent(event)
+        event.recycle()
     }
+
+    private fun simulateTap(recorder: TouchEventRecorder, rawX: Float, rawY: Float) {
+        recorder.send(MotionEvent.ACTION_DOWN, rawX, rawY)
+        recorder.send(MotionEvent.ACTION_UP, rawX, rawY, eventTimeOffset = 50L)
+    }
+
+    private val interactions: List<RawTouchEvent.Interaction>
+        get() = capturedEvents.filterIsInstance<RawTouchEvent.Interaction>()
+
+    private val moves: List<RawTouchEvent.Move>
+        get() = capturedEvents.filterIsInstance<RawTouchEvent.Move>()
+
+    private fun firstStart(): RawTouchEvent.Interaction {
+        val start = interactions.firstOrNull { it.type == MouseInteraction.TOUCH_START }
+        assertNotNull("expected a TOUCH_START event", start)
+        return start!!
+    }
+
+    // region coordinate scaling — asserted on the TOUCH_START point
 
     @Test
     fun testTap_noOffset_density1x() {
         val recorder = createRecorder(density = 1.0f)
         simulateTap(recorder, 100f, 200f)
 
-        assertNotNull(capturedEvent)
-        assertEquals(100, capturedEvent!!.start.x)
-        assertEquals(200, capturedEvent!!.start.y)
+        assertEquals(100, firstStart().point.x)
+        assertEquals(200, firstStart().point.y)
     }
 
     @Test
@@ -83,9 +127,8 @@ class TouchEventRecorderTest {
         val recorder = createRecorder(density = 3.0f)
         simulateTap(recorder, 540f, 960f)
 
-        assertNotNull(capturedEvent)
-        assertEquals(180, capturedEvent!!.start.x)
-        assertEquals(320, capturedEvent!!.start.y)
+        assertEquals(180, firstStart().point.x)
+        assertEquals(320, firstStart().point.y)
     }
 
     @Test
@@ -93,9 +136,8 @@ class TouchEventRecorderTest {
         val recorder = createRecorder(density = 3.0f, offsetY = 84)
         simulateTap(recorder, 540f, 960f)
 
-        assertNotNull(capturedEvent)
-        assertEquals(180, capturedEvent!!.start.x)
-        assertEquals(292, capturedEvent!!.start.y)
+        assertEquals(180, firstStart().point.x)
+        assertEquals(292, firstStart().point.y)
     }
 
     @Test
@@ -103,9 +145,8 @@ class TouchEventRecorderTest {
         val recorder = createRecorder(density = 3.0f, offsetY = 145)
         simulateTap(recorder, 540f, 960f)
 
-        assertNotNull(capturedEvent)
-        assertEquals(180, capturedEvent!!.start.x)
-        assertEquals(((960f - 145) / 3f).toInt(), capturedEvent!!.start.y)
+        assertEquals(180, firstStart().point.x)
+        assertEquals(((960f - 145) / 3f).toInt(), firstStart().point.y)
     }
 
     @Test
@@ -113,9 +154,8 @@ class TouchEventRecorderTest {
         val recorder = createRecorder(density = 2.0f, offsetX = 100)
         simulateTap(recorder, 500f, 400f)
 
-        assertNotNull(capturedEvent)
-        assertEquals(200, capturedEvent!!.start.x)
-        assertEquals(200, capturedEvent!!.start.y)
+        assertEquals(200, firstStart().point.x)
+        assertEquals(200, firstStart().point.y)
     }
 
     @Test
@@ -123,9 +163,8 @@ class TouchEventRecorderTest {
         val recorder = createRecorder(density = 2.0f, offsetX = 50, offsetY = 100)
         simulateTap(recorder, 600f, 800f)
 
-        assertNotNull(capturedEvent)
-        assertEquals(275, capturedEvent!!.start.x)
-        assertEquals(350, capturedEvent!!.start.y)
+        assertEquals(275, firstStart().point.x)
+        assertEquals(350, firstStart().point.y)
     }
 
     @Test
@@ -133,19 +172,8 @@ class TouchEventRecorderTest {
         val recorder = createRecorder(density = 2.0f, offsetX = 100, offsetY = 200)
         simulateTap(recorder, 100f, 200f)
 
-        assertNotNull(capturedEvent)
-        assertEquals(0, capturedEvent!!.start.x)
-        assertEquals(0, capturedEvent!!.start.y)
-    }
-
-    @Test
-    fun testTap_clickEventHasSameStartAndEnd() {
-        val recorder = createRecorder(density = 3.0f, offsetY = 84)
-        simulateTap(recorder, 540f, 960f)
-
-        assertNotNull(capturedEvent)
-        assertEquals(capturedEvent!!.start, capturedEvent!!.end)
-        assertEquals(false, capturedEvent!!.isSwipe)
+        assertEquals(0, firstStart().point.x)
+        assertEquals(0, firstStart().point.y)
     }
 
     @Test
@@ -153,9 +181,8 @@ class TouchEventRecorderTest {
         val recorder = createRecorder(density = 2.0f)
         simulateTap(recorder, 200f, 400f)
 
-        assertNotNull(capturedEvent)
-        assertEquals(100, capturedEvent!!.start.x)
-        assertEquals(200, capturedEvent!!.start.y)
+        assertEquals(100, firstStart().point.x)
+        assertEquals(200, firstStart().point.y)
     }
 
     @Test
@@ -163,9 +190,8 @@ class TouchEventRecorderTest {
         val recorder = createRecorder(density = 4.0f, offsetX = 40, offsetY = 160)
         simulateTap(recorder, 720f, 1280f)
 
-        assertNotNull(capturedEvent)
-        assertEquals(170, capturedEvent!!.start.x)
-        assertEquals(280, capturedEvent!!.start.y)
+        assertEquals(170, firstStart().point.x)
+        assertEquals(280, firstStart().point.y)
     }
 
     @Test
@@ -173,9 +199,8 @@ class TouchEventRecorderTest {
         val recorder = createRecorder(density = 1.0f, offsetX = 50, offsetY = 100)
         simulateTap(recorder, 300f, 500f)
 
-        assertNotNull(capturedEvent)
-        assertEquals(250, capturedEvent!!.start.x)
-        assertEquals(400, capturedEvent!!.start.y)
+        assertEquals(250, firstStart().point.x)
+        assertEquals(400, firstStart().point.y)
     }
 
     @Test
@@ -183,9 +208,8 @@ class TouchEventRecorderTest {
         val recorder = createRecorder(density = 1.5f)
         simulateTap(recorder, 101f, 202f)
 
-        assertNotNull(capturedEvent)
-        assertEquals(67, capturedEvent!!.start.x)
-        assertEquals(134, capturedEvent!!.start.y)
+        assertEquals(67, firstStart().point.x)
+        assertEquals(134, firstStart().point.y)
     }
 
     @Test
@@ -193,36 +217,169 @@ class TouchEventRecorderTest {
         val recorder = createRecorder(density = 3.0f)
         simulateTap(recorder, 0f, 0f)
 
-        assertNotNull(capturedEvent)
-        assertEquals(0, capturedEvent!!.start.x)
-        assertEquals(0, capturedEvent!!.start.y)
+        assertEquals(0, firstStart().point.x)
+        assertEquals(0, firstStart().point.y)
+    }
+
+    // endregion
+
+    // region gesture boundaries
+
+    @Test
+    fun testTap_emitsTouchStartThenTouchEnd() {
+        val recorder = createRecorder(density = 1.0f)
+        simulateTap(recorder, 100f, 200f)
+
+        assertEquals(2, capturedEvents.size)
+        assertEquals(
+            listOf(MouseInteraction.TOUCH_START, MouseInteraction.TOUCH_END),
+            interactions.map { it.type }
+        )
+        assertEquals(interactions[0].point, interactions[1].point)
     }
 
     @Test
-    fun testSwipe_coordinatesScaledWithOffset() {
-        val recorder = createRecorder(density = 3.0f, offsetY = 84)
-        val downTime = SystemClock.uptimeMillis()
+    fun testTap_notifiesTouchStartAndTouchEndListener() {
+        val recorder = createRecorder()
+        simulateTap(recorder, 100f, 200f)
 
-        val down = MotionEvent.obtain(downTime, downTime, MotionEvent.ACTION_DOWN, 300f, 600f, 0)
-        recorder.onTouchEvent(down)
-        down.recycle()
-
-        val move = MotionEvent.obtain(downTime, downTime + 50, MotionEvent.ACTION_MOVE, 900f, 1200f, 0)
-        recorder.onTouchEvent(move)
-        move.recycle()
-
-        val up = MotionEvent.obtain(downTime, downTime + 100, MotionEvent.ACTION_UP, 900f, 1200f, 0)
-        recorder.onTouchEvent(up)
-        up.recycle()
-
-        // Trigger the end-of-scroll runnable (posted with 200ms delay)
-        ShadowLooper.runUiThreadTasksIncludingDelayedTasks()
-
-        assertNotNull(capturedEvent)
-        assertEquals(true, capturedEvent!!.isSwipe)
-        assertEquals(100, capturedEvent!!.start.x)
-        assertEquals(((600f - 84) / 3f).toInt(), capturedEvent!!.start.y)
-        assertEquals(300, capturedEvent!!.end.x)
-        assertEquals(((1200f - 84) / 3f).toInt(), capturedEvent!!.end.y)
+        assertEquals(1, touchStartCount)
+        assertEquals(1, touchEndCount)
     }
+
+    @Test
+    fun testCancel_emitsTouchCancelAndEndsGesture() {
+        val recorder = createRecorder()
+        recorder.send(MotionEvent.ACTION_DOWN, 100f, 200f)
+        recorder.send(MotionEvent.ACTION_CANCEL, 120f, 220f, eventTimeOffset = 40L)
+
+        assertEquals(
+            listOf(MouseInteraction.TOUCH_START, MouseInteraction.TOUCH_CANCEL),
+            interactions.map { it.type }
+        )
+        assertEquals(1, touchEndCount)
+    }
+
+    /**
+     * A long press used to leave the gesture open forever — GestureDetector's
+     * `onSingleTapUp` never fires after a long press, so `onTouchEnd` was never called and
+     * the screenshot timer it gates ran until the next tap.
+     */
+    @Test
+    fun testLongPress_stillEndsGesture() {
+        val recorder = createRecorder()
+        recorder.send(MotionEvent.ACTION_DOWN, 100f, 200f)
+        recorder.send(MotionEvent.ACTION_UP, 100f, 200f, eventTimeOffset = 2_000L)
+
+        assertEquals(
+            listOf(MouseInteraction.TOUCH_START, MouseInteraction.TOUCH_END),
+            interactions.map { it.type }
+        )
+        assertEquals(1, touchEndCount)
+    }
+
+    @Test
+    fun testMoveWithoutDown_isIgnored() {
+        val recorder = createRecorder()
+        recorder.send(MotionEvent.ACTION_MOVE, 100f, 200f, eventTimeOffset = 100L)
+        recorder.send(MotionEvent.ACTION_UP, 100f, 200f, eventTimeOffset = 200L)
+
+        assertTrue(capturedEvents.isEmpty())
+        assertEquals(0, touchEndCount)
+    }
+
+    // endregion
+
+    // region timestamps
+
+    @Test
+    fun testTimestamps_comeFromMotionEventTimeWithNoOffset() {
+        val recorder = createRecorder()
+        recorder.send(MotionEvent.ACTION_DOWN, 100f, 200f)
+        recorder.send(MotionEvent.ACTION_UP, 100f, 200f, eventTimeOffset = 120L)
+
+        assertEquals(epochOffset + downTime, interactions[0].timestamp)
+        assertEquals(epochOffset + downTime + 120L, interactions[1].timestamp)
+    }
+
+    // endregion
+
+    // region touch move batching
+
+    @Test
+    fun testSwipe_emitsMoveBatchBeforeTouchEnd() {
+        val recorder = createRecorder(density = 3.0f, offsetY = 84)
+        recorder.send(MotionEvent.ACTION_DOWN, 300f, 600f)
+        recorder.send(MotionEvent.ACTION_MOVE, 600f, 900f, eventTimeOffset = 60L)
+        recorder.send(MotionEvent.ACTION_MOVE, 900f, 1200f, eventTimeOffset = 120L)
+        recorder.send(MotionEvent.ACTION_UP, 900f, 1200f, eventTimeOffset = 150L)
+
+        assertEquals(3, capturedEvents.size)
+        assertEquals(MouseInteraction.TOUCH_START, (capturedEvents[0] as RawTouchEvent.Interaction).type)
+        assertTrue(capturedEvents[1] is RawTouchEvent.Move)
+        assertEquals(MouseInteraction.TOUCH_END, (capturedEvents[2] as RawTouchEvent.Interaction).type)
+
+        val samples = (capturedEvents[1] as RawTouchEvent.Move).samples
+        assertEquals(2, samples.size)
+        assertEquals(200, samples[0].point.x)
+        assertEquals(((900f - 84) / 3f).toInt(), samples[0].point.y)
+        assertEquals(epochOffset + downTime + 60L, samples[0].timestamp)
+        assertEquals(300, samples[1].point.x)
+        assertEquals(((1200f - 84) / 3f).toInt(), samples[1].point.y)
+        assertEquals(epochOffset + downTime + 120L, samples[1].timestamp)
+    }
+
+    @Test
+    fun testMoves_closerThanSampleIntervalAreDropped() {
+        val recorder = createRecorder()
+        recorder.send(MotionEvent.ACTION_DOWN, 0f, 0f)
+        // 16ms apart (one frame) — only the samples that clear the 50ms budget survive.
+        for (frame in 1..8) {
+            recorder.send(MotionEvent.ACTION_MOVE, frame * 10f, 0f, eventTimeOffset = frame * 16L)
+        }
+        recorder.send(MotionEvent.ACTION_UP, 80f, 0f, eventTimeOffset = 150L)
+
+        val samples = moves.single().samples
+        assertEquals(2, samples.size)
+        assertEquals(epochOffset + downTime + 64L, samples[0].timestamp)
+        assertEquals(epochOffset + downTime + 128L, samples[1].timestamp)
+    }
+
+    @Test
+    fun testLongDrag_flushesBatchOnceItSpansTheBatchInterval() {
+        val recorder = createRecorder()
+        recorder.send(MotionEvent.ACTION_DOWN, 0f, 0f)
+        // 12 samples at 50ms — the batch spans 500ms at the 11th and flushes there.
+        for (sample in 1..12) {
+            recorder.send(MotionEvent.ACTION_MOVE, sample * 10f, 0f, eventTimeOffset = sample * 50L)
+        }
+        recorder.send(MotionEvent.ACTION_UP, 120f, 0f, eventTimeOffset = 650L)
+
+        assertEquals(2, moves.size)
+        assertEquals(11, moves[0].samples.size)
+        assertEquals(1, moves[1].samples.size)
+        assertEquals(
+            TouchSampling.MOVE_BATCH_INTERVAL_MS,
+            moves[0].samples.last().timestamp - moves[0].samples.first().timestamp
+        )
+        // Batch timestamp is its final sample, which is what timeOffsets are measured against.
+        assertEquals(moves[0].samples.last().timestamp, moves[0].timestamp)
+    }
+
+    @Test
+    fun testGesture_doesNotLeakSamplesIntoTheNextGesture() {
+        val recorder = createRecorder()
+        recorder.send(MotionEvent.ACTION_DOWN, 0f, 0f)
+        recorder.send(MotionEvent.ACTION_MOVE, 100f, 0f, eventTimeOffset = 60L)
+        recorder.send(MotionEvent.ACTION_UP, 100f, 0f, eventTimeOffset = 80L)
+        capturedEvents.clear()
+
+        recorder.send(MotionEvent.ACTION_DOWN, 0f, 0f, eventTimeOffset = 1_000L)
+        recorder.send(MotionEvent.ACTION_UP, 0f, 0f, eventTimeOffset = 1_050L)
+
+        assertEquals(0, moves.size)
+        assertEquals(2, interactions.size)
+    }
+
+    // endregion
 }

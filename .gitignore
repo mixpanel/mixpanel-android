@@ -8,3 +8,8 @@ docs
 .idea
 build/
 .gradle/
+
+# (The instrumented wireframe goldens that used to be held out here are gone. They existed
+# because their bounds were density-dependent and CI had no pinned device; wireframe
+# coordinates now live in :session-replay:wireframe-goldens, where Paparazzi declares the
+# device in code and renders off-device, so there is nothing left to hold out.)

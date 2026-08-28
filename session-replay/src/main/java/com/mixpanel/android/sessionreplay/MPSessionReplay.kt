@@ -1,6 +1,8 @@
 package com.mixpanel.android.sessionreplay
 
 import android.content.Context
+import android.content.pm.ApplicationInfo
+import android.util.Log
 import androidx.annotation.VisibleForTesting
 import com.mixpanel.android.eventbridge.MixpanelEventBridge
 import com.mixpanel.android.sessionreplay.logging.LogLevel
@@ -13,6 +15,7 @@ import com.mixpanel.android.sessionreplay.services.RemoteSettingsService
 import com.mixpanel.android.sessionreplay.models.RecordingEventTrigger
 import com.mixpanel.android.sessionreplay.utils.APIConstants
 import com.mixpanel.android.sessionreplay.utils.LogMessages.AUTO_START_RECORDING_DEPRECATED
+import com.mixpanel.android.sessionreplay.utils.LogMessages.WIREFRAMES_BETA_NOTICE
 import com.mixpanel.android.sessionreplay.utils.RecordingEventTriggerEvaluator
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -121,6 +124,8 @@ object SessionReplayManager {
         // Configure logging first
         configureLogging(config)
 
+        logWireframesBetaNotice(appContext, config)
+
         // Validate serverUrl early to avoid unnecessary work
         validateServerUrl(config.serverUrl).onFailure { error ->
             Logger.warn("Invalid serverUrl, Session Replay is disabled: ${error.message}")
@@ -167,7 +172,10 @@ object SessionReplayManager {
                 ForegroundAwaiter().waitForForeground()
 
                 // Now we're in foreground, safe to make network call
-                val settingsResult = remoteSettingsService.fetchRemoteSettings(token)
+                val settingsResult = remoteSettingsService.fetchRemoteSettings(
+                    token,
+                    wireframesRequested = config.wireframesOptions != null
+                )
                 val resolvedSettings = resolveRemoteSettings(config, settingsResult)
 
                 withContext(Dispatchers.Main) {
@@ -208,9 +216,11 @@ object SessionReplayManager {
         config: MPSessionReplayConfig,
         remoteSettings: RemoteSettingsResult
     ): ResolvedRemoteSettings? = when (config.remoteSettingsMode) {
+        // The wireframe kill switch is an enablement switch, not remote config, so it is honored
+        // even here where remote config values are ignored.
         RemoteSettingsMode.DISABLED -> ResolvedRemoteSettings(
             isRecordingEnabled = remoteSettings.isRecordingEnabled,
-            config = config,
+            config = applyWireframeKillSwitch(config, remoteSettings),
             recordingEventTriggers = null // Ignored in DISABLED mode
         )
 
@@ -249,7 +259,43 @@ object SessionReplayManager {
             }
         }
 
-        return updatedConfig
+        return applyWireframeKillSwitch(updatedConfig, remoteSettings)
+    }
+
+    /**
+     * Honors the server-side wireframe kill switch by clearing
+     * [MPSessionReplayConfig.wireframesOptions].
+     *
+     * `wireframesOptions` is the only switch the wireframe pipeline reads, so clearing it before the
+     * instance is built turns wireframe capture off wholesale while leaving replay recording
+     * untouched.
+     */
+    private fun applyWireframeKillSwitch(
+        config: MPSessionReplayConfig,
+        remoteSettings: RemoteSettingsResult
+    ): MPSessionReplayConfig {
+        if (remoteSettings.isWireframeEnabled || config.wireframesOptions == null) return config
+
+        Logger.warn("Wireframe capture is disabled via remote settings")
+        return config.copy(wireframesOptions = null)
+    }
+
+    /**
+     * Tells an app that just turned wireframes on that the feature is in beta.
+     *
+     * Deliberately bypasses [Logger] and its [MPSessionReplayConfig.enableLogging] gate: the
+     * developer who needs to read this is the one wiring wireframes up for the first time, and
+     * has no particular reason to have opted into verbose logging. Restricted to debuggable
+     * builds instead, so a shipped app prints nothing.
+     *
+     * Fires on local opt-in, before the remote kill switch is consulted. If the server then turns
+     * capture off, [applyWireframeKillSwitch] says so in its own log line.
+     */
+    private fun logWireframesBetaNotice(appContext: Context, config: MPSessionReplayConfig) {
+        if (config.wireframesOptions == null) return
+        if ((appContext.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) == 0) return
+
+        Log.i("MixpanelSessionReplay", WIREFRAMES_BETA_NOTICE)
     }
 
     private fun configureLogging(config: MPSessionReplayConfig) {

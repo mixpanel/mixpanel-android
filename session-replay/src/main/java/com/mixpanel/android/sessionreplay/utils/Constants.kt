@@ -53,23 +53,42 @@ object BundleConstants {
 // using methods like Build.MODEL, Build.MANUFACTURER etc.
 
 object EventType {
-    const val LOAD = 1
     const val FULL_SNAPSHOT = 2
     const val INCREMENTAL_SNAPSHOT = 3
     const val META = 4
     const val CUSTOM = 5
-    const val PLUGIN = 6
 }
 
 object IncrementalSource {
     const val MUTATION = 0
-    const val TOUCH_MOVE = 1
-    const val TOUCH_INTERACTION = 2
+    const val MOUSE_INTERACTION = 2
+    const val TOUCH_MOVE = 6
 }
 
-object TouchInteraction {
-    const val START = 7
-    const val SWIPE_THRESHOLD = 10.0
+/**
+ * rrweb `MouseInteractions` — the `data.type` of a [IncrementalSource.MOUSE_INTERACTION]
+ * snapshot. Touch gestures map onto TOUCH_START / TOUCH_END / TOUCH_CANCEL; the drag path
+ * between them ships separately as [IncrementalSource.TOUCH_MOVE] positions.
+ */
+object MouseInteraction {
+    const val TOUCH_START = 7
+    const val TOUCH_END = 9
+    const val TOUCH_CANCEL = 10
+}
+
+/**
+ * Sampling budget for [IncrementalSource.TOUCH_MOVE] batches, mirroring rrweb-web's
+ * `sampling.mousemove` (50ms between samples) and its 500ms emit throttle.
+ */
+object TouchSampling {
+    /** Minimum gap between two sampled `ACTION_MOVE` points. */
+    const val MOVE_SAMPLE_INTERVAL_MS = 50L
+
+    /** Batch is emitted once it spans this much time. */
+    const val MOVE_BATCH_INTERVAL_MS = 500L
+
+    /** Hard cap on a single batch, so a stuck gesture can't grow the queue without bound. */
+    const val MAX_POSITIONS_PER_BATCH = 100
 }
 
 object PayloadObjectId {
@@ -105,13 +124,7 @@ internal object EndPoints {
     fun settings(baseUrl: String): String = "${baseUrl.trimEnd('/')}/settings"
 }
 
-object TimingAdjustment {
-    const val TOUCH_INTERACTION = -800
-}
-
 object ReplaySettings {
-    const val TOUCH_INTERACTION_TIMING_ADJUSTMENT = -800
-    const val TOUCH_EVENT_DEBOUNCE_TIME = 0.3 // seconds
     const val SNAPSHOT_TIMER_INTERVAL = 1.0 // seconds
     const val FLUSH_INTERVAL = 10L // seconds
     const val QUEUE_BATCH_SIZE = 10
@@ -134,4 +147,5 @@ object NetworkError {
 
 object Compose {
     const val MP_REPLAY_SENSITIVE = "mp-replay-sensitive"
+    const val MP_REPLAY_WIREFRAME_TEXT = "mp-replay-wireframe-text"
 }

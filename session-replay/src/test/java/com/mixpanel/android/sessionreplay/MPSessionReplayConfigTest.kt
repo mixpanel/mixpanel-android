@@ -57,7 +57,7 @@ class MPSessionReplayConfigTest {
         val json = config.toJson()
 
         @Suppress("ktlint:standard:max-line-length")
-        val expectedJson = """{"wifiOnly":false,"flushInterval":10,"autoStartRecording":true,"recordingSessionsPercent":75.0,"autoMaskedViews":["Text","Image","Web"],"enableLogging":false,"remoteSettingsMode":"DISABLED","debugOptions":null,"serverUrl":"https://api.mixpanel.com"}"""
+        val expectedJson = """{"wifiOnly":false,"flushInterval":10,"autoStartRecording":true,"recordingSessionsPercent":75.0,"autoMaskedViews":["Text","Image","Web"],"enableLogging":false,"remoteSettingsMode":"DISABLED","debugOptions":null,"serverUrl":"https://api.mixpanel.com","wireframesOptions":null}"""
         assertEquals(expectedJson, json)
     }
 
