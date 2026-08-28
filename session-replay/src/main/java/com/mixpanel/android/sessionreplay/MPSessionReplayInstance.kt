@@ -24,6 +24,7 @@ import com.mixpanel.android.sessionreplay.tracking.EventPublisher
 import com.mixpanel.android.sessionreplay.tracking.ScreenRecorder
 import com.mixpanel.android.sessionreplay.tracking.TouchEventListener
 import com.mixpanel.android.sessionreplay.tracking.TouchEventRecorder
+import com.mixpanel.android.sessionreplay.utils.CapturedViewport
 import com.mixpanel.android.sessionreplay.utils.EndPoints
 import com.mixpanel.android.sessionreplay.utils.LogMessages.AUTO_START_RECORDING_DEPRECATED
 import curtains.Curtains
@@ -356,6 +357,7 @@ class MPSessionReplayInstance(
 
             scheduleScreenshotCapture()
             flushService.start()
+            CapturedViewport.setCurrentReplay(getReplayId())
             sessionReplaySender.registerSessionReplay(
                 appContext,
                 mapOf("\$mp_replay_id" to getReplayId())

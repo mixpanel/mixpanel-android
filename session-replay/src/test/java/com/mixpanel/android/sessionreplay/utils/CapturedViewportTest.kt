@@ -27,7 +27,12 @@ import org.robolectric.annotation.Config
 class CapturedViewportTest {
     private val json = Json { ignoreUnknownKeys = true }
 
-    private fun emptyPayload() = PayloadInfo(emptyList(), 1.0, 1, "test", 1, 1.0)
+    private companion object {
+        const val REPLAY = "test"
+        const val NEXT_REPLAY = "next-replay"
+    }
+
+    private fun emptyPayload(replayId: String = REPLAY) = PayloadInfo(emptyList(), 1.0, 1, replayId, 1, 1.0)
 
     private fun metaDimensions(payload: String): Pair<Int, Int> {
         val meta = json.parseToJsonElement(payload).jsonArray.first().jsonObject
@@ -39,6 +44,7 @@ class CapturedViewportTest {
     @Before
     fun setUp() {
         CapturedViewport.reset()
+        CapturedViewport.setCurrentReplay(REPLAY)
     }
 
     @After
@@ -84,7 +90,7 @@ class CapturedViewportTest {
         CapturedViewport.record(0, 0)
         CapturedViewport.record(-1, 915)
 
-        assertEquals(CapturedViewport.Size(411, 915), CapturedViewport.current())
+        assertEquals(CapturedViewport.Size(411, 915), CapturedViewport.current(REPLAY))
     }
 
     @Test
@@ -92,11 +98,45 @@ class CapturedViewportTest {
         CapturedViewport.record(411, 915)
         CapturedViewport.record(915, 411)
 
-        assertEquals(CapturedViewport.Size(915, 411), CapturedViewport.current())
+        assertEquals(CapturedViewport.Size(915, 411), CapturedViewport.current(REPLAY))
     }
 
     @Test
     fun `nothing is reported before a capture`() {
-        assertNull(CapturedViewport.current())
+        assertNull(CapturedViewport.current(REPLAY))
+    }
+
+    @Test
+    fun `a replay that has not captured yet does not inherit the previous replay's viewport`() {
+        CapturedViewport.record(411, 915)
+
+        CapturedViewport.setCurrentReplay(NEXT_REPLAY)
+
+        assertNull(CapturedViewport.current(NEXT_REPLAY))
+        val (width, height) = metaDimensions(SessionReplayEncoder.jsonPayload(emptyPayload(NEXT_REPLAY))!!)
+        assertEquals(DeviceInfo.screenWidth, width)
+        assertEquals(DeviceInfo.screenHeight, height)
+    }
+
+    @Test
+    fun `a replay still in flight keeps its own viewport after the next replay starts`() {
+        CapturedViewport.record(411, 915)
+
+        CapturedViewport.setCurrentReplay(NEXT_REPLAY)
+
+        // stopRecording() flushes the finished replay asynchronously, so its final batch can be
+        // built after the next replay has started; it must still describe its own frames.
+        val (width, height) = metaDimensions(SessionReplayEncoder.jsonPayload(emptyPayload())!!)
+        assertEquals(411, width)
+        assertEquals(915, height)
+    }
+
+    @Test
+    fun `captures before a replay starts are ignored`() {
+        CapturedViewport.reset()
+
+        CapturedViewport.record(411, 915)
+
+        assertNull(CapturedViewport.current(REPLAY))
     }
 }

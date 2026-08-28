@@ -43,7 +43,7 @@ object SessionReplayEncoder {
 
         // DeviceInfo reads window-independent system metrics, whose height excludes the navigation
         // bar, so it disagrees with the captured frame on non-edge-to-edge activities.
-        val viewport = CapturedViewport.current()
+        val viewport = CapturedViewport.current(payloadInfo.replayId)
         val metaEvent = SessionEvent(
             type = EventType.META,
             data = SessionEventData.DimensionData(
