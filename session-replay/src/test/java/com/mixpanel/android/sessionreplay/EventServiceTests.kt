@@ -248,4 +248,38 @@ class EventServiceTests {
 
             assertEquals(4, eventService.eventsCount)
         }
+
+    private val metaEvent = SessionEvent(
+        type = EventType.META,
+        data = SessionEventData.DimensionData(411, 519),
+        timestamp = System.currentTimeMillis()
+    )
+
+    @Test
+    fun testEvictionKeepsTheViewportInFrontOfSurvivingFrames() =
+        runTest {
+            val eventService = EventService(queueSizeLimit = 5)
+            eventService.enqueueEvent(metaEvent)
+            repeat(5) { eventService.enqueueEvent(touchEvent) }
+
+            delay(500)
+
+            // The meta was the oldest event, but the frames behind it still need its dimensions.
+            val remaining = eventService.dequeueEvents(10)
+            assertEquals(EventType.META, remaining.first().type)
+            assertEquals(1, remaining.count { it.type == EventType.META })
+        }
+
+    @Test
+    fun testEvictionStaysBoundedWhileRestatingTheViewport() =
+        runTest {
+            val eventService = EventService(queueSizeLimit = 5)
+            eventService.enqueueEvent(metaEvent)
+            repeat(50) { eventService.enqueueEvent(touchEvent) }
+
+            delay(500)
+
+            // Re-stating the viewport costs one slot and must not stall eviction.
+            assertTrue(eventService.eventsCount <= 6)
+        }
 }

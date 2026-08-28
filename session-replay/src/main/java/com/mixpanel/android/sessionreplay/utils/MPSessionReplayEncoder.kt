@@ -38,30 +38,14 @@ object SessionReplayEncoder {
             null
         }
 
-    fun jsonPayload(payloadInfo: PayloadInfo): String? {
-        val batchStartTimestamp = payloadInfo.sessionEvents.minOfOrNull { it.timestamp } ?: Date().time
-
-        // DeviceInfo reads window-independent system metrics, whose height excludes the navigation
-        // bar, so it disagrees with the captured frame on non-edge-to-edge activities.
-        val viewport = CapturedViewport.current(payloadInfo.replayId)
-        val metaEvent = SessionEvent(
-            type = EventType.META,
-            data = SessionEventData.DimensionData(
-                viewport?.width ?: DeviceInfo.screenWidth,
-                viewport?.height ?: DeviceInfo.screenHeight
-            ),
-            timestamp = batchStartTimestamp
-        )
-        val allEvents = listOf(metaEvent) + payloadInfo.sessionEvents
-
-        return try {
-            val jsonString = json.encodeToString(allEvents)
-            jsonString
+    /** Meta events are queued alongside the frames they describe, so a batch carries its own. */
+    fun jsonPayload(payloadInfo: PayloadInfo): String? =
+        try {
+            json.encodeToString(payloadInfo.sessionEvents)
         } catch (e: Exception) {
             Logger.error("Failed to encode/save JSON: ${e.message}")
             null
         }
-    }
 
     fun deserialize(jsonString: String): SessionTrackingData? =
         try {
