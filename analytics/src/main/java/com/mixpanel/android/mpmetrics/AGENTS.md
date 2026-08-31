@@ -58,7 +58,7 @@ default), expose in `MixpanelOptions.Builder` if runtime-settable, document the 
 
 # Instrumented — class selection uses instrumentation runner args, NOT --tests
 ./gradlew :analytics:connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.MixpanelBasicTest
-./gradlew :analytics:connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.MPDbAdapterTest
+./gradlew :analytics:connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.PersistentIdentityTest
 ```
 
 Use the BlockingQueue pattern for async assertions (poll with a timeout).

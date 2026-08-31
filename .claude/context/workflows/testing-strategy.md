@@ -14,8 +14,8 @@ analytics/src/test/java/com/mixpanel/android/       # Unit tests (JVM)
 analytics/src/androidTest/java/com/mixpanel/android/ # Instrumented tests (device/emulator)
 ├── mpmetrics/           # Core SDK tests
 │   ├── MixpanelBasicTest.java
-│   ├── MPDbAdapterTest.java
 │   ├── PersistentIdentityTest.java
+│   ├── FeatureFlagManagerTest.java
 │   └── [other test classes]
 └── util/                # Utility tests
     └── HttpServiceTest.java
