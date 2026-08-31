@@ -18,7 +18,7 @@ Specific patterns for major SDK components:
 
 ### Feature Rules (`features/`)
 Domain-specific patterns:
-- **testing-patterns.mdc** - Instrumented test patterns
+- **testing-patterns.mdc** - Unit and instrumented test patterns
 - **android-patterns.mdc** - Android SDK best practices
 
 ### Workflow Rules (`workflows/`)
@@ -31,7 +31,7 @@ Multi-step procedures:
 1. **Never Crash** - The SDK must never crash the host application
 2. **Thread Safety** - All public APIs must be thread-safe
 3. **Defensive Programming** - Validate inputs, handle nulls gracefully
-4. **No Unit Tests** - Only instrumented tests for real device validation
+4. **Two Test Layers** - JVM unit tests (`src/test/`) plus instrumented tests (`src/androidTest/`) for real-device validation
 5. **Minimal Dependencies** - Avoid external libraries
 
 ## Usage

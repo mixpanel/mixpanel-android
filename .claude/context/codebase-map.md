@@ -8,27 +8,31 @@ mixpanel-android/
 │   ├── src/main/java/com/mixpanel/android/
 │   │   ├── mpmetrics/                # Core SDK implementation
 │   │   │   ├── MixpanelAPI.java      # Main entry point & public API
+│   │   │   ├── MixpanelOptions.java  # Runtime configuration (builder)
 │   │   │   ├── AnalyticsMessages.java   # Message queue & background processing
 │   │   │   ├── MPDbAdapter.java      # SQLite persistence layer
 │   │   │   ├── PersistentIdentity.java  # Identity & properties management
-│   │   │   ├── HttpService.java      # Network communication
 │   │   │   ├── MPConfig.java         # Configuration management
 │   │   │   ├── FeatureFlagManager.java  # Feature flags implementation
-│   │   │   ├── ResourceIds.java      # R.id resource handling
-│   │   │   ├── ResourceReader.java   # Resource reading utilities
-│   │   │   ├── DecideChecker.java    # Remote configuration fetcher
+│   │   │   ├── FeatureFlagOptions.java / FlagsConfig.java / MixpanelFlagVariant.java # Feature-flag models
+│   │   │   ├── AutomaticEvents.java  # Automatic lifecycle events
+│   │   │   ├── DeviceIdProvider.java # Device/anonymous ID generation
 │   │   │   ├── SessionMetadata.java  # Session tracking
-│   │   │   ├── ConnectivityReceiver.java # Network state monitoring
+│   │   │   ├── SessionReplayBroadcastReceiver.java # Session Replay integration hook
+│   │   │   ├── ResourceIds.java / ResourceReader.java # Resource handling
 │   │   │   ├── ExceptionHandler.java # Crash reporting
 │   │   │   ├── MixpanelActivityLifecycleCallbacks.java # Lifecycle integration
 │   │   │   └── [Various data models & utilities]
 │   │   └── util/                     # Utility classes
 │   │       ├── MPLog.java            # Logging utility
-│   │       ├── HttpService.java      # HTTP utilities
-│   │       ├── ImageStore.java       # Image caching
+│   │       ├── HttpService.java      # HTTP / network communication
+│   │       ├── RemoteService.java    # HTTP service interface
 │   │       ├── OfflineMode.java      # Offline mode management
+│   │       ├── ProxyServerInteractor.java / W3CTraceContext.java # Proxy & trace context
 │   │       └── [Other utilities]
-│   ├── src/androidTest/              # Instrumented tests only
+│   ├── src/test/                     # Unit tests (JVM — JUnit/Robolectric)
+│   │   └── java/com/mixpanel/android/mpmetrics/
+│   ├── src/androidTest/              # Instrumented tests (device/emulator)
 │   │   └── java/com/mixpanel/android/
 │   │       ├── mpmetrics/            # Core SDK tests
 │   │       └── util/                 # Utility tests
@@ -65,17 +69,15 @@ mixpanel-android/
 - `SessionMetadata` - Session tracking and timing
 
 **Feature Components:**
-- `FeatureFlagManager` - Feature flag loading and caching
-- `DecideChecker` - Remote configuration updates
+- `FeatureFlagManager` - Feature flag loading and caching (with `FlagsConfig` / `MixpanelFlagVariant`)
 - `ExceptionHandler` - Automatic crash reporting
 
 ### Testing Structure (`analytics/src/androidTest/`)
 
 **Test Organization:**
-- All tests are instrumented (require Android device/emulator)
-- Unit tests live alongside under `analytics/src/test/` (Robolectric/JUnit)
-- Tests use AndroidJUnit4 runner
-- Mock implementations in TestUtils
+- **Unit tests** — `analytics/src/test/` (JUnit/Robolectric, run on the JVM via `:analytics:test`)
+- **Instrumented tests** — `analytics/src/androidTest/` (AndroidJUnit4, require a device/emulator, via `:analytics:connectedAndroidTest`)
+- Async verification uses the BlockingQueue pattern; mock implementations in TestUtils
 
 ### Demo Application (`analytics/mixpaneldemo/`)
 
@@ -127,6 +129,6 @@ Mixpanel Servers
 3. **Custom HTTP** - No external networking libraries
 4. **SQLite Direct** - No ORM, direct database access
 5. **HandlerThread** - Background processing without Service
-6. **Instrumented Tests Only** - Focus on real device testing
+6. **Two Test Layers** - JVM unit tests (`src/test/`) plus instrumented tests (`src/androidTest/`) for real-device coverage
 
 This map provides navigation context for understanding code organization and relationships between components.

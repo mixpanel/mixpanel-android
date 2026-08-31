@@ -53,14 +53,15 @@ mWorker.runMessage(msg);
 ```
 
 ## Testing
-- **Instrumented tests only** - no unit tests
+- **Two test layers**: JVM unit tests (`analytics/src/test/`, run via `:analytics:test`) and instrumented tests (`analytics/src/androidTest/`, require a device/emulator)
 - Use `BlockingQueue` for async verification
 - Test with real SQLite, not mocks
 - Always provide timeout for async operations
-- **IMPORTANT**: Run tests from main module using `:connectedAndroidTest`
-  - All tests: `./gradlew :connectedAndroidTest`
-  - Specific class: `./gradlew :connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.TestClassName`
-  - Specific method: `./gradlew :connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.TestClassName#testMethodName`
+- **IMPORTANT**: Run instrumented tests from the `:analytics` module (not `:analytics:mixpaneldemo`)
+  - Unit tests: `./gradlew :analytics:test`
+  - All instrumented tests: `./gradlew :analytics:connectedAndroidTest`
+  - Specific class: `./gradlew :analytics:connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.TestClassName`
+  - Specific method: `./gradlew :analytics:connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.TestClassName#testMethodName`
 
 ## API Design
 ```java
