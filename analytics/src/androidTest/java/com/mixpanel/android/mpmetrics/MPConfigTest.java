@@ -2,6 +2,7 @@ package com.mixpanel.android.mpmetrics;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import android.os.Bundle;
@@ -303,11 +304,83 @@ public class MPConfigTest {
         assertEquals("https://api.mixpanel.com/flags/", config.getFlagsEndpoint());
     }
 
+    @Test
+    public void testFlushIntervalDefault() {
+        MPConfig config = mpConfig(new Bundle());
+        assertEquals(60 * 1000, config.getFlushInterval());
+    }
+
+    @Test
+    public void testFlushIntervalFromMetaData() {
+        final Bundle metaData = new Bundle();
+        metaData.putInt("com.mixpanel.android.MPConfig.FlushInterval", 5000);
+        MPConfig config = mpConfig(metaData);
+        assertEquals(5000, config.getFlushInterval());
+    }
+
+    @Test
+    public void testSetFlushInterval() {
+        MPConfig config = mpConfig(new Bundle());
+        config.setFlushInterval(15000);
+        assertEquals(15000, config.getFlushInterval());
+        config.setFlushInterval(-1);
+        assertEquals(-1, config.getFlushInterval());
+    }
+
+    @Test
+    public void testFlushIntervalFromMixpanelOptions() {
+        MixpanelOptions options = new MixpanelOptions.Builder()
+                .flushInterval(20000)
+                .build();
+        assertEquals(Integer.valueOf(20000), options.getFlushInterval());
+
+        MixpanelAPI mixpanel = MixpanelAPI.getInstance(
+                InstrumentationRegistry.getInstrumentation().getContext(),
+                UUID.randomUUID().toString(),
+                true,
+                options
+        );
+
+        assertEquals(20000, mixpanel.getMPConfig().getFlushInterval());
+    }
+
+    @Test
+    public void testFlushIntervalFromMixpanelOptionsOverridesMetaData() {
+        final Bundle metaData = new Bundle();
+        metaData.putInt("com.mixpanel.android.MPConfig.FlushInterval", 5000);
+        MPConfig config = mpConfig(metaData);
+
+        MixpanelOptions options = new MixpanelOptions.Builder()
+                .flushInterval(30000)
+                .build();
+        final MixpanelAPI mixpanelAPI = mixpanelApi(config, options);
+
+        assertEquals(30000, mixpanelAPI.getMPConfig().getFlushInterval());
+    }
+
+    @Test
+    public void testFlushIntervalDefaultWhenNotSetInOptions() {
+        final Bundle metaData = new Bundle();
+        metaData.putInt("com.mixpanel.android.MPConfig.FlushInterval", 5000);
+        MPConfig config = mpConfig(metaData);
+
+        MixpanelOptions options = new MixpanelOptions.Builder().build();
+        assertNull(options.getFlushInterval());
+
+        final MixpanelAPI mixpanelAPI = mixpanelApi(config, options);
+        // MixpanelOptions left it unset, so the manifest value still wins.
+        assertEquals(5000, mixpanelAPI.getMPConfig().getFlushInterval());
+    }
+
     private MPConfig mpConfig(final Bundle metaData) {
         return new MPConfig(metaData, InstrumentationRegistry.getInstrumentation().getContext(), null);
     }
 
     private MixpanelAPI mixpanelApi(final MPConfig config) {
         return new MixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), new TestUtils.EmptyPreferences(InstrumentationRegistry.getInstrumentation().getContext()), TOKEN, config, false, null, null, true);
+    }
+
+    private MixpanelAPI mixpanelApi(final MPConfig config, final MixpanelOptions options) {
+        return new MixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), new TestUtils.EmptyPreferences(InstrumentationRegistry.getInstrumentation().getContext()), TOKEN, config, options, true);
     }
 }

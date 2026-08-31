@@ -31,7 +31,8 @@ import javax.net.ssl.SSLSocketFactory;
  *       attempt. This value should be less than 50.
  *   <dt>com.mixpanel.android.MPConfig.FlushInterval
  *   <dd>An integer number of milliseconds, the maximum time to wait before an upload if the bulk
- *       upload limit isn't reached.
+ *       upload limit isn't reached. Can also be set in code via {@link
+ *       MixpanelOptions.Builder#flushInterval(int)}, which takes precedence over this tag.
  *   <dt>com.mixpanel.android.MPConfig.FlushBatchSize
  *   <dd>Maximum number of events/updates to send in a single network request
  *   <dt>com.mixpanel.android.MPConfig.FlushOnBackground
@@ -305,6 +306,20 @@ public class MPConfig {
         return mFlushInterval;
     }
 
+    /**
+     * Sets the target maximum number of milliseconds to wait before flushing queued events, when
+     * the bulk upload limit hasn't been reached. This is advisory.
+     *
+     * <p>A negative value disables interval-based flushing entirely; queues will then only be sent
+     * on {@link MixpanelAPI#flush()}, when the bulk upload limit is hit, or when the app goes into
+     * the background (if {@code FlushOnBackground} is enabled).
+     *
+     * @param flushInterval the number of milliseconds to wait between flushes
+     */
+    public void setFlushInterval(int flushInterval) {
+        mFlushInterval = flushInterval;
+    }
+
     // Whether the SDK should flush() queues when the app goes into the background or not.
     public boolean getFlushOnBackground() {
         return mFlushOnBackground;
@@ -575,7 +590,7 @@ public class MPConfig {
                 + "    FlushInterval "
                 + getFlushInterval()
                 + "\n"
-                + "    FlushInterval "
+                + "    FlushBatchSize "
                 + getFlushBatchSize()
                 + "\n"
                 + "    DataExpiration "
@@ -619,7 +634,7 @@ public class MPConfig {
     }
 
     private final int mBulkUploadLimit;
-    private final int mFlushInterval;
+    private int mFlushInterval;
     private final boolean mFlushOnBackground;
     private final long mDataExpiration;
     private final int mMinimumDatabaseLimit;

@@ -469,7 +469,6 @@ import org.json.JSONObject;
                 super(looper);
                 mDbAdapter = null;
                 mSystemInformation = SystemInformation.getInstance(mContext);
-                mFlushInterval = mConfig.getFlushInterval();
             }
 
             @Override
@@ -602,14 +601,17 @@ import org.json.JSONObject;
                         // a flush right here, so we may end up with two flushes
                         // in our queue, but we're OK with that.
 
+                        // Read the interval per-flush rather than caching it, so a value set after
+                        // the worker started (MPConfig.setFlushInterval) takes effect.
+                        final int flushInterval = mConfig.getFlushInterval();
                         logAboutMessageToMixpanel(
-                                "Queue depth " + returnCode + " - Adding flush in " + mFlushInterval);
-                        if (mFlushInterval >= 0) {
+                                "Queue depth " + returnCode + " - Adding flush in " + flushInterval);
+                        if (flushInterval >= 0) {
                             final Message flushMessage = Message.obtain();
                             flushMessage.what = FLUSH_QUEUE;
                             flushMessage.obj = token;
                             flushMessage.arg1 = 1;
-                            sendMessageDelayed(flushMessage, mFlushInterval);
+                            sendMessageDelayed(flushMessage, flushInterval);
                         }
                     }
                 } catch (final RuntimeException e) {
@@ -822,7 +824,6 @@ import org.json.JSONObject;
             }
 
             private MPDbAdapter mDbAdapter;
-            private final long mFlushInterval;
             private long mTrackEngageRetryAfter;
             private int mFailedRetries;
         } // AnalyticsMessageHandler

@@ -206,6 +206,12 @@ public class MixpanelAPI implements FeatureFlagDelegate {
             mConfig.setServerURL(options.getServerURL(), options.getProxyServerInteractor());
         }
 
+        // Options override the AndroidManifest meta-data value. Applied before AnalyticsMessages is
+        // created so the worker's first delayed flush already uses the configured interval.
+        if (options.getFlushInterval() != null) {
+            mConfig.setFlushInterval(options.getFlushInterval());
+        }
+
         mTrackAutomaticEvents = trackAutomaticEvents;
 
         final Map<String, String> deviceInfo = new HashMap<String, String>();

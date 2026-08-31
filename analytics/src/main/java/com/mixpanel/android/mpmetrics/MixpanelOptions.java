@@ -35,6 +35,7 @@ public class MixpanelOptions {
     private final String serverURL;
     private final ProxyServerInteractor proxyServerInteractor;
     private final Set<String> excludeProperties;
+    private final Integer flushInterval;
 
     private MixpanelOptions(Builder builder) {
         this.instanceName = builder.instanceName;
@@ -45,6 +46,7 @@ public class MixpanelOptions {
         this.proxyServerInteractor = builder.proxyServerInteractor;
         this.mFeatureFlagOptions = builder.mFeatureFlagOptions;
         this.excludeProperties = builder.excludeProperties;
+        this.flushInterval = builder.flushInterval;
     }
 
     public String getInstanceName() {
@@ -124,6 +126,18 @@ public class MixpanelOptions {
         return excludeProperties;
     }
 
+    /**
+     * Returns the flush interval in milliseconds configured for this Mixpanel instance, or null if
+     * not configured (in which case the {@code com.mixpanel.android.MPConfig.FlushInterval}
+     * AndroidManifest meta-data value, or the 60000 ms default, applies).
+     *
+     * @return The flush interval in milliseconds, or null if not configured.
+     */
+    @Nullable
+    public Integer getFlushInterval() {
+        return flushInterval;
+    }
+
     public static class Builder {
         private String instanceName;
         private boolean optOutTrackingDefault = false;
@@ -133,6 +147,7 @@ public class MixpanelOptions {
         private String serverURL;
         private ProxyServerInteractor proxyServerInteractor;
         private Set<String> excludeProperties = Collections.emptySet();
+        private Integer flushInterval = null;
 
         public Builder() {
         }
@@ -351,6 +366,35 @@ public class MixpanelOptions {
                 // Defensive copy + immutable wrapper so callers can't mutate post-build.
                 this.excludeProperties = Collections.unmodifiableSet(new HashSet<>(excludeProperties));
             }
+            return this;
+        }
+
+        /**
+         * Sets the target maximum time, in milliseconds, to wait before flushing queued events and
+         * profile updates when the bulk upload limit hasn't been reached.
+         *
+         * <p>This is the code-level equivalent of the
+         * {@code com.mixpanel.android.MPConfig.FlushInterval} AndroidManifest meta-data tag, and
+         * takes precedence over it. If neither is set, the default is 60000 ms (one minute).
+         *
+         * <p>The interval is advisory: queues are also sent on {@link MixpanelAPI#flush()}, when the
+         * bulk upload limit is reached, and when the app goes into the background (unless
+         * {@code FlushOnBackground} is disabled).
+         *
+         * <pre>{@code
+         * // Flush at most every 10 seconds
+         * .flushInterval(10 * 1000)
+         *
+         * // Disable interval-based flushing; flush() / bulk limit / background only
+         * .flushInterval(-1)
+         * }</pre>
+         *
+         * @param flushInterval The number of milliseconds to wait between flushes. A negative value
+         *                      disables interval-based flushing.
+         * @return This Builder instance for chaining.
+         */
+        public Builder flushInterval(int flushInterval) {
+            this.flushInterval = flushInterval;
             return this;
         }
 
