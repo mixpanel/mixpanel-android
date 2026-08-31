@@ -138,26 +138,44 @@ All autocapture events include these properties:
 | `$y` | Touch Y coordinate (screen pixels) |
 | `$el_id` | Element identifier (see resolution rules below) |
 | `$el_tag_name` | Class name of the view (e.g., `Button`, `TextView`) |
-| `$attr-aria-label` | Content description (accessibility label) |
 | `$attr-role` | Element role (Button, Switch, etc.) |
 | `$elements` | View hierarchy string (max 5 levels) |
 
+There is no `$attr-aria-label` property. Accessibility text is not reported at all.
+
 ## Element Identification (`$el_id`)
 
-The `$el_id` property uses the following resolution order:
+`$el_id` resolution is internal to the SDK and not configurable by the host app.
 
 ### Resolution Order
 
-1. `contentDescription` (if non-empty)
-2. Resource ID name (e.g., `R.id.checkout_button` → `"checkout_button"`)
-3. `ClassName_<hashCode>` (fallback)
+**XML Views** (and anything React Native renders, since React Native draws through the legacy View
+hierarchy):
+
+1. React Native `nativeID` — the JS-side prop, looked up dynamically so the SDK carries no
+   compile-time dependency on React Native
+2. Android resource entry name (e.g., `@+id/checkout_button` → `"checkout_button"`)
+3. `<SimpleClassName>_<hash>` (fallback)
+
+**Jetpack Compose** — no `nativeID` step, since Compose never renders React Native:
+
+1. `Modifier.testTag("...")`
+2. `<TagName>_<hash>` (fallback)
+
+`contentDescription` is deliberately **not** a source on either path: it is localized, so the same
+element would report a different identifier per language, and it can carry user data.
+
+The hash in the fallback is derived from the element's **position** in the hierarchy, not its
+instance, so it is stable across app launches. It identifies a position rather than a specific
+element: reordering siblings changes it, and two rows of the same list differ by index rather than
+by content. Instrument the elements you care about.
 
 ### Walk-Up to Clickable Parent
 
 When a non-interactive leaf view (e.g., `TextView` inside a clickable `LinearLayout`) is tapped, the SDK walks up the view hierarchy to the nearest clickable ancestor and uses its identity for `$el_id`. This is always-on behavior — not configurable.
 
 - Walk-up is based on **interactivity** (clickable/longClickable), not identity.
-- A non-interactive leaf always resolves to its clickable parent, even if the leaf has its own `contentDescription`.
+- A non-interactive leaf always resolves to its clickable parent, even if the leaf has its own identifier.
 - Stops at the first clickable ancestor (nested clickables: inner wins).
 - Max ancestor search depth: **10 levels**.
 - If no clickable ancestor is found within 10 levels, the leaf's own identity (or hash fallback) is used.
@@ -170,34 +188,20 @@ When a non-interactive leaf view (e.g., `TextView` inside a clickable `LinearLay
 #### XML Views
 
 ```xml
-<!-- Recommended: Set contentDescription for reliable tracking -->
-<Button
-    android:id="@+id/checkout_button"
-    android:contentDescription="checkout_button"
-    android:text="Checkout"
-    android:onClick="onCheckoutClick"/>
-
-<!-- Alternative: Use meaningful resource IDs -->
+<!-- Recommended: give the clickable element a meaningful resource id -->
 <Button
     android:id="@+id/checkout_button"
     android:text="Checkout"
     android:onClick="onCheckoutClick"/>
 ```
 
+Put the id on the element that handles the click. An id on a non-interactive ancestor is not used,
+and `contentDescription` is never used as an identifier — set it for accessibility, not for tracking.
+
 #### Jetpack Compose
 
 ```kotlin
-// Recommended: Set semantics for reliable tracking
-Button(
-    onClick = { /* ... */ },
-    modifier = Modifier.semantics {
-        contentDescription = "checkout_button"
-    }
-) {
-    Text("Checkout")
-}
-
-// Alternative: Use testTag (maps to contentDescription)
+// Recommended: tag the clickable element
 Button(
     onClick = { /* ... */ },
     modifier = Modifier.testTag("checkout_button")
@@ -205,6 +209,9 @@ Button(
     Text("Checkout")
 }
 ```
+
+`testTag` is the only identifier source in Compose; `semantics { contentDescription = "..." }` does
+not affect `$el_id`.
 
 ## Compose Support
 
@@ -220,9 +227,11 @@ Autocapture has **full support** for Jetpack Compose UI. The SDK uses Compose's 
 
 | Compose Semantics | Maps To |
 |-------------------|---------|
-| `contentDescription` / `testTag` | `$el_id` |
+| `testTag` | `$el_id` |
 | `role` | `$attr-role` |
 | Semantic flags | Element type detection |
+
+`contentDescription` maps to nothing: it is not reported as a property and is not an `$el_id` source.
 
 ### Example
 
@@ -231,10 +240,9 @@ Autocapture has **full support** for Jetpack Compose UI. The SDK uses Compose's 
 fun CheckoutButton() {
     Button(
         onClick = { processCheckout() },
-        modifier = Modifier.semantics {
-            contentDescription = "checkout_button"  // → $el_id
-            role = Role.Button                       // → $attr-role: "Button"
-        }
+        modifier = Modifier
+            .testTag("checkout_button")              // → $el_id
+            .semantics { role = Role.Button }        // → $attr-role: "Button"
     ) {
         Text("Checkout")
     }
@@ -315,32 +323,22 @@ Autocapture tracks touches across multiple windows using `WindowSpy`:
 
 Autocapture uses [Square's Curtains](https://github.com/square/curtains) library to observe root view (window) additions and removals. This allows autocapture to track clicks on dialogs, popups, and other overlays without any manual setup. Curtains is compatible with other consumers such as the Mixpanel Session Replay SDK.
 
-## Signal UI Change API
-
-For JS-based navigation frameworks (React Native) or custom navigation that bypasses standard Activity lifecycle, use `signalUIChange()` to prevent false dead click positives:
-
-```kotlin
-// Kotlin
-mixpanel.signalUIChange()
-
-// Java
-mixpanel.signalUIChange();
-```
-
-This cancels any pending dead click detection by notifying the SDK that a UI change occurred.
-
 ## Privacy Considerations
 
 ### What is Captured
 
 - Touch coordinates
 - View class names and hierarchy
-- Content descriptions (accessibility labels)
-- Resource ID names
+- Resource ID names, React Native `nativeID`s and Compose `testTag`s
+- Element roles
 
 ### What is NOT Captured
 
-Autocapture does not capture visible text content (`$el_text`) from tapped elements. Tracking text can be invasive and raise privacy concerns. Additionally, the complexity of nested view hierarchies can cause text extraction to capture content from unintended views — for example, tapping a container layout might extract text from a deeply nested label that isn't semantically related to the tap. The remaining captured properties (`$el_id`, `$el_tag_name`, `$attr-aria-label`, `$attr-role`, `$elements`) are purely structural UI metadata.
+Autocapture does not capture visible text content (`$el_text`) from tapped elements. Tracking text can be invasive and raise privacy concerns. Additionally, the complexity of nested view hierarchies can cause text extraction to capture content from unintended views — for example, tapping a container layout might extract text from a deeply nested label that isn't semantically related to the tap. The remaining captured properties (`$el_id`, `$el_tag_name`, `$attr-role`, `$elements`) are purely structural UI metadata.
+
+Accessibility text — `contentDescription` on Views and `contentDescription` in Compose semantics — is
+not captured either. It is user-facing text that can carry personal data, and it is localized, so it
+never becomes an identifier and is not reported as a property.
 
 ## Platform Support
 
@@ -357,7 +355,15 @@ Autocapture does not capture visible text content (`$el_text`) from tapped eleme
 - Min SDK: 21 (Android 5.0)
 - Compile SDK: 34
 - Java: 17 (source/target compatibility)
-- No additional dependencies required
+- No setup required in your app — enabling `AutocaptureOptions` is the only step
+
+The SDK itself gained two dependencies for autocapture; neither needs anything from you:
+
+- `com.squareup.curtains:curtains` — `implementation`, so it arrives transitively with the SDK. Used
+  for root view (window) observation. Compatible with other Curtains consumers, such as the Session
+  Replay SDK.
+- `androidx.compose.ui:ui` — `compileOnly`. Compose support degrades gracefully when Compose is not
+  on your classpath, so apps with no Compose ship nothing extra.
 
 ## Troubleshooting
 
@@ -394,12 +400,17 @@ MP.AutocaptureManager: emitted $mp_dead_click for broken_link
 - Verify network connectivity and event flushing
 
 **Compose elements showing hash IDs:**
-- Set `contentDescription` or `testTag` on interactive elements
-- Use `Modifier.semantics { contentDescription = "..." }`
+- Set `Modifier.testTag("...")` on the interactive element — it is the only `$el_id` source in Compose
+- A `contentDescription` will not help; it is never used as an identifier
+
+**Elements showing hash IDs on XML / React Native:**
+- Give the clickable element an `android:id`, or a `nativeID` prop in React Native
+- The id must be on the element that handles the click, not on an ancestor
 
 **False positive dead clicks:**
 - Element may have a handler that doesn't produce visible UI change
-- Use `signalUIChange()` for custom navigation
+- Detection compares a UI snapshot taken before the handler runs against the state 500 ms later, so a
+  response that changes only color, alpha or an animation can still read as dead
 
 **Missing clicks on dialogs/popups:**
 - Dialogs, bottom sheets, and snackbars are tracked automatically via `WindowSpy`
@@ -456,7 +467,7 @@ If you're currently using manual `track()` calls for clicks, you can gradually m
 
 1. Enable autocapture alongside existing tracking
 2. Compare event counts in dashboard
-3. Set meaningful `contentDescription` or resource IDs for important elements
+3. Set meaningful resource IDs (or Compose `testTag`s) on important elements
 4. Identify and remove redundant manual `track()` calls
 5. Keep manual tracking for business-specific events
 
@@ -525,7 +536,7 @@ public class MyApplication extends Application {
 
 **Does autocapture work with custom Views?**
 
-Yes! Custom Views are tracked like any other View. Set `contentDescription` or a meaningful resource ID for proper identification.
+Yes! Custom Views are tracked like any other View. Give one a meaningful resource ID for proper identification.
 
 **Does autocapture impact app performance?**
 
