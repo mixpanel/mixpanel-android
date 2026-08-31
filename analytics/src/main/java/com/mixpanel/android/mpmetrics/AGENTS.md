@@ -1,135 +1,81 @@
-# AGENTS.md - Core SDK Components
+# AGENTS.md — Core SDK Components (`com.mixpanel.android.mpmetrics`)
 
-This file provides focused instructions for AI agents working on the core Mixpanel SDK components.
+Directory-local guidance, additive to the root `AGENTS.md`. `CLAUDE.md` here imports this file.
 
-## Component Overview
+## Component overview
 
-This directory contains the heart of the Mixpanel Android SDK:
-- **MixpanelAPI.java** - Public API facade
-- **AnalyticsMessages.java** - Message queue and background processing
-- **MPDbAdapter.java** - SQLite persistence layer
-- **PersistentIdentity.java** - User identity management
-- **HttpService.java** - Network communication
+The heart of the SDK lives here:
+- **MixpanelAPI** — public API facade (events, people, groups, feature flags)
+- **AnalyticsMessages** — message queue + worker `HandlerThread`; owns both the DB adapter and the HTTP poster
+- **MPDbAdapter** — SQLite persistence layer
+- **PersistentIdentity** — identity and super properties (SharedPreferences)
+- **FeatureFlagManager** — flag caching/fetching (its own worker thread + network executor)
 
-## Critical Rules for This Directory
+Network code (`HttpService`, `RemoteService`) lives in `../util/`, not here.
 
-1. **MixpanelAPI Changes**
-   - This is the ONLY public class - maintain backwards compatibility
-   - Every public method must be thread-safe
-   - Add JavaDoc with examples for any new methods
-   - Never throw exceptions - catch and log
+Note on visibility: several types here are deliberately public API surface
+(`MixpanelAPI`, `MixpanelOptions`, `MPConfig`, `FeatureFlagOptions`, `MixpanelFlagVariant`,
+`VariantLookupPolicy`, `DeviceIdProvider`, `SuperPropertyUpdate`, `ExceptionHandler`, …).
+Keep **new** helpers package-private; every public type is compatibility surface.
 
-2. **AnalyticsMessages Pattern**
+## Critical rules
+
+1. **MixpanelAPI** — maintain backward compatibility; every public method thread-safe,
+   null-checked, opt-out-checked, wrapped in try-catch (never throw); JavaDoc with examples.
+2. **Thread safety** — dedicated lock objects (`private final Object mLock = new Object()`),
+   never `synchronized (this)`.
+3. **Thread boundaries** — public API on caller thread; message processing, DB, and tracking
+   network I/O on the `AnalyticsWorker` HandlerThread; flag fetches on FeatureFlagManager's
+   executor. Never block or touch the DB on the main thread.
+4. **Message passing** — inside `AnalyticsMessages`, work is dispatched as Handler messages
+   (`mWorker.runMessage(msg)`); external callers use its typed methods
+   (`eventsMessage()`, `peopleMessage()`, `postToServer()`, …), not raw messages.
    ```java
-   // Always add new message types following this pattern
-   private static final int NEW_MESSAGE_TYPE = X;
-   
-   public static final class NewDescription {
-       private final String data;
-       private final String token;
-       // Immutable - only constructor and getters
-   }
+   Message msg = Message.obtain();
+   msg.what = ENQUEUE_EVENTS;
+   msg.obj  = new EventDescription(event, properties, token);
+   mWorker.runMessage(msg);
    ```
+5. **Database operations** — `rawQuery`-based; always close cursors in `finally`.
 
-3. **Database Operations**
-   ```java
-   // Always follow this pattern in MPDbAdapter
-   Cursor cursor = null;
-   try {
-       cursor = db.query(...);
-       // Process cursor
-   } finally {
-       if (cursor != null) cursor.close();
-   }
-   ```
+## Common tasks
 
-4. **Thread Boundaries**
-   - Public API methods: Main thread
-   - Message processing: Worker thread (HandlerThread)
-   - Database operations: Worker thread only
-   - Network requests: Spawned from worker thread
+**New public API method:** overload for progressive disclosure; validate + opt-out check +
+try-catch in `MixpanelAPI`; hand off via an `AnalyticsMessages` typed method backed by a new
+message type with an immutable description class; add tests.
 
-## Common Tasks
+**Database schema change:** increment `DATABASE_VERSION`; add migration in `onUpgrade`
+(never drop existing tables/data); update the `Table` enum if needed; test the upgrade path.
 
-### Adding a New Public API Method
+**New configuration option:** add to `MPConfig` (read from manifest `metaData` with a
+default), expose in `MixpanelOptions.Builder` if runtime-settable, document the manifest key.
 
-1. Add to MixpanelAPI.java with overloads:
-   ```java
-   public void newMethod(String param) {
-       newMethod(param, null);
-   }
-   
-   public void newMethod(String param, JSONObject properties) {
-       if (!hasOptedOut()) {
-           try {
-               // Validate
-               if (param == null) {
-                   MPLog.e(LOGTAG, "Invalid param");
-                   return;
-               }
-               // Queue to worker
-               Message msg = Message.obtain();
-               msg.what = NEW_METHOD_MESSAGE;
-               msg.obj = new MethodDescription(param, properties, mToken);
-               mMessages.enqueueMessage(msg);
-           } catch (Exception e) {
-               MPLog.e(LOGTAG, "Failed", e);
-           }
-       }
-   }
-   ```
-
-2. Add handler in AnalyticsMessages
-3. Add test in androidTest/
-
-### Modifying Database Schema
-
-1. Increment DATABASE_VERSION in MPDbAdapter
-2. Add migration in onUpgrade:
-   ```java
-   if (oldVersion < NEW_VERSION) {
-       // Add column or create table
-       // NEVER drop existing tables/data
-   }
-   ```
-3. Update Table enum if new table
-4. Test upgrade path from previous version
-
-### Adding Configuration Option
-
-1. Add to MPConfig.java:
-   ```java
-   private final boolean mNewOption;
-   
-   // In constructor
-   mNewOption = metaData.getBoolean(
-       "com.mixpanel.android.MPConfig.NewOption", 
-       DEFAULT_VALUE
-   );
-   ```
-
-2. Add to MixpanelOptions.Builder
-3. Document in AndroidManifest example
-
-## Testing Requirements
-
-For ANY change in this directory:
+## Testing
 
 ```bash
-# Minimum test run
-./gradlew :analytics:connectedAndroidTest --tests "com.mixpanel.android.mpmetrics.*"
+# Unit tests (JVM)
+./gradlew :analytics:test
 
-# Specific component tests
-./gradlew :analytics:connectedAndroidTest --tests "*MixpanelBasicTest"
-./gradlew :analytics:connectedAndroidTest --tests "*MPDbAdapterTest"
-./gradlew :analytics:connectedAndroidTest --tests "*AnalyticsMessagesTest"
+# Instrumented — class selection uses instrumentation runner args, NOT --tests
+./gradlew :analytics:connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.MixpanelBasicTest
+./gradlew :analytics:connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.MPDbAdapterTest
 ```
 
-## Do NOT Modify Without Approval
+Use the BlockingQueue pattern for async assertions (poll with a timeout).
 
-- DATABASE_VERSION (requires migration testing)
+## Performance/behavior facts (verified)
+
+- Event batching every 60 s (`FlushInterval` default), flush on background (configurable)
+- HTTP timeouts are **hardcoded** in `HttpService` (2 s/30 s and 15 s/60 s connect/read pairs);
+  retry is 3 attempts with a short linear backoff (100/200/300 ms)
+- GZIP is opt-in via `MPConfig` (default off)
+- Database cleanup is age-based; SharedPreferences values are cached in memory
+
+## Do NOT modify without approval
+
+- `DATABASE_VERSION` (requires migration testing)
 - Public API method signatures (breaks compatibility)
 - Message type constants (affects message processing)
 - Table names or schemas (requires migration)
 
-Remember: This is the core of a widely-used SDK. Every change here affects thousands of apps.
+This is the core of a widely-used SDK — every change here affects thousands of apps.

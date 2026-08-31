@@ -43,10 +43,15 @@ mixpanel-android/
 │   ├── build.gradle                  # Analytics module build
 │   ├── proguard.txt                  # Consumer ProGuard rules
 │   └── gradle.properties             # Analytics version & POM properties
-├── common/                           # Shared utilities (:common)
+├── common/                           # Shared utilities (:common — MixpanelEventBridge, JsonLogic)
 ├── openfeature-provider/             # OpenFeature provider (:openfeature-provider)
+├── session-replay/                   # Session Replay SDK (:session-replay, published; own CI + CHANGELOG)
+│   └── sessionreplaydemo/            # Session Replay demo app (:session-replay:sessionreplaydemo)
+├── build-logic/                      # Included build: mixpanel.maven-publish / mixpanel.ktlint convention plugins
+├── gradle/libs.versions.toml         # Version catalog (used by session-replay)
+├── scripts/                          # Dev scripts (codespace helper)
 ├── build.gradle                      # Root build (cross-cutting config)
-├── settings.gradle                   # Subproject includes
+├── settings.gradle                   # Subproject includes (6 projects)
 └── gradle.properties                 # Shared org.gradle.* / android.* settings
 
 ```
@@ -91,8 +96,11 @@ mixpanel-android/
 
 ```
 mixpanel-android (library)
+    ├── com.mixpanel.android:mixpanel-android-common (Maven coordinate, not project dep)
     ├── androidx.annotation:annotation
     ├── androidx.core:core
+    ├── androidx.lifecycle:lifecycle-process
+    ├── io.github.jamsesso:json-logic-java (+ gson pin for its transitive JSON dep)
     └── Android SDK (min 21, target 34)
 
 :analytics:mixpaneldemo (app)
@@ -103,8 +111,9 @@ mixpanel-android (library)
 
 ## Build Variants
 
-- **debug** - Development build with debugging enabled
-- **release** - Production build with ProGuard optimization
+- **debug** - Development build with coverage enabled
+- **release** - Production build; `minifyEnabled false` — the library ships a minimal
+  consumer ProGuard rule (`analytics/proguard.txt`) but does not minify itself
 
 ## Data Flow Architecture
 
@@ -112,23 +121,22 @@ mixpanel-android (library)
 User Code
     ↓
 MixpanelAPI (Public Interface)
-    ↓
-AnalyticsMessages (Queue Management)
-    ↓
-MPDbAdapter (Persistence)
-    ↓
-HttpService (Network)
-    ↓
-Mixpanel Servers
+    ├─ tracking → AnalyticsMessages (Queue Management)
+    │                 ├─→ MPDbAdapter (SQLite persistence/offline queue)
+    │                 └─→ HttpService (Network) → Mixpanel Servers
+    └─ feature flags → FeatureFlagManager → HttpService (separate path, no SQLite)
 ```
+
+Note: AnalyticsMessages owns both the DB adapter and the HTTP poster —
+MPDbAdapter never talks to the network.
 
 ## Key Design Decisions
 
-1. **Single Module Library** - All code in one module for simplicity
-2. **Minimal Dependencies** - Only essential AndroidX libraries
+1. **Multi-Module Repo** - Independently versioned/published modules (:analytics, :common, :openfeature-provider, :session-replay) consuming each other via Maven coordinates
+2. **Minimal Dependencies** - Small fixed runtime set (see Module Dependencies above); no new deps
 3. **Custom HTTP** - No external networking libraries
-4. **SQLite Direct** - No ORM, direct database access
-5. **HandlerThread** - Background processing without Service
+4. **SQLite Direct** - No ORM, direct database access (rawQuery-based)
+5. **HandlerThread Workers** - Background processing on dedicated HandlerThreads (AnalyticsMessages, FeatureFlagManager) without Service components
 6. **Two Test Layers** - JVM unit tests (`src/test/`) plus instrumented tests (`src/androidTest/`) for real-device coverage
 
 This map provides navigation context for understanding code organization and relationships between components.
