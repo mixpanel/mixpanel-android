@@ -151,6 +151,50 @@ public class AutocaptureXmlInstrumentedTest {
         TestUtils.cleanUpMixpanelData(mContext);
     }
 
+    /**
+     * Returns the screen coordinates of a fixture's center, ready for injection.
+     *
+     * <p>The fixtures live in the activity's ScrollView, and the ones further down the stack start
+     * out below the window. Android 14+ uses targeted input injection, which rejects events aimed at
+     * a point outside a window owned by this process ("Targeted input event injection ... was not
+     * directed at a window owned by uid ..."), so a fixture has to be scrolled into the viewport
+     * before its coordinates are read — and read again afterwards, since scrolling moves it.
+     */
+    private int[] tapPointFor(
+            ActivityScenario<AutocaptureXmlTestActivity> scenario, final int viewId) {
+        scenario.onActivity(activity -> {
+            View v = activity.findViewById(viewId);
+            if (v != null && v.getWidth() > 0 && v.getHeight() > 0) {
+                v.requestRectangleOnScreen(
+                        new android.graphics.Rect(0, 0, v.getWidth(), v.getHeight()), true);
+            }
+        });
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+
+        final int[] location = new int[2];
+        final boolean[] inWindow = {false};
+        scenario.onActivity(activity -> {
+            View v = activity.findViewById(viewId);
+            assertNotNull("Fixture " + viewId + " not found in the test activity", v);
+            v.getLocationOnScreen(location);
+            location[0] += v.getWidth() / 2;
+            location[1] += v.getHeight() / 2;
+            // Only inject when the point lands inside this app's own content area. Points over the
+            // system bars belong to another uid, and points off-screen belong to no window at all —
+            // both make sendPointerSync throw.
+            android.graphics.Rect contentFrame = new android.graphics.Rect();
+            activity.getWindow().getDecorView().getWindowVisibleDisplayFrame(contentFrame);
+            inWindow[0] = contentFrame.contains(location[0], location[1]);
+        });
+
+        // Fail rather than skip: scrolling above is expected to put the fixture inside the visible
+        // frame, so a point outside it means the setup regressed and the test never ran its case.
+        assertTrue(
+                "Tap point for fixture " + viewId + " is outside the app's visible content area",
+                inWindow[0]);
+        return location;
+    }
+
     @Test
     public void testXmlClickEventBasic() throws Exception {
         try (ActivityScenario<AutocaptureXmlTestActivity> scenario =
@@ -605,13 +649,8 @@ public class AutocaptureXmlInstrumentedTest {
 
             InstrumentationRegistry.getInstrumentation().waitForIdleSync();
 
-            final int[] location = new int[2];
-            scenario.onActivity(activity -> {
-                View v = activity.findViewById(AutocaptureXmlTestActivity.ID_ACCESSIBLE_NO_CD);
-                v.getLocationOnScreen(location);
-                location[0] += v.getWidth() / 2;
-                location[1] += v.getHeight() / 2;
-            });
+            final int[] location =
+                    tapPointFor(scenario, AutocaptureXmlTestActivity.ID_ACCESSIBLE_NO_CD);
 
             android.app.Instrumentation instrumentation =
                     InstrumentationRegistry.getInstrumentation();
@@ -669,13 +708,8 @@ public class AutocaptureXmlInstrumentedTest {
 
             InstrumentationRegistry.getInstrumentation().waitForIdleSync();
 
-            final int[] location = new int[2];
-            scenario.onActivity(activity -> {
-                View v = activity.findViewById(AutocaptureXmlTestActivity.ID_NOT_IMPORTANT_WITH_CD);
-                v.getLocationOnScreen(location);
-                location[0] += v.getWidth() / 2;
-                location[1] += v.getHeight() / 2;
-            });
+            final int[] location =
+                    tapPointFor(scenario, AutocaptureXmlTestActivity.ID_NOT_IMPORTANT_WITH_CD);
 
             android.app.Instrumentation instrumentation =
                     InstrumentationRegistry.getInstrumentation();
@@ -728,13 +762,8 @@ public class AutocaptureXmlInstrumentedTest {
 
             InstrumentationRegistry.getInstrumentation().waitForIdleSync();
 
-            final int[] location = new int[2];
-            scenario.onActivity(activity -> {
-                View v = activity.findViewById(AutocaptureXmlTestActivity.ID_ACCESSIBLE_WITH_CD);
-                v.getLocationOnScreen(location);
-                location[0] += v.getWidth() / 2;
-                location[1] += v.getHeight() / 2;
-            });
+            final int[] location =
+                    tapPointFor(scenario, AutocaptureXmlTestActivity.ID_ACCESSIBLE_WITH_CD);
 
             android.app.Instrumentation instrumentation =
                     InstrumentationRegistry.getInstrumentation();

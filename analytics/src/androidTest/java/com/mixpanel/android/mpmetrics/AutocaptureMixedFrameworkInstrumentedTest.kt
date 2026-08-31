@@ -2,6 +2,7 @@ package com.mixpanel.android.mpmetrics
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.graphics.Rect
 import android.os.SystemClock
 import android.view.MotionEvent
 import androidx.compose.ui.test.SemanticsNodeInteraction
@@ -340,21 +341,48 @@ class AutocaptureMixedFrameworkInstrumentedTest {
         desc: String,
         scenario: ActivityScenario<*>
     ) {
-        val location = floatArrayOf(0f, 0f)
+        // Scroll the view into the viewport first. Android 14+ uses targeted input injection, which
+        // rejects events aimed at a point outside a window owned by this process ("Targeted input
+        // event injection ... was not directed at a window owned by uid ..."), and these fixtures
+        // start out below the fold. requestChildFocus does not scroll; requestRectangleOnScreen does.
         scenario.onActivity { activity ->
             val view = findViewByContentDescription(
                 activity.window.decorView, desc
             ) ?: throw AssertionError("View with contentDescription '$desc' not found")
 
-            // Scroll the view into visible area — it may be below the fold
-            view.parent?.requestChildFocus(view, view)
+            if (view.width > 0 && view.height > 0) {
+                view.requestRectangleOnScreen(Rect(0, 0, view.width, view.height), true)
+            }
+        }
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+
+        // Re-read the location after the scroll — it has moved.
+        val location = floatArrayOf(0f, 0f)
+        var inWindow = false
+        scenario.onActivity { activity ->
+            val view = findViewByContentDescription(
+                activity.window.decorView, desc
+            ) ?: throw AssertionError("View with contentDescription '$desc' not found")
 
             val loc = intArrayOf(0, 0)
             view.getLocationOnScreen(loc)
             location[0] = loc[0] + view.width / 2f
             location[1] = loc[1] + view.height / 2f
+
+            // Points over the system bars belong to another uid, and points off-screen belong to no
+            // window at all — both make sendPointerSync throw rather than fail the assertion below.
+            val contentFrame = Rect()
+            activity.window.decorView.getWindowVisibleDisplayFrame(contentFrame)
+            inWindow = contentFrame.contains(location[0].toInt(), location[1].toInt())
         }
-        InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+
+        // Thrown rather than asserted: Kotlin's assert() is a no-op unless assertions are enabled,
+        // and a tap point outside the window would otherwise surface as a platform exception.
+        if (!inWindow) {
+            throw AssertionError(
+                "Tap point for '$desc' is outside the app's visible content area"
+            )
+        }
 
         sendTap(location[0], location[1])
     }
