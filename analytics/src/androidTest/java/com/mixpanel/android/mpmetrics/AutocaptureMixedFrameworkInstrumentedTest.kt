@@ -212,7 +212,8 @@ class AutocaptureMixedFrameworkInstrumentedTest {
 
             tapViewByContentDescription(
                 "xml_btn_xml_text_in_compose",
-                scenario
+                scenario,
+                composeScrollAnchor = "compose_btn_xml_text_in_compose"
             )
 
             assertClickWithoutDeadClick("xml_btn_xml_text_in_compose")
@@ -226,7 +227,8 @@ class AutocaptureMixedFrameworkInstrumentedTest {
 
             tapViewByContentDescription(
                 "xml_btn_compose_text_in_compose",
-                scenario
+                scenario,
+                composeScrollAnchor = "compose_btn_xml_text_in_compose"
             )
 
             assertClickWithoutDeadClick("xml_btn_compose_text_in_compose")
@@ -339,12 +341,29 @@ class AutocaptureMixedFrameworkInstrumentedTest {
      */
     private fun tapViewByContentDescription(
         desc: String,
-        scenario: ActivityScenario<*>
+        scenario: ActivityScenario<*>,
+        composeScrollAnchor: String? = null
     ) {
         // Scroll the view into the viewport first. Android 14+ uses targeted input injection, which
         // rejects events aimed at a point outside a window owned by this process ("Targeted input
         // event injection ... was not directed at a window owned by uid ..."), and these fixtures
         // start out below the fold. requestChildFocus does not scroll; requestRectangleOnScreen does.
+        //
+        // requestRectangleOnScreen alone is not enough inside AutocaptureComposeTestActivity: it
+        // walks the View parent chain asking each ViewParent to scroll, but that whole UI is one
+        // opaque AndroidComposeView and the scrolling is done by Modifier.verticalScroll, a
+        // Compose-level container no View ancestor can drive. Scroll through Compose first, using
+        // the Compose node that neighbours the AndroidView holding these XML fixtures. Nothing to
+        // anchor to in the XML activities, where requestRectangleOnScreen works on its own.
+        if (composeScrollAnchor != null) {
+            try {
+                composeTestRule.onNodeWithContentDescription(composeScrollAnchor).performScrollTo()
+                composeTestRule.waitForIdle()
+            } catch (_: AssertionError) {
+                // No Compose scrollable ancestor — requestRectangleOnScreen below handles it.
+            }
+        }
+
         scenario.onActivity { activity ->
             val view = findViewByContentDescription(
                 activity.window.decorView, desc
