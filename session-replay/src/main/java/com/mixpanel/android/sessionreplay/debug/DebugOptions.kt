@@ -9,14 +9,6 @@ import kotlinx.serialization.Transient
  *
  * @property overlayColors When not null, enables a visual overlay showing which views
  *   are being masked. Only works in debuggable builds.
- * @property emitWireframes Whether to build a debug snapshot of each captured wireframe.
- *   Serializable, and therefore the switch a cross-platform host can set: React Native's whole
- *   configuration crosses the bridge as JSON, so it cannot pass [wireframeEmitter] and instead
- *   sets this, leaving its bridge to attach the callback. Default: `false`.
- *
- *   A native caller has no use for it — providing [wireframeEmitter] is both the switch and the
- *   destination, and setting this without a callback delivers nowhere.
- *
  * @property wireframeEmitter When not null, hands you each wireframe as it is captured so
  *   you can check your masking while you develop. You get exactly the elements that are
  *   sent to Mixpanel, plus the reason each one's text was kept or removed.
@@ -33,9 +25,8 @@ import kotlinx.serialization.Transient
 @Serializable
 data class DebugOptions(
     val overlayColors: DebugOverlayColors? = DebugOverlayColors(),
-    val emitWireframes: Boolean = false,
-    // @Transient because a callback has no JSON representation; the React Native bridge
-    // decodes this class from JSON and native callers set it directly.
+    // @Transient because a callback has no JSON representation. A host that configures the SDK
+    // from JSON decodes this class and then attaches the callback itself.
     @Transient
     val wireframeEmitter: ((WireframeDebugSnapshot) -> Unit)? = null
 )
