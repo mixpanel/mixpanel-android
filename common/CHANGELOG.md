@@ -1,5 +1,9 @@
 # Changelog
 
+## [common-v1.1.0](https://github.com/mixpanel/mixpanel-android/tree/common-v1.1.0) (2026-09-01)
+
+[Full Changelog](https://github.com/mixpanel/mixpanel-android/compare/common-v1.0.1...common-v1.1.0)
+
 ## [common-v1.0.1](https://github.com/mixpanel/mixpanel-android/tree/common-v1.0.1) (2026-04-27)
 
 Initial release of `mixpanel-android-common`, providing shared utilities for Mixpanel Android SDKs:
