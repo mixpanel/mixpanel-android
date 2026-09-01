@@ -10,19 +10,19 @@
       "bounds": [
         0,
         0,
-        270,
+        229,
         45
       ],
-      "maskDecision": "GEOMETRIC"
+      "maskDecision": "EXPLICIT"
     },
     {
       "role": "text",
       "text": null,
       "bounds": [
-        0,
-        45,
-        175,
-        45
+        550,
+        550,
+        275,
+        90
       ],
       "maskDecision": "EXPLICIT"
     }

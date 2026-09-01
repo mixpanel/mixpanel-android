@@ -541,11 +541,27 @@ object SensitiveViewManager {
         val isInsideSafeContainer: Boolean
     )
 
+    /**
+     * @param maskedAncestor Wire decision of the nearest masked ancestor, or `null` when none was
+     *   crossed. Descendants inherit it: their scraped text is dropped and they report the
+     *   ancestor's provenance rather than depending on a geometric overlap being noticed
+     *   downstream.
+     *
+     *   Provenance rather than geometry, because geometry is not reliable here. Layer 2 strips
+     *   text only where a mask rect intersects the element's *emitted* bounds, and a Compose node
+     *   laid out clear of its masked ancestor — `Modifier.offset` past its parent, say — still
+     *   resolves real `boundsInWindow` that no mask rect covers. That combination shipped a masked
+     *   subtree's text in the clear whenever [AutoMaskedView.Text] was absent from
+     *   [autoMaskedViews] and so did not catch the node in its own right. Matches Flutter, where
+     *   `MaskContext.mask` propagates and `_wireframeDecision` resolves every descendant to
+     *   `explicit`, and iOS's `WalkContext.maskedAncestorDecision`.
+     */
     private fun traverseSemanticsNode(
         node: SemanticsNode,
         boundsAccumulator: MutableMap<Rect, InternalMaskDecision>,
         wireframeOut: MutableList<WireframeElement>? = null,
-        parentIsSafe: Boolean = false
+        parentIsSafe: Boolean = false,
+        maskedAncestor: MaskDecision? = null
     ) {
         val config = node.config
 
@@ -585,18 +601,34 @@ object SensitiveViewManager {
             null
         }
 
+        // An unmask below a mask is honored for *description*: the developer named this subtree
+        // safe, so its text is scraped again rather than inheriting the enclosing mask's
+        // provenance. The pixels are unaffected — the enclosing mask's rect is still painted — so
+        // what reaches the wire is settled by Layer 2's geometric strip against that rect, and the
+        // element reports GEOMETRIC rather than EXPLICIT. Matches Flutter's `MaskContext.unmask`
+        // and its `wireframe_nested_unmask_in_mask_geometric` fixture.
+        val effectiveAncestor = if (isSafe) null else maskedAncestor
+
+        // What this node contributes to its descendants: its own decision when it is masked in its
+        // own right, otherwise whatever it inherited.
+        val isMasked =
+            maskDecision != InternalMaskDecision.NONE && maskDecision != InternalMaskDecision.UNMASK
+        val childAncestor = if (isMasked) maskDecision.toWire() else effectiveAncestor
+
         if (bounds != null) {
             if (maskDecision != InternalMaskDecision.NONE) {
                 addOrUpdateEntry(boundsAccumulator, bounds, maskDecision)
             }
 
             if (wireframeOut != null) {
-                collectWireframeForNode(node, bounds, isInputField, maskDecision, wireframeOut)
+                collectWireframeForNode(
+                    node, bounds, isInputField, maskDecision, effectiveAncestor, wireframeOut
+                )
             }
         }
 
         for (child in node.children) {
-            traverseSemanticsNode(child, boundsAccumulator, wireframeOut, isSafe)
+            traverseSemanticsNode(child, boundsAccumulator, wireframeOut, isSafe, childAncestor)
         }
     }
 
@@ -609,6 +641,7 @@ object SensitiveViewManager {
         rect: Rect,
         isInputField: Boolean,
         maskDecision: InternalMaskDecision,
+        maskedAncestor: MaskDecision?,
         wireframeOut: MutableList<WireframeElement>
     ) {
         val config = node.config
@@ -657,15 +690,25 @@ object SensitiveViewManager {
         // Suppress text on any form of masking. Leaking text that's been masked in the
         // screenshot would defeat the privacy guarantee. Only NONE (unmonitored) and
         // UNMASK (explicitly safe) decisions pass text through.
+        //
+        // A masked *ancestor* counts the same as being masked here. The text is dropped at the
+        // point the provenance is known rather than left for Layer 2, which can only see a
+        // geometric overlap that a descendant laid out clear of its ancestor never produces — see
+        // [traverseSemanticsNode]'s `maskedAncestor`.
         val isMasked = maskDecision != InternalMaskDecision.NONE && maskDecision != InternalMaskDecision.UNMASK
-        val visibleText: String? = if (isMasked) {
+        val visibleText: String? = if (isMasked || maskedAncestor != null) {
             null
         } else {
             rawText?.takeIf { it.isNotBlank() }
                 ?: rawContentDesc?.takeIf { it.isNotBlank() }
         }
 
-        wireframeOut.add(WireframeElement.fromRect(type, visibleText, rect, maskDecision.toWire()))
+        // Report the ancestor's provenance when this node is not masked in its own right, so a
+        // textless shell inside a masked subtree reads as EXPLICIT/AUTO rather than as ordinary
+        // unmasked content that merely happened to have nothing to say.
+        val wireDecision = if (isMasked) maskDecision.toWire() else (maskedAncestor ?: MaskDecision.NONE)
+
+        wireframeOut.add(WireframeElement.fromRect(type, visibleText, rect, wireDecision))
     }
 
     private fun classifyAndroidView(view: View): WireframeType? = when {

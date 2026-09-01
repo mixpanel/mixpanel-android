@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.BasicText
@@ -231,6 +232,61 @@ class ComposeWireframeGoldenTest {
         WireframeGoldenFormat.assertGolden(
             capture,
             "compose_nested_unmask_under_layout_geometric.json"
+        )
+    }
+
+    /**
+     * A descendant laid out entirely OUTSIDE its masked ancestor still has its text stripped.
+     *
+     * The offset node resolves real `boundsInWindow` that no mask rect covers, so Layer 2's
+     * geometric strip cannot reach it — before the walk inherited the ancestor's decision, this
+     * shipped `"Transfer 12345 to Chase"` in the clear. Auto-masking is deliberately left off so
+     * the node is not caught in its own right and has to depend on the ancestor, which is the
+     * configuration that was exposed. Mirrors the iOS
+     * `test_maskedSubtree_offsetChild_doesNotShipScrapedText` and Flutter's `MaskContext.mask`.
+     */
+    @Test
+    fun offsetChildOutsideMaskedParent_stripsTextByProvenance() {
+        val capture = harness.captureCompose {
+            Box(modifier = Modifier.requiredSize(100.dp).mpReplaySensitive(true)) {
+                BasicText("Inside control")
+                BasicText(
+                    "Transfer 12345 to Chase",
+                    modifier = Modifier.offset(x = 200.dp, y = 200.dp)
+                )
+            }
+        }
+        assertEquals(
+            "no descendant of a masked node may carry text",
+            listOf<String?>(null, null),
+            capture.elements.map { it.text }
+        )
+        WireframeGoldenFormat.assertGolden(
+            capture,
+            "compose_offset_child_outside_masked_parent.json"
+        )
+    }
+
+    /** The exemption: authored text on a descendant of a masked node is still emitted. */
+    @Test
+    fun offsetChildOutsideMaskedParent_keepsDeclaredText() {
+        val capture = harness.captureCompose {
+            Box(modifier = Modifier.requiredSize(100.dp).mpReplaySensitive(true)) {
+                BasicText(
+                    "4111 1111 1111 1111",
+                    modifier = Modifier
+                        .offset(x = 200.dp, y = 200.dp)
+                        .mpWireframeText("Card number")
+                )
+            }
+        }
+        assertEquals(
+            listOf<String?>("Card number"),
+            capture.elements.map { it.text }
+        )
+        WireframeGoldenFormat.assertGolden(
+            capture,
+            "compose_offset_child_declared_text.json"
         )
     }
 
