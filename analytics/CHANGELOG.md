@@ -1,5 +1,13 @@
 # Changelog
 
+## [v8.10.0](https://github.com/mixpanel/mixpanel-android/tree/v8.10.0) (2026-09-01)
+
+### Features
+- autocapture (beta) — clicks, rage clicks and dead clicks ([#1000](https://github.com/mixpanel/mixpanel-android/pull/1000))
+- Add semver and date custom operator support ([#1001](https://github.com/mixpanel/mixpanel-android/pull/1001))
+
+[Full Changelog](https://github.com/mixpanel/mixpanel-android/compare/v8.9.0...v8.10.0)
+
 ## [v8.9.0](https://github.com/mixpanel/mixpanel-android/tree/v8.9.0) (2026-07-06)
 
 ### Features
