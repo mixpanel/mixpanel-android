@@ -8,6 +8,7 @@ import androidx.annotation.Nullable;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
+import com.mixpanel.android.autocapture.AutocaptureManager;
 import com.mixpanel.android.util.Base64Coder;
 import com.mixpanel.android.util.HttpService;
 import com.mixpanel.android.util.ProxyServerInteractor;
@@ -377,6 +378,174 @@ public class OptOutTest {
     private void forceFlush() {
         mAnalyticsMessages.postToServer(new AnalyticsMessages.MixpanelDescription(TOKEN));
     }
+
+    // region Autocapture opt-out tests
+
+    @Test
+    public void testAutocaptureNotStartedWhenOptedOutByDefault() {
+        MixpanelOptions options = new MixpanelOptions.Builder()
+                .optOutTrackingDefault(true)
+                .autocaptureOptions(new AutocaptureOptions.Builder().build())
+                .build();
+
+        mMixpanelAPI = new MixpanelAPI(
+                InstrumentationRegistry.getInstrumentation().getContext(),
+                mMockReferrerPreferences,
+                TOKEN,
+                MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), null),
+                options,
+                false) {
+            @Override
+            PersistentIdentity getPersistentIdentity(
+                    Context context, Future<SharedPreferences> referrerPreferences,
+                    String token, String instanceName, DeviceIdProvider deviceIdProvider) {
+                String prefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI_" + token;
+                context.getSharedPreferences(prefsName, Context.MODE_PRIVATE).edit().clear().commit();
+                mPersistentIdentity = super.getPersistentIdentity(context, referrerPreferences, token, instanceName, deviceIdProvider);
+                return mPersistentIdentity;
+            }
+
+            @Override
+            AnalyticsMessages getAnalyticsMessages() {
+                return mAnalyticsMessages;
+            }
+        };
+
+        assertTrue("Should be opted out", mMixpanelAPI.hasOptedOutTracking());
+        assertNull("AutocaptureManager should not be created when opted out by default",
+                mMixpanelAPI.getAutocaptureManager());
+    }
+
+    @Test
+    public void testAutocaptureStopsOnOptOut() {
+        MixpanelOptions options = new MixpanelOptions.Builder()
+                .autocaptureOptions(new AutocaptureOptions.Builder().build())
+                .build();
+
+        mMixpanelAPI = new MixpanelAPI(
+                InstrumentationRegistry.getInstrumentation().getContext(),
+                mMockReferrerPreferences,
+                TOKEN,
+                MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), null),
+                options,
+                false) {
+            @Override
+            PersistentIdentity getPersistentIdentity(
+                    Context context, Future<SharedPreferences> referrerPreferences,
+                    String token, String instanceName, DeviceIdProvider deviceIdProvider) {
+                String prefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI_" + token;
+                context.getSharedPreferences(prefsName, Context.MODE_PRIVATE).edit().clear().commit();
+                // Clear opt-out flag from prior test runs
+                String mixpanelPrefsName = "com.mixpanel.android.mpmetrics.Mixpanel";
+                context.getSharedPreferences(mixpanelPrefsName, Context.MODE_PRIVATE).edit()
+                        .remove(token).remove("opt_out_" + token).commit();
+                mPersistentIdentity = super.getPersistentIdentity(context, referrerPreferences, token, instanceName, deviceIdProvider);
+                return mPersistentIdentity;
+            }
+
+            @Override
+            AnalyticsMessages getAnalyticsMessages() {
+                return mAnalyticsMessages;
+            }
+        };
+
+        assertNotNull("AutocaptureManager should be created", mMixpanelAPI.getAutocaptureManager());
+        assertTrue("AutocaptureManager should be started", mMixpanelAPI.getAutocaptureManager().isStarted());
+
+        mMixpanelAPI.optOutTracking();
+
+        assertFalse("AutocaptureManager should be stopped after opt-out",
+                mMixpanelAPI.getAutocaptureManager().isStarted());
+    }
+
+    @Test
+    public void testAutocaptureRestartsOnOptIn() {
+        MixpanelOptions options = new MixpanelOptions.Builder()
+                .autocaptureOptions(new AutocaptureOptions.Builder().build())
+                .build();
+
+        mMixpanelAPI = new MixpanelAPI(
+                InstrumentationRegistry.getInstrumentation().getContext(),
+                mMockReferrerPreferences,
+                TOKEN,
+                MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), null),
+                options,
+                false) {
+            @Override
+            PersistentIdentity getPersistentIdentity(
+                    Context context, Future<SharedPreferences> referrerPreferences,
+                    String token, String instanceName, DeviceIdProvider deviceIdProvider) {
+                String prefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI_" + token;
+                context.getSharedPreferences(prefsName, Context.MODE_PRIVATE).edit().clear().commit();
+                // Clear opt-out flag from prior test runs
+                String mixpanelPrefsName = "com.mixpanel.android.mpmetrics.Mixpanel";
+                context.getSharedPreferences(mixpanelPrefsName, Context.MODE_PRIVATE).edit()
+                        .remove(token).remove("opt_out_" + token).commit();
+                mPersistentIdentity = super.getPersistentIdentity(context, referrerPreferences, token, instanceName, deviceIdProvider);
+                return mPersistentIdentity;
+            }
+
+            @Override
+            AnalyticsMessages getAnalyticsMessages() {
+                return mAnalyticsMessages;
+            }
+        };
+
+        // Opt out — autocapture stops
+        mMixpanelAPI.optOutTracking();
+        assertFalse("AutocaptureManager should be stopped after opt-out",
+                mMixpanelAPI.getAutocaptureManager().isStarted());
+
+        // Opt in — autocapture restarts
+        mMixpanelAPI.optInTracking();
+        assertNotNull("AutocaptureManager should exist after opt-in",
+                mMixpanelAPI.getAutocaptureManager());
+        assertTrue("AutocaptureManager should be started after opt-in",
+                mMixpanelAPI.getAutocaptureManager().isStarted());
+    }
+
+    @Test
+    public void testAutocaptureStartsOnOptInAfterOptOutByDefault() {
+        MixpanelOptions options = new MixpanelOptions.Builder()
+                .optOutTrackingDefault(true)
+                .autocaptureOptions(new AutocaptureOptions.Builder().build())
+                .build();
+
+        mMixpanelAPI = new MixpanelAPI(
+                InstrumentationRegistry.getInstrumentation().getContext(),
+                mMockReferrerPreferences,
+                TOKEN,
+                MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), null),
+                options,
+                false) {
+            @Override
+            PersistentIdentity getPersistentIdentity(
+                    Context context, Future<SharedPreferences> referrerPreferences,
+                    String token, String instanceName, DeviceIdProvider deviceIdProvider) {
+                String prefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI_" + token;
+                context.getSharedPreferences(prefsName, Context.MODE_PRIVATE).edit().clear().commit();
+                mPersistentIdentity = super.getPersistentIdentity(context, referrerPreferences, token, instanceName, deviceIdProvider);
+                return mPersistentIdentity;
+            }
+
+            @Override
+            AnalyticsMessages getAnalyticsMessages() {
+                return mAnalyticsMessages;
+            }
+        };
+
+        assertNull("AutocaptureManager should not be created when opted out by default",
+                mMixpanelAPI.getAutocaptureManager());
+
+        // Opt in — autocapture should be created and started
+        mMixpanelAPI.optInTracking();
+        assertNotNull("AutocaptureManager should be created after opt-in",
+                mMixpanelAPI.getAutocaptureManager());
+        assertTrue("AutocaptureManager should be started after opt-in",
+                mMixpanelAPI.getAutocaptureManager().isStarted());
+    }
+
+    // endregion
 
     private MPDbAdapter getMockDBAdapter() {
         return new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), null)) {
