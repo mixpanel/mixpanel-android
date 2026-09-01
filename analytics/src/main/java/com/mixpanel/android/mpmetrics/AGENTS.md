@@ -20,8 +20,11 @@ Keep **new** helpers package-private; every public type is compatibility surface
 
 ## Critical rules
 
-1. **MixpanelAPI** — maintain backward compatibility; every public method thread-safe,
-   null-checked, opt-out-checked, wrapped in try-catch (never throw); JavaDoc with examples.
+1. **MixpanelAPI** — maintain backward compatibility; every public method thread-safe and
+   never throws. Tracking/mutating operations additionally null-check inputs, check
+   `hasOptedOutTracking()`, and wrap work in try-catch. Plain accessors (`getToken()`,
+   `getDistinctId()`, …) skip those checks by design, and opt-out control methods
+   (`optInTracking()`) must run even while opted out. JavaDoc with examples on new methods.
 2. **Thread safety** — dedicated lock objects (`private final Object mLock = new Object()`),
    never `synchronized (this)`.
 3. **Thread boundaries** — public API on caller thread; message processing, DB, and tracking
@@ -40,9 +43,10 @@ Keep **new** helpers package-private; every public type is compatibility surface
 
 ## Common tasks
 
-**New public API method:** overload for progressive disclosure; validate + opt-out check +
-try-catch in `MixpanelAPI`; hand off via an `AnalyticsMessages` typed method backed by a new
-message type with an immutable description class; add tests.
+**New public API method:** overload for progressive disclosure; for tracking/mutating
+methods, validate inputs + check opt-out + try-catch in `MixpanelAPI`; hand off via an
+`AnalyticsMessages` typed method backed by a new message type with an immutable description
+class; add tests.
 
 **Database schema change:** increment `DATABASE_VERSION`; add migration in `onUpgrade`
 (never drop existing tables/data); update the `Table` enum if needed; test the upgrade path.
@@ -67,7 +71,8 @@ Use the BlockingQueue pattern for async assertions (poll with a timeout).
 
 - Event batching every 60 s (`FlushInterval` default), flush on background (configurable)
 - HTTP timeouts are **hardcoded** in `HttpService` (2 s/30 s and 15 s/60 s connect/read pairs);
-  retry is 3 attempts with a short linear backoff (100/200/300 ms)
+  retry is 3 attempts with 100 ms/200 ms delays before attempts 2 and 3 (no delay after the
+  final attempt — the in-code "100ms, 200ms, 300ms" comment is stale)
 - GZIP is opt-in via `MPConfig` (default off)
 - Database cleanup is age-based; SharedPreferences values are cached in memory
 

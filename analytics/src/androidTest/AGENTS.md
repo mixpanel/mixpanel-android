@@ -11,43 +11,47 @@ doesn't need a device there instead. Shared helpers live in `analytics/src/share
 
 ## Test structure
 
+The real capture idiom (from `MixpanelBasicTest`): a `BlockingQueue` fed by inline
+overrides of the layers under test, wired in via `TestUtils.CleanMixpanelAPI`:
+
 ```java
-@RunWith(AndroidJUnit4.class)
-@LargeTest
-public class MixpanelFeatureTest {
-    private static final String TEST_TOKEN = "Test Token";
+final BlockingQueue<JSONObject> messages = new LinkedBlockingQueue<>();
 
-    private MixpanelAPI mMixpanel;
-    private BlockingQueue<String> mMessages;
+final MPDbAdapter captureAdapter =
+    new MPDbAdapter(context, MPConfig.getInstance(context, null)) {
+      @Override
+      public int addJSON(JSONObject message, String token, MPDbAdapter.Table table) {
+        messages.add(message);
+        return 1;
+      }
+    };
 
-    @Before
-    public void setUp() throws Exception {
-        // Instrumentation TARGET context, not test context
-        Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
-        // Clean state: clear the instance's SharedPreferences
-        context.getSharedPreferences(
-            "com.mixpanel.android.mpmetrics.MixpanelAPI_" + TEST_TOKEN,
-            Context.MODE_PRIVATE).edit().clear().commit();
-        mMessages = new LinkedBlockingQueue<>();
-        mMixpanel = TestUtils.createMixpanelApiWithMockedMessages(context, mMessages);
-    }
+final AnalyticsMessages captureMessages =
+    new AnalyticsMessages(context, MPConfig.getInstance(context, null)) {
+      @Override
+      public MPDbAdapter makeDbAdapter(Context context) { return captureAdapter; }
+    };
 
-    @After
-    public void tearDown() {
-        mMixpanel.flush(); // and clean up any test data
-    }
-}
+MixpanelAPI mixpanel =
+    new TestUtils.CleanMixpanelAPI(context, mMockPreferences, "Test token") {
+      @Override
+      protected AnalyticsMessages getAnalyticsMessages() { return captureMessages; }
+    };
 ```
+
+`TestUtils` (in `sharedTest/`) provides `CleanMixpanelAPI` (fresh state) and
+`createMixpanelAPIWithMockHttpService(context, mockService)` for network-level mocking.
+Use the instrumentation **target** context.
 
 ## Key patterns
 
 **BlockingQueue for async (MANDATORY)** — never bare `Thread.sleep()` as the primary wait:
 
 ```java
-mMixpanel.track("TestEvent");
-String message = mMessages.poll(2, TimeUnit.SECONDS);
+mixpanel.track("TestEvent");
+JSONObject message = messages.poll(2, TimeUnit.SECONDS);
 assertNotNull("Event message should be queued within timeout", message);
-assertEquals("TestEvent", new JSONObject(message).getString("event"));
+assertEquals("TestEvent", message.getString("event"));
 ```
 
 **Real SQLite** — exercise `MPDbAdapter` directly against the real DB (`addJSON`,
@@ -63,8 +67,8 @@ must remain functional afterward.
 
 - Real components over mocks; never mock the Android framework.
 - Descriptive assertion messages; realistic timeouts (2–5 s).
-- Clean state in `setUp` (TestUtils helpers: `getCleanMixpanelAPI`, `cleanDatabase`,
-  `getDbAdapter`); clean up in `tearDown`/`finally`.
+- Clean state in `setUp` — `TestUtils.cleanUpMixpanelData(context)` wipes DB + prefs;
+  `TestUtils.EmptyPreferences` stubs referrer prefs. Clean up in `tearDown`/`finally`.
 - Test real workflows, edge cases, concurrency, persistence, error recovery —
   not implementation details, exact timing, or UI.
 - Naming: `[Feature]Test.java`; methods like `testErrorHandling_NullInput_DoesNotCrash`.

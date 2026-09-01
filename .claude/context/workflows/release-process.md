@@ -34,7 +34,9 @@ warnings, API compatibility preserved.
 
 Parameterized by `module`; resolves the module config from modules.json, validates the
 version against `gradle.properties`, builds and tests, publishes to OSSRH staging
-(URLs in `analytics/gradle.properties`), triggers the Central Portal upload with
+(staging/snapshot URLs are hardcoded in `MavenPublishConventionPlugin.kt` — the
+`RELEASE_REPOSITORY_URL` entry in `analytics/gradle.properties` is dead config, read by
+nothing), triggers the Central Portal upload with
 `publishing_type=user_managed`, and creates a draft GitHub release + tag
 (`<tag_prefix><version>`).
 
