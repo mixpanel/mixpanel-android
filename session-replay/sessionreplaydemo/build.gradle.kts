@@ -30,7 +30,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.mixpanel.sessionreplaydemo1"
+        applicationId = "com.mixpanel.sessionreplaydemo"
         minSdk = 21
         targetSdk = 34
         versionCode = 22
