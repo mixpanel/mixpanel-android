@@ -170,8 +170,8 @@ class RemoteSettingsServiceTest {
                 "\$os" to "Android",
                 "mp_lib" to mpLib,
                 "\$lib_version" to version,
-                "bundleId" to testPackageName,
-                "buildNumber" to testVersionCode.toString()
+                "bundle_id" to testPackageName,
+                "build_number" to testVersionCode.toString()
             ),
             headers = mapOf("Authorization" to "Basic dGVzdFRva2VuMTIzOg=="),
             timeout = 5000L
@@ -352,8 +352,8 @@ class RemoteSettingsServiceTest {
         serviceWithOverrides.fetchRemoteSettings(testToken)
 
         val queryItems = capturedRequest.captured.queryItems
-        assertTrue(queryItems!!.contains("bundleId" to "com.test.app"))
-        assertTrue(queryItems.contains("buildNumber" to "1234"))
+        assertTrue(queryItems!!.contains("bundle_id" to "com.test.app"))
+        assertTrue(queryItems.contains("build_number" to "1234"))
 
         // Pre-existing params must be unaffected
         assertTrue(queryItems.contains("recording" to "1"))
@@ -380,8 +380,8 @@ class RemoteSettingsServiceTest {
         serviceWithBrokenContext.fetchRemoteSettings(testToken)
 
         val queryItems = capturedRequest.captured.queryItems
-        assertFalse(queryItems!!.any { it.first == "bundleId" })
-        assertFalse(queryItems.any { it.first == "buildNumber" })
+        assertFalse(queryItems!!.any { it.first == "bundle_id" })
+        assertFalse(queryItems.any { it.first == "build_number" })
 
         // Pre-existing params must still be sent
         assertEquals(

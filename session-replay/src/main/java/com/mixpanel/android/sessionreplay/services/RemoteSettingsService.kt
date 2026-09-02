@@ -73,8 +73,8 @@ internal open class RemoteSettingsService(
 
         // Include app bundle ID and build number to enable server-side SDK blocking
         // per app ID and app build version. Either is omitted if unavailable.
-        bundleId?.let { queryItems.add("bundleId" to it) }
-        buildNumber?.let { queryItems.add("buildNumber" to it) }
+        bundleId?.let { queryItems.add("bundle_id" to it) }
+        buildNumber?.let { queryItems.add("build_number" to it) }
         if (bundleId == null || buildNumber == null) {
             Logger.warn("Incomplete app info for settings request: bundleId=$bundleId, buildNumber=$buildNumber")
         }
