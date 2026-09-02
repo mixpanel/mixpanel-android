@@ -12,6 +12,7 @@ import androidx.annotation.RequiresApi
 import androidx.annotation.VisibleForTesting
 import com.mixpanel.android.sessionreplay.logging.Logger
 import com.mixpanel.android.sessionreplay.sensitive_views.SensitiveViewManager
+import com.mixpanel.android.sessionreplay.models.CapturedFrame
 import curtains.phoneWindow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -341,9 +342,10 @@ internal class ScreenRecorder {
      * @param fullScreenView Optional view (e.g., activity root) used to determine full-screen
      *   dimensions when capturing sub-windows (dialogs, popups). If provided and larger than
      *   rootView, the sub-window is composited onto a full-screen bitmap.
-     * @return A [ByteArray] containing the compressed JPEG image, or `null` if capture fails.
+     * @return A [CapturedFrame] holding the compressed JPEG image and the dimensions it was
+     *   captured at, or `null` if capture fails.
      */
-    suspend fun captureScreenshot(rootView: View, fullScreenView: View? = null): ByteArray? {
+    suspend fun captureScreenshot(rootView: View, fullScreenView: View? = null): CapturedFrame? {
         // Initialize bitmap pool if not already done
         val pool = acquireBitmapPool(rootView.context)
 
@@ -367,14 +369,18 @@ internal class ScreenRecorder {
                 image
             } ?: return@withContext null
 
+            val width = bitmap.width
+            val height = bitmap.height
+
             try {
-                bitmap.compressToByteArray().also {
-                    Logger.debug { "Compressed screenshot size: %.2f KB".format(it.size / 1024.0) }
+                bitmap.compressToByteArray().let { data ->
+                    Logger.debug { "Compressed screenshot size: %.2f KB".format(data.size / 1024.0) }
 //                     saveToLocalFilesystem(
 //                         rootView.context.applicationContext,
-//                         it,
+//                         data,
 //                         "screenshot-${System.currentTimeMillis()}.jpg"
 //                     )
+                    CapturedFrame(data, width, height)
                 }
             } catch (e: Exception) {
                 Logger.warn("Failed to process screenshot: ${e.message}")
