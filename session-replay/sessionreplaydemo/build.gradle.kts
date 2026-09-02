@@ -30,11 +30,11 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.mixpanel.sessionreplaydemo"
+        applicationId = "com.mixpanel.sessionreplaydemo1"
         minSdk = 21
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 22
+        versionName = "1.0.10"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

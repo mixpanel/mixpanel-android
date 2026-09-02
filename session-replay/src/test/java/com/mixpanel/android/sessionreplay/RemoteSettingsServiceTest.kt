@@ -2,6 +2,8 @@ package com.mixpanel.android.sessionreplay
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.content.pm.PackageInfo
+import android.content.pm.PackageManager
 import android.util.Base64
 import com.mixpanel.android.sessionreplay.network.APIRequest
 import com.mixpanel.android.sessionreplay.network.Network
@@ -23,6 +25,8 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -32,11 +36,14 @@ class RemoteSettingsServiceTest {
     private lateinit var mockNetwork: Network
     private lateinit var mockSharedPreferences: SharedPreferences
     private lateinit var mockEditor: SharedPreferences.Editor
+    private lateinit var mockPackageManager: PackageManager
 
     private lateinit var remoteSettingsService: RemoteSettingsService
     private val testToken = "testToken123"
     private val version = APIConstants.currentLibVersion
     private val mpLib = APIConstants.currentMpLib
+    private val testPackageName = "com.mixpanel.test.app"
+    private val testVersionCode = 42
 
     @Before
     fun setUp() {
@@ -44,6 +51,7 @@ class RemoteSettingsServiceTest {
         mockNetwork = mockk()
         mockSharedPreferences = mockk()
         mockEditor = mockk()
+        mockPackageManager = mockk()
 
         mockkStatic(Base64::class)
         every { Base64.encodeToString(any(), any()) } returns "dGVzdFRva2VuMTIzOg=="
@@ -55,6 +63,13 @@ class RemoteSettingsServiceTest {
         every { mockEditor.putString(any(), any()) } returns mockEditor
         every { mockEditor.remove(any()) } returns mockEditor
         every { mockEditor.apply() } just Runs
+
+        every { mockContext.packageName } returns testPackageName
+        every { mockContext.packageManager } returns mockPackageManager
+        every { mockPackageManager.getPackageInfo(testPackageName, 0) } returns PackageInfo().apply {
+            @Suppress("DEPRECATION")
+            versionCode = testVersionCode
+        }
 
         remoteSettingsService = RemoteSettingsService(mockContext, mockNetwork, version, mpLib)
     }
@@ -154,7 +169,9 @@ class RemoteSettingsServiceTest {
                 "sdk_config" to "1",
                 "\$os" to "Android",
                 "mp_lib" to mpLib,
-                "\$lib_version" to version
+                "\$lib_version" to version,
+                "bundleId" to testPackageName,
+                "buildNumber" to testVersionCode.toString()
             ),
             headers = mapOf("Authorization" to "Basic dGVzdFRva2VuMTIzOg=="),
             timeout = 5000L
@@ -312,6 +329,70 @@ class RemoteSettingsServiceTest {
                 isFromCache = false
             ),
             result
+        )
+    }
+
+    // --- Bundle ID / Build Number Query Param Tests ---
+
+    @Test
+    fun testSettingsRequestIncludesBundleIdAndBuildNumber() = runTest {
+        val responseJson = """{"recording": {"is_enabled": true}}"""
+        val capturedRequest = slot<APIRequest>()
+        coEvery { mockNetwork.performAPIRequestWithResponse(capture(capturedRequest)) } returns Result.success(responseJson)
+
+        val serviceWithOverrides = RemoteSettingsService(
+            mockContext,
+            mockNetwork,
+            version,
+            mpLib,
+            bundleIdOverride = "com.test.app",
+            buildNumberOverride = "1234"
+        )
+
+        serviceWithOverrides.fetchRemoteSettings(testToken)
+
+        val queryItems = capturedRequest.captured.queryItems
+        assertTrue(queryItems!!.contains("bundleId" to "com.test.app"))
+        assertTrue(queryItems.contains("buildNumber" to "1234"))
+
+        // Pre-existing params must be unaffected
+        assertTrue(queryItems.contains("recording" to "1"))
+        assertTrue(queryItems.contains("sdk_config" to "1"))
+        assertTrue(queryItems.contains("\$os" to "Android"))
+        assertTrue(queryItems.contains("mp_lib" to mpLib))
+        assertTrue(queryItems.contains("\$lib_version" to version))
+    }
+
+    @Test
+    fun testSettingsRequestOmitsBundleIdAndBuildNumberWhenUnavailable() = runTest {
+        val responseJson = """{"recording": {"is_enabled": true}}"""
+        val capturedRequest = slot<APIRequest>()
+        coEvery { mockNetwork.performAPIRequestWithResponse(capture(capturedRequest)) } returns Result.success(responseJson)
+
+        // Context that cannot supply app metadata
+        val brokenContext = mockk<Context>()
+        every { brokenContext.getSharedPreferences(any(), any()) } returns mockSharedPreferences
+        every { brokenContext.packageName } throws IllegalStateException("no package name")
+        every { brokenContext.packageManager } throws IllegalStateException("no package manager")
+
+        val serviceWithBrokenContext = RemoteSettingsService(brokenContext, mockNetwork, version, mpLib)
+
+        serviceWithBrokenContext.fetchRemoteSettings(testToken)
+
+        val queryItems = capturedRequest.captured.queryItems
+        assertFalse(queryItems!!.any { it.first == "bundleId" })
+        assertFalse(queryItems.any { it.first == "buildNumber" })
+
+        // Pre-existing params must still be sent
+        assertEquals(
+            listOf(
+                "recording" to "1",
+                "sdk_config" to "1",
+                "\$os" to "Android",
+                "mp_lib" to mpLib,
+                "\$lib_version" to version
+            ),
+            queryItems
         )
     }
 }
