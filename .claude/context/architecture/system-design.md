@@ -17,22 +17,25 @@ The Mixpanel Android SDK implements a **Producer-Consumer Pattern** with persist
 └────────┬────────┘     └──────────────────┘
          │ Events
          ▼
-┌─────────────────┐     ┌──────────────────┐
-│AnalyticsMessages│────▶│ Message Queue    │
-│ (Producer)      │     │ (HandlerThread)  │
-└────────┬────────┘     └────────┬─────────┘
-         │                       │ Batch
-         ▼                       ▼
-┌─────────────────┐     ┌──────────────────┐
-│  MPDbAdapter    │     │   HttpService    │
-│  (SQLite)       │────▶│  (Network I/O)   │
-└─────────────────┘     └────────┬─────────┘
-                                 │
-                                 ▼
-                        ┌──────────────────┐
-                        │ Mixpanel Servers │
-                        └──────────────────┘
+┌─────────────────────────────────────────┐
+│ AnalyticsMessages (worker HandlerThread)│
+│ owns BOTH the DB adapter and the poster │
+└────────┬───────────────────┬────────────┘
+         │ store/read        │ send batch
+         ▼                   ▼
+┌─────────────────┐  ┌──────────────────┐
+│  MPDbAdapter    │  │   HttpService    │
+│  (SQLite)       │  │  (Network I/O)   │
+└─────────────────┘  └────────┬─────────┘
+                              │
+                              ▼
+                     ┌──────────────────┐
+                     │ Mixpanel Servers │
+                     └──────────────────┘
 ```
+
+(MPDbAdapter never talks to the network. A second, parallel network path exists:
+MixpanelAPI → FeatureFlagManager → HttpService, with no SQLite involvement.)
 
 ## Core Components
 
@@ -230,10 +233,8 @@ try {
 - Weak references for callbacks
 
 ### Database Optimization
-- Prepared statements
-- Transaction batching
-- Automatic vacuum
-- Size-based cleanup
+- Age/size-based cleanup
+- Automatic data pruning on over-length queues
 
 ## Extension Points
 

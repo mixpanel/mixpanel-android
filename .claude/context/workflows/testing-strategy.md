@@ -2,19 +2,20 @@
 
 ## Testing Philosophy
 
-The SDK uses **instrumented tests only** - all tests require an Android device or emulator. This ensures tests validate real Android behavior rather than mocked implementations.
+The SDK has **two test layers**: JVM **unit tests** (`analytics/src/test/`, JUnit/Robolectric, run via `:analytics:test`) and **instrumented tests** (`analytics/src/androidTest/`, AndroidJUnit4, requiring a device/emulator, run via `:analytics:connectedAndroidTest`). Instrumented tests validate real Android behavior rather than mocked implementations.
 
 ## Test Structure
 
 ### Location
 ```
-analytics/src/androidTest/java/com/mixpanel/android/
+analytics/src/test/java/com/mixpanel/android/       # Unit tests (JVM)
+└── mpmetrics/           # e.g. PersistentIdentityTest, FeatureFlagManagerTest, MixpanelOptionsTest
+
+analytics/src/androidTest/java/com/mixpanel/android/ # Instrumented tests (device/emulator)
 ├── mpmetrics/           # Core SDK tests
 │   ├── MixpanelBasicTest.java
-│   ├── MPDbAdapterTest.java
 │   ├── PersistentIdentityTest.java
-│   ├── DecideCheckerTest.java
-│   ├── HttpServiceTest.java
+│   ├── FeatureFlagManagerTest.java
 │   └── [other test classes]
 └── util/                # Utility tests
     └── HttpServiceTest.java

@@ -8,27 +8,31 @@ mixpanel-android/
 │   ├── src/main/java/com/mixpanel/android/
 │   │   ├── mpmetrics/                # Core SDK implementation
 │   │   │   ├── MixpanelAPI.java      # Main entry point & public API
+│   │   │   ├── MixpanelOptions.java  # Runtime configuration (builder)
 │   │   │   ├── AnalyticsMessages.java   # Message queue & background processing
 │   │   │   ├── MPDbAdapter.java      # SQLite persistence layer
 │   │   │   ├── PersistentIdentity.java  # Identity & properties management
-│   │   │   ├── HttpService.java      # Network communication
 │   │   │   ├── MPConfig.java         # Configuration management
 │   │   │   ├── FeatureFlagManager.java  # Feature flags implementation
-│   │   │   ├── ResourceIds.java      # R.id resource handling
-│   │   │   ├── ResourceReader.java   # Resource reading utilities
-│   │   │   ├── DecideChecker.java    # Remote configuration fetcher
+│   │   │   ├── FeatureFlagOptions.java / FlagsConfig.java / MixpanelFlagVariant.java # Feature-flag models
+│   │   │   ├── AutomaticEvents.java  # Automatic lifecycle events
+│   │   │   ├── DeviceIdProvider.java # Device/anonymous ID generation
 │   │   │   ├── SessionMetadata.java  # Session tracking
-│   │   │   ├── ConnectivityReceiver.java # Network state monitoring
+│   │   │   ├── SessionReplayBroadcastReceiver.java # Session Replay integration hook
+│   │   │   ├── ResourceIds.java / ResourceReader.java # Resource handling
 │   │   │   ├── ExceptionHandler.java # Crash reporting
 │   │   │   ├── MixpanelActivityLifecycleCallbacks.java # Lifecycle integration
 │   │   │   └── [Various data models & utilities]
 │   │   └── util/                     # Utility classes
 │   │       ├── MPLog.java            # Logging utility
-│   │       ├── HttpService.java      # HTTP utilities
-│   │       ├── ImageStore.java       # Image caching
+│   │       ├── HttpService.java      # HTTP / network communication
+│   │       ├── RemoteService.java    # HTTP service interface
 │   │       ├── OfflineMode.java      # Offline mode management
+│   │       ├── ProxyServerInteractor.java / W3CTraceContext.java # Proxy & trace context
 │   │       └── [Other utilities]
-│   ├── src/androidTest/              # Instrumented tests only
+│   ├── src/test/                     # Unit tests (JVM — JUnit/Robolectric)
+│   │   └── java/com/mixpanel/android/mpmetrics/
+│   ├── src/androidTest/              # Instrumented tests (device/emulator)
 │   │   └── java/com/mixpanel/android/
 │   │       ├── mpmetrics/            # Core SDK tests
 │   │       └── util/                 # Utility tests
@@ -39,10 +43,15 @@ mixpanel-android/
 │   ├── build.gradle                  # Analytics module build
 │   ├── proguard.txt                  # Consumer ProGuard rules
 │   └── gradle.properties             # Analytics version & POM properties
-├── common/                           # Shared utilities (:common)
+├── common/                           # Shared utilities (:common — MixpanelEventBridge, JsonLogic)
 ├── openfeature-provider/             # OpenFeature provider (:openfeature-provider)
+├── session-replay/                   # Session Replay SDK (:session-replay, published; own CI + CHANGELOG)
+│   └── sessionreplaydemo/            # Session Replay demo app (:session-replay:sessionreplaydemo)
+├── build-logic/                      # Included build: mixpanel.maven-publish / mixpanel.ktlint convention plugins
+├── gradle/libs.versions.toml         # Version catalog (used by session-replay)
+├── scripts/                          # Dev scripts (codespace helper)
 ├── build.gradle                      # Root build (cross-cutting config)
-├── settings.gradle                   # Subproject includes
+├── settings.gradle                   # Subproject includes (6 projects)
 └── gradle.properties                 # Shared org.gradle.* / android.* settings
 
 ```
@@ -65,17 +74,15 @@ mixpanel-android/
 - `SessionMetadata` - Session tracking and timing
 
 **Feature Components:**
-- `FeatureFlagManager` - Feature flag loading and caching
-- `DecideChecker` - Remote configuration updates
+- `FeatureFlagManager` - Feature flag loading and caching (with `FlagsConfig` / `MixpanelFlagVariant`)
 - `ExceptionHandler` - Automatic crash reporting
 
 ### Testing Structure (`analytics/src/androidTest/`)
 
 **Test Organization:**
-- All tests are instrumented (require Android device/emulator)
-- Unit tests live alongside under `analytics/src/test/` (Robolectric/JUnit)
-- Tests use AndroidJUnit4 runner
-- Mock implementations in TestUtils
+- **Unit tests** — `analytics/src/test/` (JUnit/Robolectric, run on the JVM via `:analytics:test`)
+- **Instrumented tests** — `analytics/src/androidTest/` (AndroidJUnit4, require a device/emulator, via `:analytics:connectedAndroidTest`)
+- Async verification uses the BlockingQueue pattern; mock implementations in TestUtils
 
 ### Demo Application (`analytics/mixpaneldemo/`)
 
@@ -89,8 +96,11 @@ mixpanel-android/
 
 ```
 mixpanel-android (library)
+    ├── com.mixpanel.android:mixpanel-android-common (Maven coordinate, not project dep)
     ├── androidx.annotation:annotation
     ├── androidx.core:core
+    ├── androidx.lifecycle:lifecycle-process
+    ├── io.github.jamsesso:json-logic-java (+ gson pin for its transitive JSON dep)
     └── Android SDK (min 21, target 34)
 
 :analytics:mixpaneldemo (app)
@@ -101,8 +111,9 @@ mixpanel-android (library)
 
 ## Build Variants
 
-- **debug** - Development build with debugging enabled
-- **release** - Production build with ProGuard optimization
+- **debug** - Development build with coverage enabled
+- **release** - Production build; `minifyEnabled false` — the library ships a minimal
+  consumer ProGuard rule (`analytics/proguard.txt`) but does not minify itself
 
 ## Data Flow Architecture
 
@@ -110,23 +121,22 @@ mixpanel-android (library)
 User Code
     ↓
 MixpanelAPI (Public Interface)
-    ↓
-AnalyticsMessages (Queue Management)
-    ↓
-MPDbAdapter (Persistence)
-    ↓
-HttpService (Network)
-    ↓
-Mixpanel Servers
+    ├─ tracking → AnalyticsMessages (Queue Management)
+    │                 ├─→ MPDbAdapter (SQLite persistence/offline queue)
+    │                 └─→ HttpService (Network) → Mixpanel Servers
+    └─ feature flags → FeatureFlagManager → HttpService (separate path, no SQLite)
 ```
+
+Note: AnalyticsMessages owns both the DB adapter and the HTTP poster —
+MPDbAdapter never talks to the network.
 
 ## Key Design Decisions
 
-1. **Single Module Library** - All code in one module for simplicity
-2. **Minimal Dependencies** - Only essential AndroidX libraries
+1. **Multi-Module Repo** - Independently versioned/published modules (:analytics, :common, :openfeature-provider, :session-replay) consuming each other via Maven coordinates
+2. **Minimal Dependencies** - Small fixed runtime set (see Module Dependencies above); no new deps
 3. **Custom HTTP** - No external networking libraries
-4. **SQLite Direct** - No ORM, direct database access
-5. **HandlerThread** - Background processing without Service
-6. **Instrumented Tests Only** - Focus on real device testing
+4. **SQLite Direct** - No ORM, direct database access (rawQuery-based)
+5. **HandlerThread Workers** - Background processing on dedicated HandlerThreads (AnalyticsMessages, FeatureFlagManager) without Service components
+6. **Two Test Layers** - JVM unit tests (`src/test/`) plus instrumented tests (`src/androidTest/`) for real-device coverage
 
 This map provides navigation context for understanding code organization and relationships between components.
