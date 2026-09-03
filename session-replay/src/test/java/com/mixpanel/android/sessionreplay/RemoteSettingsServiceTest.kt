@@ -249,14 +249,31 @@ class RemoteSettingsServiceTest {
 
     @Test
     fun testCheckSettingsMissingWireframeFieldLeavesWireframesEnabled() = runTest {
-        // The SDK never asked for the switch, so the server does not send it
+        // The SDK never asked for the switch, so the server does not send it and there is no cache
         val responseJson = """{"recording": {"is_enabled": true}}"""
         coEvery { mockNetwork.performAPIRequestWithResponse(any()) } returns Result.success(responseJson)
+        every { mockSharedPreferences.contains("mp_sr_wireframe_${testToken}_enabled") } returns false
 
         val result = remoteSettingsService.fetchRemoteSettings(testToken)
 
         assertTrue(result.isWireframeEnabled)
         verify(exactly = 0) { mockEditor.putBoolean("mp_sr_wireframe_${testToken}_enabled", any()) }
+        verify(exactly = 0) { mockEditor.remove("mp_sr_wireframe_${testToken}_enabled") }
+    }
+
+    @Test
+    fun testCheckSettingsMissingWireframeFieldPreservesCachedDisable() = runTest {
+        val responseJson = """{"recording": {"is_enabled": true}}"""
+        coEvery { mockNetwork.performAPIRequestWithResponse(any()) } returns Result.success(responseJson)
+        every { mockSharedPreferences.contains("mp_sr_wireframe_${testToken}_enabled") } returns true
+        every { mockSharedPreferences.getBoolean("mp_sr_wireframe_${testToken}_enabled", true) } returns false
+
+        val result = remoteSettingsService.fetchRemoteSettings(testToken, wireframesRequested = true)
+
+        assertEquals(
+            RemoteSettingsResult(isRecordingEnabled = true, isWireframeEnabled = false),
+            result
+        )
         verify(exactly = 0) { mockEditor.remove("mp_sr_wireframe_${testToken}_enabled") }
     }
 

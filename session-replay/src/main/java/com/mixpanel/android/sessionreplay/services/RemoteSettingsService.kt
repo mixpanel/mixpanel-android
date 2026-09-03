@@ -17,9 +17,9 @@ import kotlinx.serialization.json.Json
 /**
  * Result from checking settings endpoint, containing recording status, SDK config, and event triggers.
  *
- * [isWireframeEnabled] is the server-side wireframe kill switch. It defaults to enabled: the
- * `wireframe` field is only requested (and only returned) when the app opted in to wireframes,
- * and anything short of an explicit `false` leaves capture alone.
+ * [isWireframeEnabled] is the server-side wireframe kill switch. It defaults to enabled because
+ * the `wireframe` field is only requested when the app opted in to wireframes. Once an explicit
+ * disable is cached, it remains disabled until the server explicitly re-enables it.
  */
 internal data class RemoteSettingsResult(
     val isRecordingEnabled: Boolean,
@@ -170,11 +170,11 @@ internal open class RemoteSettingsService(
      * Reads the wireframe kill switch off a fresh response and refreshes its cache.
      *
      * An absent `wireframe` field means the switch was never asked for (wireframes off locally) or
-     * the server had nothing to say, so the previously cached verdict is left untouched and capture
-     * stays on.
+     * the server had nothing to say. In that case, preserve a previously cached disable; with no
+     * cached verdict, capture defaults to on for backward compatibility with older services.
      */
     private fun resolveWireframeEnabled(settingsResponse: SettingsResponse, token: String): Boolean {
-        val wireframe = settingsResponse.wireframe ?: return true
+        val wireframe = settingsResponse.wireframe ?: return checkCachedWireframeState(token)
 
         return if (wireframe.isEnabled) {
             Logger.info("Wireframe settings check complete: enabled")
