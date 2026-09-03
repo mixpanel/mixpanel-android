@@ -120,8 +120,7 @@ dependencies {
     androidTestImplementation(libs.test.mockito.android)
     androidTestImplementation(libs.test.androidx.runner)
     androidTestImplementation(libs.test.androidx.core)
-    // Keep the benchmark host aligned with this repository's compileSdk 35 demo app.
-    androidTestImplementation("androidx.activity:activity-compose:1.9.3")
+    androidTestImplementation(libs.androidx.activity.compose.sdk35)
     androidTestImplementation(libs.androidx.compose.foundation)
     androidTestImplementation(libs.mixpanel)
     androidTestUtil(libs.test.androidx.orchestrator)
