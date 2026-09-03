@@ -2,6 +2,7 @@ package com.mixpanel.android.sessionreplay.tracking
 
 import com.mixpanel.android.sessionreplay.models.RawScreenshotEvent
 import com.mixpanel.android.sessionreplay.models.RawTouchEvent
+import com.mixpanel.android.sessionreplay.models.SessionEvent
 
 class EventPublisher {
     companion object {
@@ -26,5 +27,13 @@ class EventPublisher {
 
     fun publishSessionEvent(event: RawScreenshotEvent) {
         subscribers.forEach { it.receivedScreenshotEvent(event) }
+    }
+
+    /**
+     * Publishes a fully-formed [SessionEvent] (e.g. an rrweb Custom event) that doesn't need
+     * any further server-side encoding. The wireframe pipeline uses this path.
+     */
+    fun publishCustomEvent(event: SessionEvent) {
+        subscribers.forEach { it.receivedCustomEvent(event) }
     }
 }

@@ -4,9 +4,8 @@ import com.mixpanel.android.sessionreplay.services.EventService
 import com.mixpanel.android.sessionreplay.utils.EventType
 import com.mixpanel.android.sessionreplay.utils.IncrementalSource
 import com.mixpanel.android.sessionreplay.utils.PayloadObjectId
+import com.mixpanel.android.sessionreplay.utils.MouseInteraction
 import com.mixpanel.android.sessionreplay.utils.SessionReplayEncoder
-import com.mixpanel.android.sessionreplay.utils.TimingAdjustment
-import com.mixpanel.android.sessionreplay.utils.TouchInteraction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
@@ -37,13 +36,13 @@ class EventServiceTests {
     private val touchEvent = SessionEvent(
         type = EventType.INCREMENTAL_SNAPSHOT,
         data = SessionEventData.DetailedData(
-            source = IncrementalSource.TOUCH_INTERACTION,
-            type = TouchInteraction.START,
+            source = IncrementalSource.MOUSE_INTERACTION,
+            type = MouseInteraction.TOUCH_START,
             id = PayloadObjectId.MAIN_SNAPSHOT,
             x = 0,
             y = 0
         ),
-        timestamp = System.currentTimeMillis() + TimingAdjustment.TOUCH_INTERACTION
+        timestamp = System.currentTimeMillis()
     )
 
     private lateinit var mainScreenshotEvent: SessionEvent

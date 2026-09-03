@@ -26,6 +26,7 @@ import com.mixpanel.android.sessionreplay.tracking.TouchEventListener
 import com.mixpanel.android.sessionreplay.tracking.TouchEventRecorder
 import com.mixpanel.android.sessionreplay.utils.EndPoints
 import com.mixpanel.android.sessionreplay.utils.LogMessages.AUTO_START_RECORDING_DEPRECATED
+import com.mixpanel.android.sessionreplay.wireframe.WireframeEmitter
 import curtains.Curtains
 import curtains.OnRootViewsChangedListener
 import curtains.OnTouchEventListener
@@ -159,6 +160,19 @@ class MPSessionReplayInstance(
 
         SensitiveViewManager.autoMaskedViews = config.autoMaskedViews
 
+        // wireframesOptions is the only switch: no wireframe is built unless wireframes are
+        // enabled. debugOptions.wireframeEmitter observes that work, it does not turn it on,
+        // so setting it alone is a no-op rather than a second way to start capturing.
+        val wireframesOptions = config.wireframesOptions
+        SensitiveViewManager.useAccessibilityLabelFallback =
+            wireframesOptions?.useAccessibilityLabelFallback ?: false
+        ScreenRecorder.shared.wireframeEmitter = wireframesOptions?.let { options ->
+            WireframeEmitter(
+                sensitiveRules = options.sensitiveRules,
+                debugEmitter = config.debugOptions?.wireframeEmitter
+            )
+        }
+
         Curtains.onRootViewsChangedListeners += onRootViewsChangedListener
         Curtains.rootViews.forEach { rootView ->
             // Setup callbacks for each existing root view
@@ -199,6 +213,9 @@ class MPSessionReplayInstance(
         debugMaskOverlayManager?.disable()
 
         SensitiveViewManager.deinitialize()
+
+        ScreenRecorder.shared.wireframeEmitter?.cancel()
+        ScreenRecorder.shared.wireframeEmitter = null
 
         ProcessLifecycleOwner.get().lifecycle.removeObserver(
             appLifecycleObserver
@@ -354,6 +371,14 @@ class MPSessionReplayInstance(
             // Enable debug mask overlay if configured
             debugMaskOverlayManager?.enable()
 
+            // Wireframe dedup is per *session*, not per SDK lifetime. The emitter is built
+            // in init and outlives a stop/start cycle, so without this the new replay's
+            // first frame is compared against the previous replay's last one — and since
+            // stopRecording cleared initialScreenshotCaptured, scheduleScreenshotCapture()
+            // below always captures, so a background/foreground onto an unchanged screen
+            // reliably ships an opening screenshot with no mp_wireframe to describe it.
+            ScreenRecorder.shared.wireframeEmitter?.resetDedup()
+
             scheduleScreenshotCapture()
             flushService.start()
             sessionReplaySender.registerSessionReplay(
@@ -378,7 +403,9 @@ class MPSessionReplayInstance(
             Logger.info("Captured $screenshotVariant screenshot in ${System.currentTimeMillis() - beforeCapture}ms")
 
             screenshot?.let {
-                EventPublisher.shared.publishSessionEvent(RawScreenshotEvent(it, initial))
+                EventPublisher.shared.publishSessionEvent(
+                    RawScreenshotEvent(it.data, initial, it.capturedAtMs)
+                )
                 Logger.info("Published $screenshotVariant screenshot event in ${System.currentTimeMillis() - beforeCapture}ms")
                 captured = true
             }

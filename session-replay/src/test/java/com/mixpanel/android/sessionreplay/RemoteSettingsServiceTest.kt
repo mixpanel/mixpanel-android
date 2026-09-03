@@ -23,6 +23,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -186,6 +187,122 @@ class RemoteSettingsServiceTest {
                 sdkConfig = SdkConfig(recordSessionsPercent = 75.0),
                 isFromCache = true
             ),
+            result
+        )
+    }
+
+    // --- Wireframe Kill Switch Tests ---
+
+    @Test
+    fun testCheckSettingsIncludesWireframeQueryParamWhenRequested() = runTest {
+        val responseJson = """{"recording": {"is_enabled": true}, "wireframe": {"is_enabled": true}}"""
+        val capturedRequest = slot<APIRequest>()
+        coEvery { mockNetwork.performAPIRequestWithResponse(capture(capturedRequest)) } returns Result.success(responseJson)
+
+        remoteSettingsService.fetchRemoteSettings(testToken, wireframesRequested = true)
+
+        val expectedRequest = APIRequest(
+            endPoint = "https://api.mixpanel.com/settings",
+            method = RequestMethod.GET,
+            queryItems = listOf(
+                "recording" to "1",
+                "sdk_config" to "1",
+                "wireframe" to "1",
+                "\$os" to "Android",
+                "mp_lib" to mpLib,
+                "\$lib_version" to version
+            ),
+            headers = mapOf("Authorization" to "Basic dGVzdFRva2VuMTIzOg=="),
+            timeout = 5000L
+        )
+        assertEquals(expectedRequest, capturedRequest.captured)
+    }
+
+    @Test
+    fun testCheckSettingsWireframeDisabled() = runTest {
+        val responseJson = """
+            {"recording": {"is_enabled": true},
+             "wireframe": {"is_enabled": false, "error": "organization is blocked from wireframe capture."}}
+        """.trimIndent()
+        coEvery { mockNetwork.performAPIRequestWithResponse(any()) } returns Result.success(responseJson)
+
+        val result = remoteSettingsService.fetchRemoteSettings(testToken, wireframesRequested = true)
+
+        // Replay keeps recording; only wireframes are killed
+        assertEquals(
+            RemoteSettingsResult(isRecordingEnabled = true, isWireframeEnabled = false),
+            result
+        )
+        verify { mockEditor.putBoolean("mp_sr_wireframe_${testToken}_enabled", false) }
+    }
+
+    @Test
+    fun testCheckSettingsWireframeEnabledClearsWireframeCache() = runTest {
+        val responseJson = """{"recording": {"is_enabled": true}, "wireframe": {"is_enabled": true}}"""
+        coEvery { mockNetwork.performAPIRequestWithResponse(any()) } returns Result.success(responseJson)
+
+        val result = remoteSettingsService.fetchRemoteSettings(testToken, wireframesRequested = true)
+
+        assertEquals(RemoteSettingsResult(isRecordingEnabled = true), result)
+        verify { mockEditor.remove("mp_sr_wireframe_${testToken}_enabled") }
+    }
+
+    @Test
+    fun testCheckSettingsMissingWireframeFieldLeavesWireframesEnabled() = runTest {
+        // The SDK never asked for the switch, so the server does not send it and there is no cache
+        val responseJson = """{"recording": {"is_enabled": true}}"""
+        coEvery { mockNetwork.performAPIRequestWithResponse(any()) } returns Result.success(responseJson)
+        every { mockSharedPreferences.contains("mp_sr_wireframe_${testToken}_enabled") } returns false
+
+        val result = remoteSettingsService.fetchRemoteSettings(testToken)
+
+        assertTrue(result.isWireframeEnabled)
+        verify(exactly = 0) { mockEditor.putBoolean("mp_sr_wireframe_${testToken}_enabled", any()) }
+        verify(exactly = 0) { mockEditor.remove("mp_sr_wireframe_${testToken}_enabled") }
+    }
+
+    @Test
+    fun testCheckSettingsMissingWireframeFieldPreservesCachedDisable() = runTest {
+        val responseJson = """{"recording": {"is_enabled": true}}"""
+        coEvery { mockNetwork.performAPIRequestWithResponse(any()) } returns Result.success(responseJson)
+        every { mockSharedPreferences.contains("mp_sr_wireframe_${testToken}_enabled") } returns true
+        every { mockSharedPreferences.getBoolean("mp_sr_wireframe_${testToken}_enabled", true) } returns false
+
+        val result = remoteSettingsService.fetchRemoteSettings(testToken, wireframesRequested = true)
+
+        assertEquals(
+            RemoteSettingsResult(isRecordingEnabled = true, isWireframeEnabled = false),
+            result
+        )
+        verify(exactly = 0) { mockEditor.remove("mp_sr_wireframe_${testToken}_enabled") }
+    }
+
+    @Test
+    fun testCheckSettingsBothSwitchesDisabled() = runTest {
+        val responseJson = """{"recording": {"is_enabled": false}, "wireframe": {"is_enabled": false}}"""
+        coEvery { mockNetwork.performAPIRequestWithResponse(any()) } returns Result.success(responseJson)
+
+        val result = remoteSettingsService.fetchRemoteSettings(testToken, wireframesRequested = true)
+
+        assertEquals(
+            RemoteSettingsResult(isRecordingEnabled = false, isWireframeEnabled = false),
+            result
+        )
+    }
+
+    @Test
+    fun testCheckSettingsApiFailureFallsBackToCachedWireframeState() = runTest {
+        coEvery { mockNetwork.performAPIRequestWithResponse(any()) } returns Result.failure(Exception("Network error"))
+        every { mockSharedPreferences.contains("mp_sr_recording_${testToken}_enabled") } returns false
+        every { mockSharedPreferences.contains("mp_sr_wireframe_${testToken}_enabled") } returns true
+        every { mockSharedPreferences.getBoolean("mp_sr_wireframe_${testToken}_enabled", true) } returns false
+        every { mockSharedPreferences.getString("mp_sr_recording_${testToken}_sdk_config", null) } returns null
+
+        val result = remoteSettingsService.fetchRemoteSettings(testToken, wireframesRequested = true)
+
+        // The kill switch survives a failed fetch
+        assertEquals(
+            RemoteSettingsResult(isRecordingEnabled = true, isFromCache = true, isWireframeEnabled = false),
             result
         )
     }

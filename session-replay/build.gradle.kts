@@ -3,6 +3,7 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose")
     id("org.jetbrains.kotlin.plugin.serialization")
     id("org.jetbrains.dokka") version "1.9.20"
     id("mixpanel.maven-publish")
@@ -31,6 +32,7 @@ android {
 
     buildFeatures {
         buildConfig = true
+        compose = true
     }
 
     buildTypes {
@@ -57,6 +59,10 @@ android {
         targetSdk = 34
         execution = "ANDROIDX_TEST_ORCHESTRATOR"
     }
+
+    // Performance evidence must exercise optimized library bytecode. Ordinary
+    // connected tests stay on debug; opt in with -PmixpanelTestBuildType=release.
+    testBuildType = providers.gradleProperty("mixpanelTestBuildType").orElse("debug").get()
 
     lint {
         disable += listOf(
@@ -114,6 +120,8 @@ dependencies {
     androidTestImplementation(libs.test.mockito.android)
     androidTestImplementation(libs.test.androidx.runner)
     androidTestImplementation(libs.test.androidx.core)
+    androidTestImplementation(libs.androidx.activity.compose.sdk35)
+    androidTestImplementation(libs.androidx.compose.foundation)
     androidTestImplementation(libs.mixpanel)
     androidTestUtil(libs.test.androidx.orchestrator)
 }

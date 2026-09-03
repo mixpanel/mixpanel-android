@@ -1,0 +1,85 @@
+{
+  "viewport": [
+    1080,
+    2340
+  ],
+  "elements": [
+    {
+      "role": "text",
+      "text": null,
+      "bounds": [
+        0,
+        0,
+        348,
+        45
+      ],
+      "maskDecision": "AUTO"
+    },
+    {
+      "role": "image",
+      "text": "Hero",
+      "bounds": [
+        0,
+        45,
+        220,
+        220
+      ],
+      "maskDecision": "NONE"
+    },
+    {
+      "role": "text",
+      "text": "Explicitly unmasked",
+      "bounds": [
+        0,
+        265,
+        333,
+        45
+      ],
+      "maskDecision": "NONE"
+    },
+    {
+      "role": "image",
+      "text": null,
+      "bounds": [
+        0,
+        310,
+        220,
+        220
+      ],
+      "maskDecision": "EXPLICIT"
+    },
+    {
+      "role": "text",
+      "text": null,
+      "bounds": [
+        0,
+        530,
+        159,
+        45
+      ],
+      "maskDecision": "AUTO"
+    },
+    {
+      "role": "text",
+      "text": "Middle",
+      "bounds": [
+        159,
+        530,
+        113,
+        45
+      ],
+      "maskDecision": "NONE"
+    },
+    {
+      "role": "input",
+      "text": null,
+      "bounds": [
+        272,
+        530,
+        270,
+        45
+      ],
+      "maskDecision": "TEXT_ENTRY"
+    }
+  ]
+}
