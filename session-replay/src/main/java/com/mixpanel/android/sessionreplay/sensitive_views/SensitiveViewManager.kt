@@ -1,5 +1,6 @@
 package com.mixpanel.android.sessionreplay.sensitive_views
 
+import android.annotation.SuppressLint
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -622,7 +623,12 @@ object SensitiveViewManager {
 
             if (wireframeOut != null) {
                 collectWireframeForNode(
-                    node, bounds, isInputField, maskDecision, effectiveAncestor, wireframeOut
+                    node,
+                    bounds,
+                    isInputField,
+                    maskDecision,
+                    effectiveAncestor,
+                    wireframeOut
                 )
             }
         }
@@ -763,6 +769,7 @@ object SensitiveViewManager {
     @Volatile
     private var cachedReactRoleTagId: Int = -1
 
+    @SuppressLint("DiscouragedApi")
     private fun reactRoleTagId(view: View): Int {
         val cached = cachedReactRoleTagId
         if (cached != -1) return cached
