@@ -20,6 +20,7 @@ import androidx.compose.ui.semantics.SemanticsConfiguration
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.text.AnnotatedString
 import android.widget.Button
 import androidx.lifecycle.findViewTreeLifecycleOwner
 import com.mixpanel.android.sessionreplay.extensions.SensitiveViewNode
@@ -566,11 +567,52 @@ object SensitiveViewManager {
     ) {
         val config = node.config
 
-        // Check if this is an input field (always mask regardless of parent safe status)
+        // Resolve semantics values once for both masking and wireframe classification. Compose's
+        // configuration lookup is cheap in isolation, but this runs for every semantics node and
+        // the enabled path previously repeated the same reads in collectWireframeForNode.
         val isInputField = config.getOrNull(SemanticsProperties.EditableText) != null
+        val sensitivity = config.isSensitiveView()
+        val needsText = AutoMaskedView.Text in autoMaskedViews || wireframeOut != null
+        val needsImage = AutoMaskedView.Image in autoMaskedViews
+        val semanticsText = if (needsText || needsImage) {
+            config.getOrNull(SemanticsProperties.Text)
+        } else {
+            null
+        }
+        val role = if (needsImage || wireframeOut != null) {
+            config.getOrNull(SemanticsProperties.Role)
+        } else {
+            null
+        }
+        val contentDescriptions = if (needsImage || (wireframeOut != null && useAccessibilityLabelFallback)) {
+            config.getOrNull(SemanticsProperties.ContentDescription)
+        } else {
+            null
+        }
+        val declaredText = if (wireframeOut != null) {
+            config.getOrNull(mpReplayWireframeTextPropKey)?.takeIf { it.isNotBlank() }
+        } else {
+            null
+        }
+        val hasWireframeText = wireframeOut != null &&
+            semanticsText?.any { it.text.isNotBlank() } == true
+        val hasWireframeDescription = wireframeOut != null && useAccessibilityLabelFallback &&
+            contentDescriptions?.any { it.isNotBlank() } == true
+        val wireframeType = if (wireframeOut != null) {
+            when {
+                isInputField -> WireframeType.Input
+                role == Role.Image -> WireframeType.Image
+                role == Role.Button -> WireframeType.Button
+                hasWireframeText || hasWireframeDescription -> WireframeType.Text
+                declaredText != null -> WireframeType.Text
+                else -> null
+            }
+        } else {
+            null
+        }
 
         // Calculate if current node is safe (either parent is safe or explicitly marked)
-        val isSafe = parentIsSafe || (config.isSensitiveView() == false)
+        val isSafe = parentIsSafe || sensitivity == false
 
         // Ordered by priority (highest to lowest): TEXT_ENTRY > MASK > AUTO > UNMASK
         // Cheap boolean checks first, then more expensive content checks
@@ -578,15 +620,17 @@ object SensitiveViewManager {
             when {
                 isInputField -> InternalMaskDecision.TEXT_ENTRY
 
-                config.isSensitiveView() == true -> InternalMaskDecision.MASK
+                sensitivity == true -> InternalMaskDecision.MASK
 
                 isSafe -> {
                     if (trackUnmask) InternalMaskDecision.UNMASK else InternalMaskDecision.NONE
                 }
 
-                (AutoMaskedView.Text in autoMaskedViews) && config.hasText() -> InternalMaskDecision.AUTO
+                (AutoMaskedView.Text in autoMaskedViews) && !semanticsText.isNullOrEmpty() ->
+                    InternalMaskDecision.AUTO
 
-                (AutoMaskedView.Image in autoMaskedViews) && config.hasImage() -> InternalMaskDecision.AUTO
+                needsImage && config.hasImage(role, contentDescriptions, semanticsText, isInputField) ->
+                    InternalMaskDecision.AUTO
 
                 (AutoMaskedView.Web in autoMaskedViews) && config.hasWebView() -> InternalMaskDecision.AUTO
 
@@ -596,7 +640,7 @@ object SensitiveViewManager {
         // boundsInWindow resolves the node's position by walking its layout-coordinate chain, so
         // it's the priciest call in this traversal and both consumers below want the same rect.
         // Resolve it once, and only when something actually consumes it.
-        val bounds = if (maskDecision != InternalMaskDecision.NONE || wireframeOut != null) {
+        val bounds = if (maskDecision != InternalMaskDecision.NONE || wireframeType != null) {
             node.visibleBounds()
         } else {
             null
@@ -621,13 +665,15 @@ object SensitiveViewManager {
                 addOrUpdateEntry(boundsAccumulator, bounds, maskDecision)
             }
 
-            if (wireframeOut != null) {
+            if (wireframeOut != null && wireframeType != null) {
                 collectWireframeForNode(
-                    node,
                     bounds,
-                    isInputField,
+                    wireframeType,
+                    declaredText,
                     maskDecision,
                     effectiveAncestor,
+                    semanticsText,
+                    contentDescriptions,
                     wireframeOut
                 )
             }
@@ -643,45 +689,15 @@ object SensitiveViewManager {
      * worth recording (text, content description, image role, input field).
      */
     private fun collectWireframeForNode(
-        node: SemanticsNode,
         rect: Rect,
-        isInputField: Boolean,
+        type: WireframeType,
+        declaredText: String?,
         maskDecision: InternalMaskDecision,
         maskedAncestor: MaskDecision?,
+        semanticsText: List<AnnotatedString>?,
+        contentDescriptions: List<String>?,
         wireframeOut: MutableList<WireframeElement>
     ) {
-        val config = node.config
-
-        // Detect text-bearing nodes from the raw semantics BEFORE applying the masking filter.
-        // Otherwise a masked Text composable would lose its `visibleText`, fail the text-type
-        // check below, and get dropped from the wireframe entirely — instead we want to keep
-        // the element (with redacted text) so the layout is still visible to consumers.
-        val rawText = config.getOrNull(SemanticsProperties.Text)?.joinToString(" ") { it.text }
-        // Gated at the read so the label can't reach classification either: a node whose only
-        // content is a label is a node we only know is content *because of* the label, so with
-        // the fallback off it falls through to `else -> return` rather than becoming an empty
-        // text shell. Nodes that carry a role (an Icon, an image button) still emit textless.
-        val rawContentDesc = if (useAccessibilityLabelFallback) {
-            config.getOrNull(SemanticsProperties.ContentDescription)?.joinToString(" ")
-        } else {
-            null
-        }
-        val hasTextContent = !rawText.isNullOrBlank() || !rawContentDesc.isNullOrBlank()
-
-        // Developer-declared text via Modifier.mpWireframeText(...). Authored, not
-        // scraped from the node's semantics.
-        val declaredText = config.getOrNull(mpReplayWireframeTextPropKey)?.takeIf { it.isNotBlank() }
-
-        val role = config.getOrNull(SemanticsProperties.Role)
-        val type: WireframeType = when {
-            isInputField -> WireframeType.Input
-            role == Role.Image -> WireframeType.Image
-            role == Role.Button -> WireframeType.Button
-            hasTextContent -> WireframeType.Text
-            declaredText != null -> WireframeType.Text
-            else -> return // skip nodes with no meaningful content
-        }
-
         if (declaredText != null) {
             // Layer 3 substitution. Emitted even when the node is masked; DECLARED exempts it
             // from the Layer 2 geometric strip so it survives to describe the view for the AI
@@ -705,8 +721,8 @@ object SensitiveViewManager {
         val visibleText: String? = if (isMasked || maskedAncestor != null) {
             null
         } else {
-            rawText?.takeIf { it.isNotBlank() }
-                ?: rawContentDesc?.takeIf { it.isNotBlank() }
+            semanticsText.joinedAnnotatedText()
+                ?: if (useAccessibilityLabelFallback) contentDescriptions.joinedDescriptionText() else null
         }
 
         // Report the ancestor's provenance when this node is not masked in its own right, so a
@@ -715,6 +731,39 @@ object SensitiveViewManager {
         val wireDecision = if (isMasked) maskDecision.toWire() else (maskedAncestor ?: MaskDecision.NONE)
 
         wireframeOut.add(WireframeElement.fromRect(type, visibleText, rect, wireDecision))
+    }
+
+    private fun SemanticsConfiguration.hasImage(
+        role: Role?,
+        contentDescription: List<String>?,
+        text: List<AnnotatedString>?,
+        isInputField: Boolean
+    ): Boolean {
+        if (role == Role.Image) return true
+
+        if (contentDescription?.any { description ->
+                IMAGE_INDICATORS.any { indicator -> description.contains(indicator, ignoreCase = true) }
+            } == true
+        ) {
+            return true
+        }
+
+        if (!text.isNullOrEmpty() || isInputField) return false
+
+        val isClickable = getOrNull(SemanticsActions.OnClick) != null
+        return isClickable || !contentDescription.isNullOrEmpty()
+    }
+
+    private fun List<AnnotatedString>?.joinedAnnotatedText(): String? {
+        if (isNullOrEmpty()) return null
+        if (size == 1) return first().text.takeIf { it.isNotBlank() }
+        return joinToString(" ") { it.text }.takeIf { it.isNotBlank() }
+    }
+
+    private fun List<String>?.joinedDescriptionText(): String? {
+        if (isNullOrEmpty()) return null
+        if (size == 1) return first().takeIf { it.isNotBlank() }
+        return joinToString(" ").takeIf { it.isNotBlank() }
     }
 
     private fun classifyAndroidView(view: View): WireframeType? = when {
