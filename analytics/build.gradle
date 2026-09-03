@@ -138,7 +138,7 @@ tasks.register("androidJavadocs", Javadoc) {
 
 dependencies {
     // official release
-    implementation 'com.mixpanel.android:mixpanel-android-common:1.0.2'
+    implementation 'com.mixpanel.android:mixpanel-android-common:1.1.0'
     signature 'net.sf.androidscents.signature:android-api-level-21:5.0.1_r2@signature'
     // or use below for local testing
     // implementation project(':common')
