@@ -213,6 +213,31 @@ class TouchEventRecorderTest {
     }
 
     @Test
+    fun testWindowOffset_isResolvedOncePerGesture() {
+        var offsetRequestCount = 0
+        val recorder = TouchEventRecorder(
+            context = context,
+            touchEventListener = touchListener,
+            windowOffsetProvider = {
+                offsetRequestCount++
+                intArrayOf(10, 20)
+            },
+            epochOffsetProvider = { epochOffset }
+        )
+
+        recorder.send(MotionEvent.ACTION_DOWN, 100f, 200f)
+        recorder.send(MotionEvent.ACTION_MOVE, 110f, 210f, eventTimeOffset = 60L)
+        recorder.send(MotionEvent.ACTION_MOVE, 120f, 220f, eventTimeOffset = 120L)
+        recorder.send(MotionEvent.ACTION_UP, 120f, 220f, eventTimeOffset = 150L)
+
+        assertEquals(1, offsetRequestCount)
+
+        simulateTap(recorder, 300f, 400f)
+
+        assertEquals(2, offsetRequestCount)
+    }
+
+    @Test
     fun testTap_zeroCoordinates() {
         val recorder = createRecorder(density = 3.0f)
         simulateTap(recorder, 0f, 0f)

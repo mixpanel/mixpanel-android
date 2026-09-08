@@ -51,6 +51,7 @@ class TouchEventRecorder(
     private val pendingSamples = mutableListOf<TouchSample>()
     private var isTracking = false
     private var lastSampledEventTime = 0L
+    private var gestureWindowOffset: IntArray? = null
 
     fun onTouchEvent(event: MotionEvent) {
         when (event.actionMasked) {
@@ -68,9 +69,11 @@ class TouchEventRecorder(
 
     private fun onGestureStart(event: MotionEvent) {
         resetGesture()
+        val windowOffset = windowOffsetProvider()
+        gestureWindowOffset = windowOffset
         isTracking = true
         lastSampledEventTime = event.eventTime
-        publishInteraction(MouseInteraction.TOUCH_START, event)
+        publishInteraction(MouseInteraction.TOUCH_START, event, windowOffset)
         touchEventListener.onTouchStart()
     }
 
@@ -79,10 +82,11 @@ class TouchEventRecorder(
         // next clean gesture rather than emitting a path with no start.
         if (!isTracking) return
         if (event.eventTime - lastSampledEventTime < TouchSampling.MOVE_SAMPLE_INTERVAL_MS) return
+        val windowOffset = gestureWindowOffset ?: return
 
         lastSampledEventTime = event.eventTime
         pendingSamples += TouchSample(
-            point = scalePoint(event.rawX, event.rawY),
+            point = scalePoint(event.rawX, event.rawY, windowOffset),
             timestamp = toWallClock(event.eventTime)
         )
 
@@ -96,10 +100,11 @@ class TouchEventRecorder(
 
     private fun onGestureEnd(event: MotionEvent, interactionType: Int) {
         if (!isTracking) return
+        val windowOffset = gestureWindowOffset ?: return
 
         // Drain the path before the boundary event so the stream stays chronological.
         flushSamples()
-        publishInteraction(interactionType, event)
+        publishInteraction(interactionType, event, windowOffset)
         resetGesture()
         touchEventListener.onTouchEnd()
     }
@@ -114,13 +119,14 @@ class TouchEventRecorder(
         pendingSamples.clear()
         isTracking = false
         lastSampledEventTime = 0L
+        gestureWindowOffset = null
     }
 
-    private fun publishInteraction(interactionType: Int, event: MotionEvent) {
+    private fun publishInteraction(interactionType: Int, event: MotionEvent, windowOffset: IntArray) {
         EventPublisher.shared.publishTouchEvent(
             RawTouchEvent.Interaction(
                 type = interactionType,
-                point = scalePoint(event.rawX, event.rawY),
+                point = scalePoint(event.rawX, event.rawY, windowOffset),
                 timestamp = toWallClock(event.eventTime)
             )
         )
@@ -132,11 +138,10 @@ class TouchEventRecorder(
      * Converts raw screen coordinates to logical coordinates relative to the screenshot.
      * Subtracts window offset (for notch/cutout) and scales by density to match 1x screenshot scale.
      */
-    private fun scalePoint(rawX: Float, rawY: Float): Point {
-        val offset = windowOffsetProvider()
+    private fun scalePoint(rawX: Float, rawY: Float, windowOffset: IntArray): Point {
         return Point(
-            ((rawX - offset[0]) / density).toInt(),
-            ((rawY - offset[1]) / density).toInt()
+            ((rawX - windowOffset[0]) / density).toInt(),
+            ((rawY - windowOffset[1]) / density).toInt()
         )
     }
 }
