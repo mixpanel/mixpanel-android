@@ -55,5 +55,19 @@ sealed class RawTouchEvent {
 data class RawScreenshotEvent(
     val data: ByteArray,
     val isInitial: Boolean,
-    val timestamp: Long
+    val width: Int = 0,
+    val height: Int = 0,
+    val timestamp: Long = System.currentTimeMillis()
+)
+
+/**
+ * A compressed frame and the logical pixel dimensions it was captured at. The system display
+ * metrics are not equivalent: they exclude the navigation bar on non-edge-to-edge activities.
+ * [capturedAtMs] records when the pixels were read, before compression and event queueing.
+ */
+data class CapturedFrame(
+    val data: ByteArray,
+    val width: Int,
+    val height: Int,
+    val capturedAtMs: Long
 )

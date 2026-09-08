@@ -12,6 +12,7 @@ import android.view.View
 import androidx.annotation.RequiresApi
 import androidx.annotation.VisibleForTesting
 import com.mixpanel.android.sessionreplay.logging.Logger
+import com.mixpanel.android.sessionreplay.models.CapturedFrame
 import com.mixpanel.android.sessionreplay.sensitive_views.SensitiveViewManager
 import com.mixpanel.android.sessionreplay.wireframe.WireframeElement
 import com.mixpanel.android.sessionreplay.wireframe.WireframeEmitter
@@ -133,29 +134,6 @@ internal class ScreenRecorder {
         } else {
             captureUsingSoftwareCanvas(view, bitmapScale, pool)
         }
-    }
-
-    /**
-     * A compressed frame and the wall-clock instant its pixels were read off the surface.
-     *
-     * The timestamp travels with the bytes so the screenshot event reports when the frame was
-     * on screen rather than when it reached the event queue — compression and queueing add an
-     * unbounded, load-dependent lag, and touches are timestamped accurately at the source
-     * (`MotionEvent.eventTime`), so a late stamp mis-orders a screen against the tap that
-     * produced it.
-     */
-    data class CapturedScreenshot(
-        val data: ByteArray,
-        val capturedAtMs: Long
-    ) {
-        // ByteArray identity: data class equals() would compare the array by reference.
-        override fun equals(other: Any?): Boolean {
-            if (this === other) return true
-            if (other !is CapturedScreenshot) return false
-            return capturedAtMs == other.capturedAtMs && data.contentEquals(other.data)
-        }
-
-        override fun hashCode(): Int = 31 * data.contentHashCode() + capturedAtMs.hashCode()
     }
 
     /**
@@ -471,12 +449,10 @@ internal class ScreenRecorder {
      * @param fullScreenView Optional view (e.g., activity root) used to determine full-screen
      *   dimensions when capturing sub-windows (dialogs, popups). If provided and larger than
      *   rootView, the sub-window is composited onto a full-screen bitmap.
-     * @return The compressed JPEG image paired with the instant it was captured, or `null` if
-     *   capture fails. The caller must stamp the screenshot event with
-     *   [CapturedScreenshot.capturedAtMs] rather than the time it happens to publish, so the
-     *   event reports when the frame was on screen.
+     * @return A [CapturedFrame] holding the compressed JPEG image, its logical dimensions, and
+     *   the instant its pixels were captured, or `null` if capture fails.
      */
-    suspend fun captureScreenshot(rootView: View, fullScreenView: View? = null): CapturedScreenshot? {
+    suspend fun captureScreenshot(rootView: View, fullScreenView: View? = null): CapturedFrame? {
         // Initialize bitmap pool if not already done
         val pool = acquireBitmapPool(rootView.context)
 
@@ -503,8 +479,11 @@ internal class ScreenRecorder {
                 image
             } ?: return@withContext null
 
+            val width = bitmap.width
+            val height = bitmap.height
+
             try {
-                CapturedScreenshot(bitmap.compressToByteArray(), rendered.capturedAtMs).also {
+                bitmap.compressToByteArray().let { data ->
                     // The image is now guaranteed to ship (a non-null return is always
                     // published as a screenshot event), so the wireframe describing it can
                     // go out. Both events carry the frame's capture instant, so they stay
@@ -525,12 +504,13 @@ internal class ScreenRecorder {
                             Logger.warn("Failed to emit wireframe: ${e.message}")
                         }
                     }
-                    Logger.debug { "Compressed screenshot size: %.2f KB".format(it.data.size / 1024.0) }
+                    Logger.debug { "Compressed screenshot size: %.2f KB".format(data.size / 1024.0) }
 //                     saveToLocalFilesystem(
 //                         rootView.context.applicationContext,
-//                         it.data,
+//                         data,
 //                         "screenshot-${System.currentTimeMillis()}.jpg"
 //                     )
+                    CapturedFrame(data, width, height, rendered.capturedAtMs)
                 }
             } catch (e: Exception) {
                 Logger.warn("Failed to process screenshot: ${e.message}")

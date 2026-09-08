@@ -381,6 +381,7 @@ class MPSessionReplayInstance(
 
             scheduleScreenshotCapture()
             flushService.start()
+            eventService.resetViewportTracking()
             sessionReplaySender.registerSessionReplay(
                 appContext,
                 mapOf("\$mp_replay_id" to getReplayId())
@@ -404,7 +405,7 @@ class MPSessionReplayInstance(
 
             screenshot?.let {
                 EventPublisher.shared.publishSessionEvent(
-                    RawScreenshotEvent(it.data, initial, it.capturedAtMs)
+                    RawScreenshotEvent(it.data, initial, it.width, it.height, it.capturedAtMs)
                 )
                 Logger.info("Published $screenshotVariant screenshot event in ${System.currentTimeMillis() - beforeCapture}ms")
                 captured = true
