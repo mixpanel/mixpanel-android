@@ -412,7 +412,9 @@ object SensitiveViewManager {
         rootView: View,
         boundsAccumulator: MutableMap<Rect, InternalMaskDecision>,
         processedSemanticsOwners: MutableSet<Int>,
-        wireframeOut: MutableList<WireframeElement>? = null
+        wireframeOut: MutableList<WireframeElement>? = null,
+        parentIsSafe: Boolean = false,
+        maskedAncestor: MaskDecision? = null
     ) {
         val composeRoots = ArrayList<RootForTest>(5) // Preallocate with expected size
 
@@ -444,7 +446,9 @@ object SensitiveViewManager {
             traverseSemanticsNode(
                 node = root.semanticsOwner.rootSemanticsNode,
                 boundsAccumulator = boundsAccumulator,
-                wireframeOut = wireframeOut
+                wireframeOut = wireframeOut,
+                parentIsSafe = parentIsSafe,
+                maskedAncestor = maskedAncestor
             )
         }
     }
@@ -540,7 +544,8 @@ object SensitiveViewManager {
 
     private data class ViewContext(
         val view: View,
-        val isInsideSafeContainer: Boolean
+        val isInsideSafeContainer: Boolean,
+        val maskedAncestor: MaskDecision?
     )
 
     /**
@@ -652,7 +657,7 @@ object SensitiveViewManager {
         // what reaches the wire is settled by Layer 2's geometric strip against that rect, and the
         // element reports GEOMETRIC rather than EXPLICIT. Matches Flutter's `MaskContext.unmask`
         // and its `wireframe_nested_unmask_in_mask_geometric` fixture.
-        val effectiveAncestor = if (isSafe) null else maskedAncestor
+        val effectiveAncestor = if (sensitivity == false) null else maskedAncestor
 
         // What this node contributes to its descendants: its own decision when it is masked in its
         // own right, otherwise whatever it inherited.
@@ -880,10 +885,10 @@ object SensitiveViewManager {
         val processedSemanticsOwners = HashSet<Int>()
 
         // Initialize with the root view, checking if it's marked as safe
-        viewsToProcess.add(ViewContext(view, containsSafeView(view)))
+        viewsToProcess.add(ViewContext(view, containsSafeView(view), null))
 
         while (viewsToProcess.isNotEmpty()) {
-            val (currentView, isInsideSafeContainer) = viewsToProcess.removeAt(0)
+            val (currentView, isInsideSafeContainer, maskedAncestor) = viewsToProcess.removeAt(0)
 
             // Skip views that aren't visible (including children of GONE/INVISIBLE parents)
             if (!currentView.isShown) continue
@@ -946,37 +951,51 @@ object SensitiveViewManager {
             val wireframeType = if (wireframeOut != null) classifyAndroidView(currentView) else null
             val wantsWireframeElement = declaredText != null || wireframeType != null
 
-            // getGlobalVisibleRect walks the whole parent chain intersecting clips, making it the
-            // priciest per-view call in this loop — and with the default autoMaskedViews nearly
-            // every content view needs it for both a mask entry and a wireframe element. Resolve
-            // it at most once per view, and only when something actually consumes it.
+            // getGlobalVisibleRect walks the parent chain and applies its effective clipping,
+            // making it the priciest per-view call in this loop — and with the default
+            // autoMaskedViews nearly every content view needs it for both a mask entry and a
+            // wireframe element. Resolve it at most once per view, and only when something
+            // actually consumes it. Its result is not proof of containment: clipChildren=false
+            // can leave a descendant visible outside an ancestor's rect.
             val visibleRect = if (shouldMask || wantsUnmaskEntry || wantsWireframeElement) {
                 Rect().takeIf { currentView.getGlobalVisibleRect(it) }
             } else {
                 null
             }
 
-            // Mirrors the masking decision for this view so the wireframe path can suppress
-            // text on anything that ends up masked (otherwise we'd leak the same text the
-            // screenshot redacts).
-            val wasMasked = shouldMask
-            var wireDecision = MaskDecision.NONE
+            // Keep masking provenance separate from geometry. A descendant can draw outside a
+            // masked ancestor when clipChildren=false, so its visible rect need not intersect the
+            // ancestor's mask rect. An explicit unmask clears only the inherited wireframe
+            // decision; a mask on this view starts a new one even inside a safe subtree.
+            // The mask painter only needs standalone UNMASK entries when automatic masking is
+            // active, but wireframe provenance must notice an explicit unmask whenever there is
+            // an inherited decision to clear. Keep the extra synchronized-set lookup off the
+            // ordinary unmasked path.
+            val clearsWireframeAncestor = isSelfSafe ||
+                (maskedAncestor != null && containsSafeView(currentView))
+            val effectiveAncestor = if (clearsWireframeAncestor) null else maskedAncestor
+            val ownMaskDecision = if (shouldMask) {
+                when {
+                    isInputField -> InternalMaskDecision.TEXT_ENTRY
+                    isExplicitlySensitive -> InternalMaskDecision.MASK
+                    // A class the developer registered via addSensitiveClass is EXPLICIT
+                    // per the ERD's Layer 1 table, not AUTO — only the AutoMaskedView
+                    // classes are AUTO. Reporting only; both mask the same pixels, and
+                    // addSafeView still overrides a class match (see shouldMask above).
+                    isViewClassCustomerSensitive(currentView::class.java) ->
+                        InternalMaskDecision.MASK
+                    else -> InternalMaskDecision.AUTO
+                }
+            } else {
+                null
+            }
+            val childMaskedAncestor = ownMaskDecision?.toWire() ?: effectiveAncestor
+            val wasMasked = ownMaskDecision != null || effectiveAncestor != null
+            val wireDecision = ownMaskDecision?.toWire() ?: effectiveAncestor ?: MaskDecision.NONE
 
-            if (shouldMask) {
+            if (ownMaskDecision != null) {
                 if (visibleRect != null) {
-                    val maskDecision = when {
-                        isInputField -> InternalMaskDecision.TEXT_ENTRY
-                        isExplicitlySensitive -> InternalMaskDecision.MASK
-                        // A class the developer registered via addSensitiveClass is EXPLICIT
-                        // per the ERD's Layer 1 table, not AUTO — only the AutoMaskedView
-                        // classes are AUTO. Reporting only; both mask the same pixels, and
-                        // addSafeView still overrides a class match (see shouldMask above).
-                        isViewClassCustomerSensitive(currentView::class.java) ->
-                            InternalMaskDecision.MASK
-                        else -> InternalMaskDecision.AUTO
-                    }
-                    addOrUpdateEntry(boundsAccumulator, Rect(visibleRect), maskDecision)
-                    wireDecision = maskDecision.toWire()
+                    addOrUpdateEntry(boundsAccumulator, Rect(visibleRect), ownMaskDecision)
                 }
             } else if (wantsUnmaskEntry && visibleRect != null) {
                 addOrUpdateEntry(boundsAccumulator, Rect(visibleRect), InternalMaskDecision.UNMASK)
@@ -1014,14 +1033,21 @@ object SensitiveViewManager {
             val isRootForTest = currentView is RootForTest
 
             if (isComposeView || isRootForTest) {
-                collectMaskableNodes(currentView, boundsAccumulator, processedSemanticsOwners, wireframeOut)
+                collectMaskableNodes(
+                    currentView,
+                    boundsAccumulator,
+                    processedSemanticsOwners,
+                    wireframeOut,
+                    parentIsSafe = isSafe,
+                    maskedAncestor = childMaskedAncestor
+                )
             }
 
             // Then handle the ViewGroup case which happens regardless of jetpackComposeEnabled
             if (currentView is ViewGroup) {
                 for (i in 0 until currentView.childCount) {
                     currentView.getChildAt(i)?.let { child ->
-                        viewsToProcess.add(ViewContext(child, isSafe))
+                        viewsToProcess.add(ViewContext(child, isSafe, childMaskedAncestor))
                     }
                 }
             }

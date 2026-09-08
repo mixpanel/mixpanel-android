@@ -11,6 +11,8 @@ import android.widget.ScrollView
 import android.widget.TextView
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.ui.platform.ComposeView
 import com.mixpanel.android.sessionreplay.extensions.mpReplaySensitive
 import com.mixpanel.android.sessionreplay.extensions.mpWireframeText
 import com.mixpanel.android.sessionreplay.goldens.WireframePaparazziHarness.Companion.at
@@ -308,6 +310,31 @@ class ViewWireframeGoldenTest {
             }
         }
         WireframeGoldenFormat.assertGolden(capture, "nested_unmask_under_layout_geometric.json")
+    }
+
+    /** Mask provenance crosses from an Android View container into its Compose semantics tree. */
+    @Test
+    fun composeOutsideMaskedView_stripsTextByProvenance() {
+        val capture = harness.capture { ctx ->
+            frame(ctx) {
+                val masked = FrameLayout(ctx).apply {
+                    clipChildren = false
+                    mpReplaySensitive(true)
+                    addView(
+                        ComposeView(ctx).apply {
+                            setContent { BasicText("Account 4111 1111") }
+                        },
+                        at(200, 200, 400, 80)
+                    )
+                }
+                addView(masked, at(16, 16, 100, 100))
+            }
+        }
+        assertEquals(listOf<String?>(null), capture.elements.map { it.text })
+        WireframeGoldenFormat.assertGolden(
+            capture,
+            "compose_outside_masked_view.json"
+        )
     }
 
     @Test

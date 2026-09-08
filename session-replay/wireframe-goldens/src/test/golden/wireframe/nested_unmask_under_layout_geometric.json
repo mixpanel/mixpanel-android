@@ -24,7 +24,7 @@
         400,
         60
       ],
-      "maskDecision": "GEOMETRIC"
+      "maskDecision": "EXPLICIT"
     }
   ]
 }
