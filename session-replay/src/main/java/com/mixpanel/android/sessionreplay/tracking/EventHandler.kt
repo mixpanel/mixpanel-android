@@ -28,6 +28,9 @@ class EventHandler(
 ) : EventListener {
     private lateinit var eventSerialQueue: ExecutorService
 
+    /** Dimensions last stated by a meta event. Only ever touched from [eventSerialQueue]. */
+    private var lastMetaDimensions: Pair<Int, Int>? = null
+
     /**
      * Subscribes this handler to the [EventPublisher].
      * This method is called automatically during initialization.
@@ -68,7 +71,40 @@ class EventHandler(
             } else {
                 SessionReplayEncoder.incrementalSessionEvent(rawEvent.data)
             }
-            event?.let { eventService.enqueueEvent(it) }
+            event?.let {
+                enqueueMetaIfDimensionsChanged(rawEvent, it.timestamp)
+                eventService.enqueueEvent(it)
+            }
         }
+    }
+
+    /**
+     * Queues a meta event ahead of a frame whose dimensions the player does not have yet, sharing
+     * the frame's [timestamp] so the two stay ordered together.
+     */
+    private fun enqueueMetaIfDimensionsChanged(
+        rawEvent: RawScreenshotEvent,
+        timestamp: Long
+    ) {
+        if (rawEvent.width <= 0 || rawEvent.height <= 0) {
+            return
+        }
+        val dimensions = rawEvent.width to rawEvent.height
+        if (dimensions == lastMetaDimensions) {
+            return
+        }
+        eventService.enqueueEvent(
+            SessionEvent(
+                type = EventType.META,
+                data = SessionEventData.DimensionData(rawEvent.width, rawEvent.height),
+                timestamp = timestamp
+            )
+        )
+        lastMetaDimensions = dimensions
+    }
+
+    /** Makes the next frame emit a meta event, so every replay opens with its dimensions. */
+    fun resetViewportTracking() {
+        eventSerialQueue.execute { lastMetaDimensions = null }
     }
 }
