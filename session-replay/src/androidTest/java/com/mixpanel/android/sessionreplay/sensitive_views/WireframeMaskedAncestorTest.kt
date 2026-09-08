@@ -44,6 +44,10 @@ class WireframeMaskedAncestorTest {
     fun offsetChildOutsideMaskedView_stripsTextByProvenance() {
         scenario.withAttachedView({ activity ->
             FrameLayout(activity).apply {
+                // getGlobalVisibleRect propagates clipping through the parent chain. Keep the
+                // root unclipped as well so the translated child is genuinely visible outside
+                // the masked container while remaining inside the window.
+                clipChildren = false
                 layoutParams = ViewGroup.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT
