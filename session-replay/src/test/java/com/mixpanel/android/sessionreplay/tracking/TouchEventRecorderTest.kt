@@ -288,6 +288,32 @@ class TouchEventRecorderTest {
         assertEquals(0, touchEndCount)
     }
 
+    @Test
+    fun testReset_discardsGestureAndRequiresANewTouchStart() {
+        val recorder = createRecorder()
+        recorder.send(MotionEvent.ACTION_DOWN, 0f, 0f)
+        recorder.send(MotionEvent.ACTION_MOVE, 100f, 0f, eventTimeOffset = 60L)
+
+        recorder.reset()
+        capturedEvents.clear()
+
+        // These events belong to the gesture that was interrupted when recording stopped.
+        recorder.send(MotionEvent.ACTION_MOVE, 200f, 0f, eventTimeOffset = 120L)
+        recorder.send(MotionEvent.ACTION_UP, 200f, 0f, eventTimeOffset = 180L)
+
+        assertTrue(capturedEvents.isEmpty())
+        assertEquals(0, touchEndCount)
+
+        simulateTap(recorder, 300f, 400f)
+
+        assertEquals(
+            listOf(MouseInteraction.TOUCH_START, MouseInteraction.TOUCH_END),
+            interactions.map { it.type }
+        )
+        assertEquals(0, moves.size)
+        assertEquals(1, touchEndCount)
+    }
+
     // endregion
 
     // region timestamps

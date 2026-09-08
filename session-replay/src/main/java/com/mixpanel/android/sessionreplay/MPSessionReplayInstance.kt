@@ -421,6 +421,14 @@ class MPSessionReplayInstance(
         hasStartedRecording = false
         initialScreenshotCaptured = false
 
+        recordTimer?.cancel()
+        recordTimer = null
+        touchEventRecorder.reset()
+
+        pendingScreenshotJob?.cancel()
+        pendingScreenshotJob = null
+        pendingScreenshotRequest = false
+
         // Disable debug mask overlay
         debugMaskOverlayManager?.disable()
 

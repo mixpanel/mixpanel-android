@@ -61,6 +61,11 @@ class TouchEventRecorder(
         }
     }
 
+    /** Discards any in-progress gesture when recording stops. */
+    internal fun reset() {
+        resetGesture()
+    }
+
     private fun onGestureStart(event: MotionEvent) {
         resetGesture()
         isTracking = true
