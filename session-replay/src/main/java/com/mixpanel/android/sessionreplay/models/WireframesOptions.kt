@@ -15,10 +15,10 @@ import kotlinx.serialization.encoding.Encoder
  * [com.mixpanel.android.sessionreplay.debug.DebugOptions.wireframeEmitter] and confirm that
  * no sensitive information is captured.
  *
- * A wireframe is a lightweight text outline of a screen: the visible elements, what kind
- * each one is (text, button, input, image), what it says, and where it sits. One is
- * captured alongside each screenshot, which lets Mixpanel summarize what your users saw
- * and did without anyone having to watch the replay.
+ * A wireframe is a lightweight text outline of a screen: the visible elements, their
+ * platform-supported semantic roles, what they say, and where they sit. One is captured
+ * alongside each screenshot, which lets Mixpanel summarize what your users saw and did
+ * without anyone having to watch the replay.
  *
  * Set this on [MPSessionReplayConfig.wireframesOptions] to turn wireframes on. Leave it
  * `null` — the default — and none are captured.

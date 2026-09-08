@@ -1007,10 +1007,10 @@ object SensitiveViewManager {
                 if (declaredText != null) {
                     // Layer 3 substitution. Developer-declared text
                     // (View.mpWireframeText(...)) is authored, not scraped. Emit it even
-                    // when the view is masked, and even for views that don't map to one of the
-                    // four roles (fall back to Text). Masking still grays the pixels via the mask
-                    // region added above; DECLARED exempts the text from the Layer 2 geometric
-                    // strip so it survives to describe the view for the AI summary.
+                    // when the view is masked, and even for views that don't map to a
+                    // recognized role (fall back to Text). Masking still grays the pixels via
+                    // the mask region added above; DECLARED exempts the text from the Layer 2
+                    // geometric strip so it survives to describe the view for the AI summary.
                     wireframeOut.add(
                         WireframeElement.fromRect(
                             wireframeType ?: WireframeType.Text,

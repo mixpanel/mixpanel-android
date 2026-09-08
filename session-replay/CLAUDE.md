@@ -5,14 +5,15 @@ design decisions for the wireframe/AI-summary work so they aren't re-litigated.
 
 ## Wireframe Capture Notes (2026-07-29)
 
-**The `mp_wireframe` event is a cross-platform contract — Android, Flutter, and
-iOS must all follow it.** This section records how the Android implementation
-realizes that contract and where the reasoning isn't obvious from the code; the
-same section exists in the Flutter session-replay `CLAUDE.md`. If the platforms
-disagree, that is a bug in one of them, not a local Android choice.
+**The `mp_wireframe` payload shape is shared across Android, Flutter, and iOS.**
+The supported `role` values are not a cross-platform contract: each SDK reports
+the semantic roles its platform exposes. This section records how the Android
+implementation behaves and where the reasoning isn't obvious from the code.
 
-- **Only four semantic roles are emitted:** `text`, `button`, `input`, `image`
-  (`WireframeType`). Layout/containers (`ViewGroup`/`LinearLayout`/
+- **Android currently emits ten semantic roles:** `text`, `button`, `input`,
+  `image`, `link`, `header`, `checkbox`, `switch`, `radio`, and `tab`
+  (`WireframeType`). The vocabulary may evolve independently on each platform.
+  Layout/containers (`ViewGroup`/`LinearLayout`/
   `ConstraintLayout`, Compose `Box`/`Row`/`Column`) are never emitted —
   `classifyAndroidView` returns null for them and `collectWireframeForNode` hits
   `else -> return`. The payload is a flat list of `{role, text?, bounds}`, not a
@@ -64,7 +65,7 @@ disagree, that is a bug in one of them, not a local Android choice.
   - With the fallback off, a **Compose** node whose only content is a label is
     dropped rather than emitted as an empty text shell — the label was the sole
     evidence it was content at all, so keeping a shell would emit the labeled
-    *containers* the four-role rule above excludes. Nodes carrying a role
+    *containers* the recognized-role rule above excludes. Nodes carrying a role
     (`Role.Image`, `Role.Button`) still emit textless, as does every Android
     view, since `classifyAndroidView` never consults the label.
 

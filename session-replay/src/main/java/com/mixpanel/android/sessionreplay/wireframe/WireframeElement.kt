@@ -3,8 +3,8 @@ package com.mixpanel.android.sessionreplay.wireframe
 import android.graphics.Rect
 
 /**
- * Internal classification of a wireframe element. Maps to the role names defined in the
- * rrweb Custom event spec via [wireName].
+ * Internal classification of an Android wireframe element. Maps to the role name written
+ * into the rrweb Custom event via [wireName]; supported values may differ by platform.
  *
  * A **closed** set, deliberately. The role is the one field the masking pipeline never touches
  * — Layers 1–4 mask, strip and redact `text`, and nothing filters `role` — so a role sourced

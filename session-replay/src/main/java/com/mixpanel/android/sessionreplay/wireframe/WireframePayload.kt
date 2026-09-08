@@ -17,7 +17,9 @@ data class WireframePayload(
 /**
  * On-the-wire shape for a single wireframe element.
  *
- *  - `role`: one of "text", "button", "input", "image".
+ *  - `role`: a platform-supported semantic role. Android's current values are "text",
+ *    "button", "input", "image", "link", "header", "checkbox", "switch", "radio", and
+ *    "tab"; other platforms may expose a different set.
  *  - `text`: visible label or content description. `null` for input fields, masked elements,
  *    and elements with no text. Truncated to 49 chars + "…" when longer.
  *  - `bounds`: `[x, y, w, h]` in window-relative pixels.

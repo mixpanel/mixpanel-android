@@ -487,8 +487,8 @@ class ComposeWireframeGoldenTest {
 
     /**
      * A label-only node is dropped rather than kept as an empty shell: the label was the only
-     * evidence it was content at all, so keeping a shell would emit the labeled *containers* the
-     * four-role rule excludes. Compose-only — `classifyAndroidView` never consults the label.
+     * evidence it was content at all, so keeping a shell would emit labeled *containers* rather
+     * than recognized content. Compose-only — `classifyAndroidView` never consults the label.
      */
     @Test
     fun labelOnlyNode_fallbackOff_dropsElement() {
