@@ -1,5 +1,17 @@
 # Changelog
 
+## [session-replay-v8.11.0](https://github.com/mixpanel/mixpanel-android/tree/session-replay-v8.11.0) (2026-09-09)
+
+### Features
+- wireframes (beta) ([#1003](https://github.com/mixpanel/mixpanel-android/pull/1003))
+- add getSessionReplayUrl API to return replay link for active session ([#964](https://github.com/mixpanel/mixpanel-android/pull/964))
+
+### Fixes
+- derive the replay meta viewport from the captured frame ([#1002](https://github.com/mixpanel/mixpanel-android/pull/1002))
+- respect remoteSettingsMode for event triggers ([#979](https://github.com/mixpanel/mixpanel-android/pull/979))
+
+[Full Changelog](https://github.com/mixpanel/mixpanel-android/compare/session-replay-v1.4.0...session-replay-v8.11.0)
+
 ## [session-replay-v1.4.0](https://github.com/mixpanel/mixpanel-android/tree/session-replay-v1.4.0) (2026-05-11)
 
 ### Features
