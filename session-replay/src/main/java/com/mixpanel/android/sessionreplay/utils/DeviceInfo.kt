@@ -1,5 +1,6 @@
 package com.mixpanel.android.sessionreplay.utils
 
+import android.content.Context
 import android.content.res.Resources
 import android.os.Build
 
@@ -62,4 +63,29 @@ object DeviceInfo {
             } catch (e: Exception) {
                 "Unknown" // Default value in case of error
             }
+
+    // Host app bundle/package identifier.
+    // Requires a Context — Android has no global equivalent of iOS's Bundle.main.
+    // Returns null rather than a sentinel so callers can omit the value entirely.
+    fun bundleId(context: Context): String? =
+        try {
+            context.packageName
+        } catch (e: Exception) {
+            null // Caller omits the value when unavailable
+        }
+
+    // Host app build number: versionCode, or longVersionCode on API 28+.
+    // This is the Android analog of iOS CFBundleVersion, not versionName.
+    fun buildNumber(context: Context): String? =
+        try {
+            val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                packageInfo.longVersionCode.toString()
+            } else {
+                @Suppress("DEPRECATION")
+                packageInfo.versionCode.toString()
+            }
+        } catch (e: Exception) {
+            null // Caller omits the value when unavailable
+        }
 }
