@@ -14,6 +14,7 @@ import com.mixpanel.android.util.RemoteService.HttpMethod;
 import com.mixpanel.android.util.RemoteService.ServiceUnavailableException;
 
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.junit.After;
 import org.junit.Before;
@@ -40,6 +41,92 @@ public class FirstTimeEventTest {
     private BlockingQueue<Boolean> mFlagLoadComplete;
     private MixpanelAPI mMixpanel;
     private ActivityScenario<TestActivity> mActivityScenario;
+
+    private static final String SEMVER_OPERATOR = "semver_compare";
+    private static final String SEMVER_PROPERTY = "app_version";
+    private static final String SEMVER_TARGET = "1.2.3";
+
+    private static final String DATETIME_OPERATOR = "datetime_compare";
+    private static final String DATETIME_PROPERTY = "signup";
+    /** 2026-07-16T00:00:00Z in epoch milliseconds. */
+    private static final long DATETIME_TARGET_MS = 1784160000000L;
+    private static final String ON_TARGET = "2026-07-16T00:00:00Z";
+    private static final String DAY_BEFORE = "2026-07-15T00:00:00Z";
+    private static final String DAY_AFTER = "2026-07-17T00:00:00Z";
+
+    /**
+     * One comparator symbol, with a property value the filter accepts and one it rejects.
+     */
+    private static final class SymbolCase {
+        final String symbol;
+        final String matching;
+        final String notMatching;
+
+        SymbolCase(String symbol, String matching, String notMatching) {
+            this.symbol = symbol;
+            this.matching = matching;
+            this.notMatching = notMatching;
+        }
+    }
+
+    /** 1.10.0 is on the matching side of > and >=, so a lexicographic comparison fails here. */
+    private static final SymbolCase[] SEMVER_CASES = {
+            new SymbolCase("===", "1.2.3", "1.2.4"),
+            new SymbolCase("!==", "1.2.4", "1.2.3"),
+            new SymbolCase("<", "1.2.2", "1.2.3"),
+            new SymbolCase("<=", "1.2.3", "1.2.4"),
+            new SymbolCase(">", "1.10.0", "1.2.3"),
+            new SymbolCase(">=", "1.10.0", "1.2.2")
+    };
+
+    /** The subjects sit a day either side of the target and on it. */
+    private static final SymbolCase[] DATETIME_CASES = {
+            new SymbolCase("===", ON_TARGET, DAY_AFTER),
+            new SymbolCase("!==", DAY_AFTER, ON_TARGET),
+            new SymbolCase("<", DAY_BEFORE, ON_TARGET),
+            new SymbolCase("<=", ON_TARGET, DAY_AFTER),
+            new SymbolCase(">", DAY_AFTER, ON_TARGET),
+            new SymbolCase(">=", ON_TARGET, DAY_BEFORE)
+    };
+
+    /** Each symbol gets its own event, so a matching case cannot spend an event another row needs. */
+    private static String operatorEventName(String operator, String symbol) {
+        return operator + " " + symbol;
+    }
+
+    private static String operatorHash(String operator, String symbol) {
+        return "hash-" + operator + "-" + symbol;
+    }
+
+    /** Adds one pending first-time event per comparator symbol to the mock /flags response. */
+    private static void appendOperatorEvents(
+            JSONArray pendingEvents,
+            String operator,
+            String property,
+            Object target,
+            SymbolCase[] cases) throws JSONException {
+        for (SymbolCase symbolCase : cases) {
+            JSONObject filters = new JSONObject().put(operator, new JSONArray()
+                    .put(new JSONObject().put("var", property))
+                    .put(symbolCase.symbol)
+                    .put(target));
+
+            JSONObject pendingVariant = new JSONObject();
+            pendingVariant.put(MPConstants.Flags.VARIANT_KEY, "premium");
+            pendingVariant.put(MPConstants.Flags.VARIANT_VALUE, true);
+
+            JSONObject event = new JSONObject();
+            event.put(MPConstants.Flags.FLAG_KEY, operator + "-" + symbolCase.symbol + "-flag");
+            event.put(MPConstants.Flags.FLAG_ID, "flag_id_" + operator + "_" + symbolCase.symbol);
+            event.put(MPConstants.Flags.PROJECT_ID, "12345");
+            event.put(MPConstants.Flags.FIRST_TIME_EVENT_HASH, operatorHash(operator, symbolCase.symbol));
+            event.put(MPConstants.Flags.EVENT_NAME, operatorEventName(operator, symbolCase.symbol));
+            event.put(MPConstants.Flags.PROPERTY_FILTERS, filters);
+            event.put(MPConstants.Flags.PENDING_VARIANT, pendingVariant);
+
+            pendingEvents.put(event);
+        }
+    }
 
     /**
      * Captures recording API calls for verification.
@@ -210,6 +297,12 @@ public class FirstTimeEventTest {
                 event2.put(MPConstants.Flags.PENDING_VARIANT, pendingVariant2);
 
                 pendingEvents.put(event2);
+
+                // Events 3+: one per comparator symbol, for each custom operator
+                appendOperatorEvents(pendingEvents, SEMVER_OPERATOR, SEMVER_PROPERTY,
+                        SEMVER_TARGET, SEMVER_CASES);
+                appendOperatorEvents(pendingEvents, DATETIME_OPERATOR, DATETIME_PROPERTY,
+                        DATETIME_TARGET_MS, DATETIME_CASES);
 
                 response.put(MPConstants.Flags.PENDING_FIRST_TIME_EVENTS, pendingEvents);
 
@@ -426,6 +519,73 @@ public class FirstTimeEventTest {
         MixpanelFlagVariant activatedVariant = mMixpanel.getFlags().getVariantSync("test_flag", fallback);
         assertEquals("Activated variant key should be 'treatment' from pending variant", "treatment", activatedVariant.key);
         assertEquals("Activated variant value should be true from pending variant", true, activatedVariant.value);
+    }
+
+    @Test
+    public void testSemverPropertyFilterEverySymbol() throws Exception {
+        assertEverySymbol(SEMVER_OPERATOR, SEMVER_PROPERTY, SEMVER_CASES);
+    }
+
+    @Test
+    public void testDatetimePropertyFilterEverySymbol() throws Exception {
+        assertEverySymbol(DATETIME_OPERATOR, DATETIME_PROPERTY, DATETIME_CASES);
+    }
+
+    /**
+     * Drives every comparator symbol through the runtime-event path in both directions.
+     *
+     * <p>The rejecting value is tracked first because a non-match consumes nothing; the accepting
+     * value then proves the pending event was still live, so the absence above was the filter
+     * failing closed rather than the event having already been spent.
+     */
+    private void assertEverySymbol(String operator, String property, SymbolCase[] cases)
+            throws Exception {
+        mMixpanel.getFlags().loadFlags();
+        assertNotNull("Flags should load successfully", mFlagLoadComplete.poll(2, TimeUnit.SECONDS));
+
+        for (SymbolCase symbolCase : cases) {
+            String eventName = operatorEventName(operator, symbolCase.symbol);
+            String context = operator + " " + symbolCase.symbol;
+
+            mMixpanel.track(eventName, new JSONObject().put(property, symbolCase.notMatching));
+            assertNull(context + " should not match " + symbolCase.notMatching,
+                    mRecordingCalls.poll(1, TimeUnit.SECONDS));
+
+            mMixpanel.track(eventName, new JSONObject().put(property, symbolCase.matching));
+            RecordingAPICall call = mRecordingCalls.poll(2, TimeUnit.SECONDS);
+            assertNotNull(context + " should match " + symbolCase.matching, call);
+            assertEquals(context, operatorHash(operator, symbolCase.symbol),
+                    call.body.getString("first_time_event_hash"));
+        }
+    }
+
+    @Test
+    public void testPropertyFilterFailsClosedOnUnreadableProperty() throws Exception {
+        mMixpanel.getFlags().loadFlags();
+        assertNotNull("Flags should load successfully", mFlagLoadComplete.poll(2, TimeUnit.SECONDS));
+
+        assertFailsClosed(SEMVER_OPERATOR, SEMVER_PROPERTY, "not-a-version", "1.2.3");
+        assertFailsClosed(DATETIME_OPERATOR, DATETIME_PROPERTY, "yesterday", ON_TARGET);
+    }
+
+    /**
+     * A property the operator cannot read leaves the flag alone under both {@code ===} and
+     * {@code !==}, so an unreadable value cannot invert into a match rather than failing closed.
+     */
+    private void assertFailsClosed(String operator, String property, String unreadable, String matching)
+            throws Exception {
+        for (String symbol : new String[] {"===", "!=="}) {
+            mMixpanel.track(operatorEventName(operator, symbol),
+                    new JSONObject().put(property, unreadable));
+            assertNull(operator + " " + symbol + " should fail closed on " + unreadable,
+                    mRecordingCalls.poll(1, TimeUnit.SECONDS));
+        }
+
+        // The === event is still pending, so a value that does match proves the absences above were
+        // the filter failing closed rather than the fixture being spent
+        mMixpanel.track(operatorEventName(operator, "==="), new JSONObject().put(property, matching));
+        assertNotNull(operator + " === should still match " + matching,
+                mRecordingCalls.poll(2, TimeUnit.SECONDS));
     }
 
     @Test

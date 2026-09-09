@@ -46,6 +46,7 @@ class FirstTimeEventChecker {
             // Evaluate using JsonLogic
             // NOTE: JsonLogic.apply() expects rules as String and data as Map/Object (not JSONObject!)
             JsonLogic jsonLogic = new JsonLogic();
+            CustomOperators.register(jsonLogic);
             String rulesString = filters.toString();
             Object result = jsonLogic.apply(rulesString, dataMap);
 
