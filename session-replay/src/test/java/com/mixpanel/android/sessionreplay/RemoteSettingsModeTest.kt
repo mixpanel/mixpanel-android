@@ -3,6 +3,7 @@ package com.mixpanel.android.sessionreplay
 import com.mixpanel.android.sessionreplay.models.MPSessionReplayConfig
 import com.mixpanel.android.sessionreplay.models.RecordingEventTrigger
 import com.mixpanel.android.sessionreplay.models.RemoteSettingsMode
+import com.mixpanel.android.sessionreplay.models.WireframesOptions
 import com.mixpanel.android.sessionreplay.network.SdkConfig
 import com.mixpanel.android.sessionreplay.services.RemoteSettingsResult
 import org.junit.Assert.assertEquals
@@ -399,5 +400,61 @@ class RemoteSettingsModeTest {
         val disabledConfig = config.copy(remoteSettingsMode = RemoteSettingsMode.DISABLED)
         assertTrue(SessionReplayManager.resolveRemoteSettings(disabledConfig, enabledResult)?.isRecordingEnabled == true)
         assertFalse(SessionReplayManager.resolveRemoteSettings(disabledConfig, disabledResult)?.isRecordingEnabled == true)
+    }
+
+    // --- Wireframe Kill Switch Tests ---
+
+    @Test
+    fun testWireframeKillSwitchClearsWireframesOptionsInEveryMode() {
+        val result = RemoteSettingsResult(
+            isRecordingEnabled = true,
+            sdkConfig = SdkConfig(recordSessionsPercent = 100.0),
+            isWireframeEnabled = false
+        )
+
+        // The kill switch is an enablement switch, not remote config, so no mode opts out of it
+        for (mode in RemoteSettingsMode.entries) {
+            val config = MPSessionReplayConfig(
+                remoteSettingsMode = mode,
+                wireframesOptions = WireframesOptions()
+            )
+
+            val resolvedSettings = SessionReplayManager.resolveRemoteSettings(config, result)
+
+            assertNull("wireframesOptions should be cleared in $mode", resolvedSettings?.config?.wireframesOptions)
+            // Only wireframes are killed - replay still records
+            assertTrue("recording should stay enabled in $mode", resolvedSettings?.isRecordingEnabled == true)
+        }
+    }
+
+    @Test
+    fun testWireframesOptionsKeptWhenSwitchIsEnabled() {
+        val options = WireframesOptions()
+        val result = RemoteSettingsResult(
+            isRecordingEnabled = true,
+            sdkConfig = SdkConfig(recordSessionsPercent = 100.0),
+            isWireframeEnabled = true
+        )
+
+        for (mode in RemoteSettingsMode.entries) {
+            val config = MPSessionReplayConfig(remoteSettingsMode = mode, wireframesOptions = options)
+
+            val resolvedSettings = SessionReplayManager.resolveRemoteSettings(config, result)
+
+            assertEquals(options, resolvedSettings?.config?.wireframesOptions)
+        }
+    }
+
+    @Test
+    fun testWireframeKillSwitchIsANoOpWhenWireframesWereNeverOn() {
+        val config = MPSessionReplayConfig(
+            remoteSettingsMode = RemoteSettingsMode.FALLBACK,
+            wireframesOptions = null
+        )
+        val result = RemoteSettingsResult(isRecordingEnabled = true, isWireframeEnabled = false)
+
+        val resolvedSettings = SessionReplayManager.resolveRemoteSettings(config, result)
+
+        assertEquals(config, resolvedSettings?.config)
     }
 }

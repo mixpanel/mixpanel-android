@@ -407,6 +407,30 @@ class ScreenRecorderTest {
         assertEquals(250f, info.screenY, 0.01f)
     }
 
+    /**
+     * The wireframe path consumes the raw-pixel twins of these values: element bounds arrive in
+     * raw px and are scaled by density inside WireframeEmitter, so shifting them into the
+     * composited screenshot's space has to happen before that scaling. Pinned here because a
+     * mismatch puts a dialog's elements at the wrong place in the image with nothing failing.
+     */
+    @Test
+    fun testGetSubWindowInfo_rawPixelFieldsTrackTheScaledOnes() {
+        val fullScreen = createMockView(1080, 1920, 2f, screenX = 50, screenY = 100)
+        val dialog = createMockView(800, 600, 2f, screenX = 250, screenY = 600)
+
+        val info = ScreenRecorder.shared.getSubWindowInfo(dialog, fullScreen)
+
+        assertNotNull(info)
+        assertEquals(200, info!!.offsetXPx)
+        assertEquals(500, info.offsetYPx)
+        // Raw px in, logical px out — the scaled fields are these divided by density.
+        assertEquals(info.offsetXPx / 2f, info.screenX, 0.01f)
+        assertEquals(info.offsetYPx / 2f, info.screenY, 0.01f)
+        // Viewport is the full screen, not the dialog.
+        assertEquals(1080, info.fullWidthPx)
+        assertEquals(1920, info.fullHeightPx)
+    }
+
     @Test
     fun testGetSubWindowInfo_returnsNull_whenSameView() {
         val view = createMockView(1080, 1920, 3f, screenX = 0, screenY = 0)

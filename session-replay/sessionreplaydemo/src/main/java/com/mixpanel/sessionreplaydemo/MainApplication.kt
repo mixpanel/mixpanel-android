@@ -11,6 +11,7 @@ import com.mixpanel.android.sessionreplay.debug.DebugOptions
 import com.mixpanel.android.sessionreplay.debug.DebugOverlayColors
 import com.mixpanel.android.sessionreplay.models.MPSessionReplayConfig
 import com.mixpanel.android.sessionreplay.models.RemoteSettingsMode
+import com.mixpanel.android.sessionreplay.models.WireframesOptions
 import com.mixpanel.android.sessionreplay.sensitive_views.AutoMaskedView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
@@ -52,11 +53,14 @@ class MainApplication : Application() {
 
             val config = MPSessionReplayConfig(
                 wifiOnly = false,
-                autoMaskedViews = mutableSetOf(AutoMaskedView.Text),
+                autoMaskedViews = emptySet(),
                 enableLogging = true,
-                autoStartRecording = false,
-                remoteSettingsMode = RemoteSettingsMode.FALLBACK,
-                debugOptions = DebugOptions(overlayColors = DebugOverlayColors())
+                remoteSettingsMode = RemoteSettingsMode.DISABLED,
+                debugOptions = DebugOptions(
+                    overlayColors = DebugOverlayColors(),
+                    wireframeEmitter = { frame -> Log.d("SessionReplay Wire:", frame.toString())}
+                ),
+                wireframesOptions = WireframesOptions()
             )
 
             MPSessionReplay.initialize(

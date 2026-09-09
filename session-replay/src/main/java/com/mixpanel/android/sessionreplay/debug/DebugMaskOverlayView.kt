@@ -7,7 +7,7 @@ import android.graphics.Paint
 import android.graphics.Rect
 import android.view.MotionEvent
 import android.view.View
-import com.mixpanel.android.sessionreplay.sensitive_views.MaskDecision
+import com.mixpanel.android.sessionreplay.sensitive_views.InternalMaskDecision
 
 /**
  * Debug overlay view that displays mask regions as colored rectangles.
@@ -18,8 +18,9 @@ import com.mixpanel.android.sessionreplay.sensitive_views.MaskDecision
  *
  * Draw order (lowest to highest priority):
  * - Unmask regions (addSafeView): Green by default
- * - Auto masks (text, images, web views): Orange by default
- * - Mask/Text entry (explicitly sensitive, input fields): Red by default
+ * - Auto masks (text, images, web views, per AutoMaskedView): Orange by default
+ * - Mask/Text entry (explicitly sensitive — addSensitiveView, mpReplaySensitive(true),
+ *   addSensitiveClass — and input fields): Red by default
  *
  * Higher-priority colors paint over lower-priority ones.
  */
@@ -30,7 +31,7 @@ internal class DebugMaskOverlayView(
     private val parentRootView: View
 ) : View(context) {
 
-    private var maskEntries: Map<Rect, MaskDecision> = emptyMap()
+    private var maskEntries: Map<Rect, InternalMaskDecision> = emptyMap()
 
     // Reusable arrays for getting view locations on screen
     private val overlayScreenLocation = IntArray(2)
@@ -60,7 +61,7 @@ internal class DebugMaskOverlayView(
      * Updates the mask entries to display.
      * @param entries Map of bounds to mask decision type
      */
-    fun updateMaskEntries(entries: Map<Rect, MaskDecision>) {
+    fun updateMaskEntries(entries: Map<Rect, InternalMaskDecision>) {
         if (maskEntries != entries) {
             maskEntries = entries
             invalidate()
@@ -115,10 +116,10 @@ internal class DebugMaskOverlayView(
         // paint over lower-priority ones in visually overlapping regions.
         maskEntries.entries.sortedBy { it.value.ordinal }.forEach { (rect, type) ->
             val paint = when (type) {
-                MaskDecision.UNMASK -> unmaskPaint
-                MaskDecision.AUTO -> autoMaskPaint
-                MaskDecision.MASK, MaskDecision.TEXT_ENTRY -> maskPaint
-                MaskDecision.NONE -> null
+                InternalMaskDecision.UNMASK -> unmaskPaint
+                InternalMaskDecision.AUTO -> autoMaskPaint
+                InternalMaskDecision.MASK, InternalMaskDecision.TEXT_ENTRY -> maskPaint
+                InternalMaskDecision.NONE -> null
             } ?: return@forEach
 
             canvas.drawRect(

@@ -14,9 +14,13 @@ import androidx.compose.ui.semantics.SemanticsPropertyReceiver
 import androidx.compose.ui.semantics.semantics
 import com.mixpanel.android.sessionreplay.sensitive_views.SensitiveViewManager
 import com.mixpanel.android.sessionreplay.utils.Compose.MP_REPLAY_SENSITIVE
+import com.mixpanel.android.sessionreplay.utils.Compose.MP_REPLAY_WIREFRAME_TEXT
 
 val mpReplaySensitivePropKey = SemanticsPropertyKey<Boolean>(MP_REPLAY_SENSITIVE)
 internal var SemanticsPropertyReceiver.mpReplaySensitive by mpReplaySensitivePropKey
+
+val mpReplayWireframeTextPropKey = SemanticsPropertyKey<String>(MP_REPLAY_WIREFRAME_TEXT)
+internal var SemanticsPropertyReceiver.mpReplayWireframeText by mpReplayWireframeTextPropKey
 
 /**
  * Modifier.Node implementation for tracking sensitive views independently of semantics.
@@ -115,6 +119,9 @@ private data class SensitiveViewElement(val isSensitive: Boolean) :
  * detection logic, which automatically masks views based on the configuration provided
  * during initialization.
  *
+ * This controls **pixels only**. To declare the text recorded for the Composable in the
+ * `mp_wireframe` event, use [mpWireframeText] — the two concerns are orthogonal and compose.
+ *
  * @return A [Modifier] with the sensitivity flag applied.
  *
  * Example usage:
@@ -127,3 +134,42 @@ private data class SensitiveViewElement(val isSensitive: Boolean) :
  */
 fun Modifier.mpReplaySensitive(isSensitive: Boolean): Modifier =
     this then SensitiveViewElement(isSensitive).semantics { mpReplaySensitive = isSensitive }
+
+/**
+ * Declares the text recorded for this Composable in the `mp_wireframe` event.
+ *
+ * **Beta.** Wireframes are in beta; see
+ * [com.mixpanel.android.sessionreplay.models.WireframesOptions] for what to check before
+ * shipping to production.
+ *
+ * Compose does not always expose its rendered strings to the walker (e.g. custom
+ * `Canvas`/drawing content), so declare them here. The declared string does not have to match
+ * what is rendered — use it for analytical labels or to describe otherwise opaque content.
+ * Declared text takes precedence over the node's own visible text and over its
+ * `ContentDescription`.
+ *
+ * Masking and declared text are **orthogonal** — this modifier has no bearing on which pixels
+ * are captured, and [mpReplaySensitive] has no bearing on the declared text. Chain them
+ * freely:
+ *
+ * ```
+ * Image(
+ *     painter = painterResource(R.drawable.avatar),
+ *     contentDescription = null,
+ *     modifier = Modifier
+ *         .mpReplaySensitive(true)
+ *         .mpWireframeText("profile photo")
+ * )
+ * ```
+ *
+ * @param text The text to record for this Composable. Blank strings are ignored.
+ *
+ * **This text is sent even when the Composable is masked** — masking hides the pixels while
+ * the declared text still describes the view for the AI summary. Because it is authored by you
+ * (not scraped from the screen), it is your responsibility to ensure [text] is not itself
+ * sensitive; if it could be, omit it.
+ *
+ * @return A [Modifier] with the declared text applied.
+ */
+fun Modifier.mpWireframeText(text: String): Modifier =
+    this.semantics { mpReplayWireframeText = text }

@@ -1,0 +1,52 @@
+{
+  "viewport": [
+    1080,
+    2340
+  ],
+  "elements": [
+    {
+      "role": "text",
+      "text": "Row 0",
+      "bounds": [
+        0,
+        0,
+        104,
+        83
+      ],
+      "maskDecision": "NONE"
+    },
+    {
+      "role": "text",
+      "text": "Row 1",
+      "bounds": [
+        0,
+        83,
+        104,
+        83
+      ],
+      "maskDecision": "NONE"
+    },
+    {
+      "role": "text",
+      "text": "Row 2",
+      "bounds": [
+        0,
+        166,
+        104,
+        83
+      ],
+      "maskDecision": "NONE"
+    },
+    {
+      "role": "text",
+      "text": "Row 3",
+      "bounds": [
+        0,
+        249,
+        104,
+        26
+      ],
+      "maskDecision": "NONE"
+    }
+  ]
+}

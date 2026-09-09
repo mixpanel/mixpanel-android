@@ -8,6 +8,7 @@ import com.mixpanel.android.sessionreplay.models.SessionEventData
 import com.mixpanel.android.sessionreplay.services.EventService
 import com.mixpanel.android.sessionreplay.utils.DeviceInfo
 import com.mixpanel.android.sessionreplay.utils.EventType
+import com.mixpanel.android.sessionreplay.utils.MouseInteraction
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
@@ -60,7 +61,13 @@ class ViewportMetaEventTest {
      * frames, so its arrival proves every frame queued before it has been processed.
      */
     private fun drain(): List<SessionEvent> {
-        eventHandler.receivedTouchEvent(RawTouchEvent(Point(0, 0), Point(0, 0), isSwipe = false))
+        eventHandler.receivedTouchEvent(
+            RawTouchEvent.Interaction(
+                type = MouseInteraction.TOUCH_START,
+                point = Point(0, 0),
+                timestamp = System.currentTimeMillis()
+            )
+        )
         val drained = mutableListOf<SessionEvent>()
         val deadline = System.currentTimeMillis() + 5_000
         while (System.currentTimeMillis() < deadline) {

@@ -11,6 +11,8 @@ import com.mixpanel.android.sessionreplay.models.MPSessionReplayConfig
 import com.mixpanel.android.sessionreplay.sensitive_views.AutoMaskedView
 import com.mixpanel.android.sessionreplay.sensitive_views.SensitiveViewManager
 import com.mixpanel.android.sessionreplay.services.FlushService
+import com.mixpanel.android.sessionreplay.tracking.ScreenRecorder
+import com.mixpanel.android.sessionreplay.wireframe.WireframeEmitter
 import io.mockk.Runs
 import io.mockk.every
 import io.mockk.just
@@ -137,6 +139,49 @@ class MPSessionReplayInstanceTest {
 
         // verify that flushService starts (which is a side effect of startRecording)
         verify { mockFlushService.start() } // Ensure flushService.start() is called
+    }
+
+    /**
+     * A new recording session must clear wireframe dedup state.
+     *
+     * The emitter is built in `init` and survives a stop/start cycle, so without an
+     * explicit reset the new replay's first frame is compared against the previous
+     * replay's last one. Because `stopRecording` clears `initialScreenshotCaptured`,
+     * `startRecording` always forces an initial capture — so a background/foreground onto
+     * an unchanged screen reliably shipped an opening screenshot with no `mp_wireframe`
+     * to describe it.
+     *
+     * Asserted at the `startRecording` call site on purpose: a test that calls
+     * `resetDedup()` directly still passes if the call site is deleted.
+     */
+    @Test
+    fun `startRecording resets wireframe dedup state`() {
+        val mockFlushService = mockk<FlushService>()
+        every { mockFlushService.start() } just Runs
+        every { mockFlushService.replayId } returns "mockReplayId"
+
+        val instance =
+            MPSessionReplayInstance(
+                mockContext,
+                "token",
+                "distinctId",
+                config = MPSessionReplayConfig(autoStartRecording = false),
+                sessionReplaySender = mockk(relaxed = true),
+                lifecycleScope = testScope,
+                flushService = mockFlushService
+            )
+
+        // Installed after construction: init assigns ScreenRecorder.shared.wireframeEmitter
+        // from wireframesOptions (null here), so anything planted earlier is overwritten.
+        val mockEmitter = mockk<WireframeEmitter>(relaxed = true)
+        ScreenRecorder.shared.wireframeEmitter = mockEmitter
+
+        try {
+            instance.startRecording()
+            verify { mockEmitter.resetDedup() }
+        } finally {
+            ScreenRecorder.shared.wireframeEmitter = null
+        }
     }
 
     @Test

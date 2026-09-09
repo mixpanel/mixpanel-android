@@ -16,6 +16,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import com.mixpanel.android.sessionreplay.wireframe.WireframePayload
 
 @Serializable
 data class SessionTrackingData(
@@ -86,6 +87,22 @@ sealed class SessionEventData {
             val attributes: Map<String, String>
         )
     }
+
+    /**
+     * Data payload for the wireframe rrweb Custom event (EventType.CUSTOM = 5). Sets
+     * `tag = "mp_wireframe"` with a [WireframePayload]. If we ever add a second Custom
+     * event type, generalize the [payload] field (sealed/polymorphic) rather than adding
+     * a sibling subtype.
+     *
+     * Note: the SDK-internal `discriminator` field is non-standard for rrweb but is
+     * stripped by Mixpanel's ingestion before the player sees it.
+     */
+    @Serializable
+    data class WireframeCustomData(
+        val tag: String,
+        val payload: WireframePayload,
+        override val discriminator: String = "custom"
+    ) : SessionEventData()
 }
 
 @OptIn(ExperimentalSerializationApi::class)
@@ -131,6 +148,12 @@ object SessionEventDataSerializer : KSerializer<SessionEventData> {
                 is SessionEventData.AttributesData ->
                     jsonEncoder.json.encodeToJsonElement(
                         SessionEventData.AttributesData.serializer(),
+                        value
+                    )
+
+                is SessionEventData.WireframeCustomData ->
+                    jsonEncoder.json.encodeToJsonElement(
+                        SessionEventData.WireframeCustomData.serializer(),
                         value
                     )
             }
@@ -180,6 +203,12 @@ object SessionEventDataSerializer : KSerializer<SessionEventData> {
                     jsonObject
                 )
 
+            "custom" ->
+                jsonDecoder.json.decodeFromJsonElement(
+                    SessionEventData.WireframeCustomData.serializer(),
+                    jsonObject
+                )
+
             else -> throw SerializationException("Unknown discriminator: $discriminator")
         }
     }
@@ -199,10 +228,18 @@ data class SessionNode(
     val id: Int
 )
 
+/**
+ * One point of an rrweb `mousemoveData.positions` batch. [timeOffset] is the sample's
+ * offset in milliseconds from the enclosing event's `timestamp` (so `<= 0`); the player
+ * schedules it at `event.timestamp + timeOffset`.
+ *
+ * Field names are rrweb's camelCase — the snake_case `@SerialName`s elsewhere in this file
+ * belong to the Mixpanel ingestion envelope, not the rrweb payload.
+ */
 @Serializable
 data class SessionPosition(
     val x: Double,
     val y: Double,
     val id: Int,
-    @SerialName("time_offset") val timeOffset: Int
+    val timeOffset: Int
 )

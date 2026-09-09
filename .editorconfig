@@ -37,3 +37,11 @@ indent_size = 2
 
 [*.json]
 indent_size = 2
+
+# Wireframe goldens are compared byte-for-byte and the format deliberately ends
+# without a trailing newline, so the same scenario produces an identical file on
+# Android, iOS and Flutter. `insert_final_newline` silently appends one the moment
+# an editor touches a golden, which then fails the suite with a diff that shows
+# nothing -- the change is invisible in a normal diff view.
+[session-replay/wireframe-goldens/src/test/golden/wireframe/*.json]
+insert_final_newline = false
