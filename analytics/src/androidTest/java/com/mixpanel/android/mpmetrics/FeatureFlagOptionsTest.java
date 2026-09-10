@@ -43,7 +43,8 @@ public class FeatureFlagOptionsTest {
     AnalyticsMessages messages =
         AnalyticsMessages.getInstance(
             InstrumentationRegistry.getInstrumentation().getContext(),
-            MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), null));
+            MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), null),
+            null);
     messages.hardKill();
     Thread.sleep(2000);
   }
