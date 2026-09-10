@@ -1,6 +1,10 @@
 # Test Generation Instructions - Mixpanel Android SDK
 
-Generate **instrumented tests only** - no unit tests. All tests require an Android device/emulator.
+Choose the right test layer:
+- **Unit tests** (`analytics/src/test/`, JUnit/Robolectric, run on the JVM via `:analytics:test`) — prefer these for logic that doesn't need a real device.
+- **Instrumented tests** (`analytics/src/androidTest/`, AndroidJUnit4, run via `:analytics:connectedAndroidTest`) — use when the behavior needs a real Android runtime (SQLite, SharedPreferences, lifecycle, concurrency against real components).
+
+The patterns below illustrate the instrumented layer.
 
 ## Test Structure
 ```java
