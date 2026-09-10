@@ -42,19 +42,19 @@ jobs:
     - name: AnimalSniffer (Java/Android API compatibility)
       run:  ./gradlew :analytics:animalsnifferRelease
     - name: Upload test report
-      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # v7.0.0
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
       if: always()
       with:
         name: Unit Test Report
         path: analytics/build/reports/androidTests/connected
     - name: Upload OpenFeature test report
-      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # v7.0.0
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
       if: always()
       with:
         name: OpenFeature Unit Test Report
         path: openfeature-provider/build/reports/tests/
     - name: Upload analytics JVM unit test report
-      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # v7.0.0
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
       if: always()
       with:
         name: Analytics JVM Unit Test Report
@@ -62,29 +62,29 @@ jobs:
           analytics/build/reports/tests/
           analytics/build/test-results/
     - name: Upload Common test report
-      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # v7.0.0
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
       if: always()
       with:
         name: Common Unit Test Report
         path: common/build/reports/tests/
     - name: Upload Common ktlint report
-      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # v7.0.0
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
       if: always()
       with:
         name: Common ktlint Report
         path: common/build/reports/ktlint/
     - name: Upload test coverage report
-      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # v7.0.0
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
       with:
         name: Test Coverage Report
         path: analytics/build/reports/coverage/debug/
     - name: Upload lint report
-      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # v7.0.0
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
       with:
         name: Lint Report
         path: analytics/build/reports/lint-results-*.*
     - name: Upload AnimalSniffer report
-      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # v7.0.0
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
       if: always()
       with:
         name: AnimalSniffer Report
