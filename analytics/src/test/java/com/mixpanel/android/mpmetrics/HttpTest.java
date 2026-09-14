@@ -11,6 +11,7 @@ import androidx.annotation.Nullable;
 import androidx.test.core.app.ApplicationProvider;
 import com.mixpanel.android.util.Base64Coder;
 import com.mixpanel.android.util.HttpService;
+import com.mixpanel.android.util.MPLog;
 import com.mixpanel.android.util.ProxyServerInteractor;
 import com.mixpanel.android.util.RemoteService;
 import java.io.IOException;
@@ -25,17 +26,15 @@ import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import javax.net.ssl.SSLSocketFactory;
-import android.os.Looper;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
-import org.robolectric.Shadows;
-import org.robolectric.shadows.ShadowLooper;
 
 @RunWith(RobolectricTestRunner.class)
 public class HttpTest {
@@ -173,6 +172,19 @@ public class HttpTest {
             return listener;
           }
         };
+  }
+
+  @After
+  public void tearDown() {
+    // Without this every test method leaks an AnalyticsMessages worker thread and its
+    // loopers for the lifetime of the JVM; a later test then idles a dead looper and hangs.
+    try {
+      mMetrics.getAnalyticsMessages().hardKill();
+    } catch (RuntimeException e) {
+      MPLog.w("MixpanelAPI.HttpTest", "Ignoring exception during teardown", e);
+    }
+    // Let the KILL_WORKER message actually run; the looper is paused until idled.
+    idleAllLoopers();
   }
 
   @Test
@@ -373,24 +385,14 @@ public class HttpTest {
     }
   }
 
-  // Quitted/dead loopers left behind by sibling test classes (e.g. FeatureFlagManagerTest
-  // closes its worker HandlerThread in tearDown) cause Shadows.idle()/idleFor() to throw.
-  // Swallow those so an unrelated test's leftover doesn't fail this test.
+  // Delegates to LooperTestUtils, which skips loopers whose thread has exited. Idling one of
+  // those blocks forever rather than throwing, which is what used to wedge CI.
   private void idleAllLoopers() {
-    ShadowLooper.idleMainLooper();
-    for (Looper looper : ShadowLooper.getAllLoopers()) {
-      try {
-        Shadows.shadowOf(looper).idle();
-      } catch (RuntimeException ignored) {}
-    }
+    LooperTestUtils.idleAllLoopers();
   }
 
   private void idleAllLoopersFor(Duration duration) {
-    for (Looper looper : ShadowLooper.getAllLoopers()) {
-      try {
-        Shadows.shadowOf(looper).idleFor(duration);
-      } catch (RuntimeException ignored) {}
-    }
+    LooperTestUtils.idleAllLoopersFor(duration);
   }
 
   private void waitForBackOffTimeInterval() throws InterruptedException {
