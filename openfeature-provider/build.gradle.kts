@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
+
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
@@ -38,6 +40,18 @@ android {
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+kotlin {
+    // Match :analytics, :common and :session-replay -- keep the published Kotlin
+    // metadata and the implicit kotlin-stdlib dependency on the 2.0 consumer
+    // floor. See kotlinTarget in gradle/libs.versions.toml.
+    coreLibrariesVersion = libs.versions.kotlinTarget.get()
+    compilerOptions {
+        val lang = KotlinVersion.fromVersion(libs.versions.kotlinLanguage.get())
+        apiVersion.set(lang)
+        languageVersion.set(lang)
     }
 }
 
