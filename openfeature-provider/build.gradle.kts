@@ -47,10 +47,11 @@ kotlin {
     // Match :analytics, :common and :session-replay -- keep the published Kotlin
     // metadata and the implicit kotlin-stdlib dependency on the 2.0 consumer
     // floor. See kotlinTarget in gradle/libs.versions.toml.
-    coreLibrariesVersion = "2.0.0"
+    coreLibrariesVersion = libs.versions.kotlinTarget.get()
     compilerOptions {
-        apiVersion.set(KotlinVersion.KOTLIN_2_0)
-        languageVersion.set(KotlinVersion.KOTLIN_2_0)
+        val lang = KotlinVersion.fromVersion(libs.versions.kotlinLanguage.get())
+        apiVersion.set(lang)
+        languageVersion.set(lang)
     }
 }
 

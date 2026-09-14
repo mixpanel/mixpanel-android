@@ -36,8 +36,8 @@ android {
         // The root buildscript is on KGP 2.1, so clamp the emitted metadata the
         // way :common and :session-replay already do. See kotlinTarget in
         // gradle/libs.versions.toml.
-        languageVersion = "2.0"
-        apiVersion = "2.0"
+        languageVersion = libs.versions.kotlinLanguage.get()
+        apiVersion = libs.versions.kotlinLanguage.get()
     }
     buildFeatures {
         compose true
@@ -126,7 +126,7 @@ kotlin {
     // KGP adds kotlin-stdlib implicitly at the plugin's own version, which would
     // publish a compile-scope dependency on stdlib 2.1.x -- itself carrying the
     // format-2 module metadata. Pin it to the supported consumer floor.
-    coreLibrariesVersion = "2.0.0"
+    coreLibrariesVersion = libs.versions.kotlinTarget.get()
 }
 
 
