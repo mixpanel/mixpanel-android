@@ -229,7 +229,7 @@ class RemoteSettingsServiceTest {
                 "bundle_id" to testPackageName,
                 "build_number" to testVersionCode.toString(),
                 "wireframe" to "1"
-                ),
+            ),
             headers = mapOf("Authorization" to "Basic dGVzdFRva2VuMTIzOg=="),
             timeout = 5000L
         )
