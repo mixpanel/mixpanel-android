@@ -10,6 +10,7 @@ import com.mixpanel.android.sessionreplay.network.Network
 import com.mixpanel.android.sessionreplay.network.RequestMethod
 import com.mixpanel.android.sessionreplay.network.SdkConfig
 import com.mixpanel.android.sessionreplay.network.SettingsResponse
+import com.mixpanel.android.sessionreplay.utils.DeviceInfo
 import com.mixpanel.android.sessionreplay.utils.EndPoints
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -33,7 +34,9 @@ internal open class RemoteSettingsService(
     private val network: Network = Network(),
     private val version: String,
     private val mpLib: String,
-    private val serverUrl: String = EndPoints.DEFAULT_BASE_URL
+    private val serverUrl: String = EndPoints.DEFAULT_BASE_URL,
+    bundleIdOverride: String? = null,
+    buildNumberOverride: String? = null
 ) {
     companion object {
         private const val SETTINGS_TIMEOUT_MS = 5000L
@@ -44,6 +47,9 @@ internal open class RemoteSettingsService(
     private val prefs: SharedPreferences by lazy {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     }
+
+    private val bundleId: String? by lazy { bundleIdOverride ?: DeviceInfo.bundleId(context) }
+    private val buildNumber: String? by lazy { buildNumberOverride ?: DeviceInfo.buildNumber(context) }
 
     private fun recordingEnabledKey(token: String) = "mp_sr_recording_${token}_enabled"
     private fun recordingTimestampKey(token: String) = "mp_sr_recording_${token}_timestamp"
@@ -66,19 +72,28 @@ internal open class RemoteSettingsService(
     private suspend fun performRemoteSettingsFetch(token: String, wireframesRequested: Boolean): RemoteSettingsResult {
         Logger.info("Checking settings for project")
 
+        val queryItems = mutableListOf(
+            "recording" to "1",
+            "sdk_config" to "1",
+            "\$os" to "Android",
+            "mp_lib" to mpLib,
+            "\$lib_version" to version
+        )
+
+        // Include app bundle ID and build number to enable server-side SDK blocking
+        // per app ID and app build version. Either is omitted if unavailable.
+        bundleId?.let { queryItems.add("bundle_id" to it) }
+        buildNumber?.let { queryItems.add("build_number" to it) }
+        if (bundleId == null || buildNumber == null) {
+            Logger.warn("Incomplete app info for settings request: bundleId=$bundleId, buildNumber=$buildNumber")
+        }
+        if (wireframesRequested) queryItems.add("wireframe" to "1")
+
         val apiRequest = APIRequest(
             endPoint = EndPoints.settings(serverUrl),
             method = RequestMethod.GET,
             requestBody = null,
-            queryItems = buildList {
-                add("recording" to "1")
-                add("sdk_config" to "1")
-                // Only ask for the wireframe kill switch when this app opted in to wireframes.
-                if (wireframesRequested) add("wireframe" to "1")
-                add("\$os" to "Android")
-                add("mp_lib" to mpLib)
-                add("\$lib_version" to version)
-            },
+            queryItems = queryItems,
             headers = mapOf(
                 "Authorization" to "Basic ${Base64.encodeToString("$token:".toByteArray(), Base64.NO_WRAP)}"
             ),
