@@ -29,6 +29,15 @@ android {
     }
     kotlinOptions {
         jvmTarget = "17"
+        // Consumers compiling against this AAR must be able to read its Kotlin
+        // metadata. Kotlin 2.1 bumped the .kotlin_module binary format from 1 to
+        // 2, which older compilers fail to *parse* (InvalidProtocolBufferException)
+        // rather than warn about -- -Xskip-metadata-version-check does not help.
+        // The root buildscript is on KGP 2.1, so clamp the emitted metadata the
+        // way :common and :session-replay already do. See kotlinTarget in
+        // gradle/libs.versions.toml.
+        languageVersion = libs.versions.kotlinLanguage.get()
+        apiVersion = libs.versions.kotlinLanguage.get()
     }
     buildFeatures {
         compose true
@@ -113,6 +122,13 @@ java {
     }
 }
 
+kotlin {
+    // KGP adds kotlin-stdlib implicitly at the plugin's own version, which would
+    // publish a compile-scope dependency on stdlib 2.1.x -- itself carrying the
+    // format-2 module metadata. Pin it to the supported consumer floor.
+    coreLibrariesVersion = libs.versions.kotlinTarget.get()
+}
+
 
 tasks.register("androidJavadocs", Javadoc) {
     dependsOn 'assembleRelease'
@@ -147,7 +163,7 @@ tasks.register("androidJavadocs", Javadoc) {
 
 dependencies {
     // official release
-    implementation 'com.mixpanel.android:mixpanel-android-common:1.0.1'
+    implementation 'com.mixpanel.android:mixpanel-android-common:1.1.0'
     signature 'net.sf.androidscents.signature:android-api-level-21:5.0.1_r2@signature'
     // or use below for local testing
     // implementation project(':common')

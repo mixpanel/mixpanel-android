@@ -1,0 +1,19 @@
+{
+  "viewport": [
+    1080,
+    2340
+  ],
+  "elements": [
+    {
+      "role": "text",
+      "text": "Shown label Never shown",
+      "bounds": [
+        0,
+        0,
+        220,
+        45
+      ],
+      "maskDecision": "NONE"
+    }
+  ]
+}

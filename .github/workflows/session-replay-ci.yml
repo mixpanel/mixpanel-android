@@ -46,6 +46,11 @@ jobs:
       - name: Run ktlint
         run: ./gradlew :session-replay:ktlintCheck --stacktrace
 
+      # `:session-replay:ktlintCheck` does not descend into subprojects, so the
+      # goldens module has to be named explicitly or it is never linted.
+      - name: Run ktlint (wireframe goldens)
+        run: ./gradlew :session-replay:wireframe-goldens:ktlintCheck --stacktrace
+
       - name: Run lint
         run: ./gradlew :session-replay:lint --stacktrace
 
@@ -88,6 +93,13 @@ jobs:
 
       - name: Run session replay unit tests
         run: ./gradlew :session-replay:test --stacktrace
+
+      # Wireframe coordinate goldens. A separate Gradle project, so
+      # `:session-replay:test` never runs it — it has to be named. Paparazzi renders
+      # off-device on the JVM, declaring the device in code, so this needs no emulator
+      # and belongs here rather than in the instrumentation matrix.
+      - name: Run wireframe golden tests
+        run: ./gradlew :session-replay:wireframe-goldens:test --stacktrace
 
       - name: Upload unit test reports
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4

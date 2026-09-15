@@ -1,0 +1,30 @@
+{
+  "viewport": [
+    1080,
+    2340
+  ],
+  "elements": [
+    {
+      "role": "text",
+      "text": "Underneath",
+      "bounds": [
+        0,
+        0,
+        195,
+        45
+      ],
+      "maskDecision": "NONE"
+    },
+    {
+      "role": "text",
+      "text": "On top",
+      "bounds": [
+        0,
+        0,
+        111,
+        45
+      ],
+      "maskDecision": "NONE"
+    }
+  ]
+}

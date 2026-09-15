@@ -7,7 +7,7 @@ import android.graphics.Rect
 import android.view.View
 import android.view.WindowManager
 import com.mixpanel.android.sessionreplay.logging.Logger
-import com.mixpanel.android.sessionreplay.sensitive_views.MaskDecision
+import com.mixpanel.android.sessionreplay.sensitive_views.InternalMaskDecision
 import curtains.Curtains
 import curtains.OnRootViewsChangedListener
 import kotlinx.coroutines.CoroutineScope
@@ -53,7 +53,7 @@ internal class DebugMaskOverlayManager private constructor(
 
     private var isEnabled = false
     private val overlayViews = mutableMapOf<Int, WeakReference<DebugMaskOverlayView>>()
-    private var currentMaskEntries: Map<Rect, MaskDecision> = emptyMap()
+    private var currentMaskEntries: Map<Rect, InternalMaskDecision> = emptyMap()
 
     private val mainScope = CoroutineScope(Dispatchers.Main.immediate + SupervisorJob())
 
@@ -134,7 +134,7 @@ internal class DebugMaskOverlayManager private constructor(
      *
      * @param entries Map of bounds to mask decision type
      */
-    fun updateMaskEntries(entries: Map<Rect, MaskDecision>) {
+    fun updateMaskEntries(entries: Map<Rect, InternalMaskDecision>) {
         // Skip if entries haven't changed
         if (currentMaskEntries == entries) return
         currentMaskEntries = entries

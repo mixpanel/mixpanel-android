@@ -20,6 +20,11 @@ class EventService(
         eventHandler?.initialize()
     }
 
+    /** Makes the next captured frame emit a meta event, so every replay opens with its dimensions. */
+    fun resetViewportTracking() {
+        eventHandler?.resetViewportTracking()
+    }
+
     // deinitialize method
     fun deinitialize() {
         eventHandler?.deinitialize()
@@ -43,7 +48,10 @@ class EventService(
             readWriteLock.readLock().withLock {
                 events.toList() // Make a copy under read lock
             }
-        var eventsToEvict = min(numEvents, currentEvents.size)
+        // A meta event retained by an earlier eviction is re-stated below rather than dropped, so
+        // it cannot count towards the quota — otherwise eviction frees no room and the queue grows.
+        val retainedMeta = if (currentEvents.firstOrNull()?.type == EventType.META) 1 else 0
+        var eventsToEvict = min(numEvents + retainedMeta, currentEvents.size)
 
         val candidateEventsToEvict = currentEvents.subList(0, eventsToEvict)
         val candidateEventsRemain = currentEvents.subList(eventsToEvict, currentEvents.size)
@@ -53,8 +61,15 @@ class EventService(
             eventsToEvict += nextFullSnapshotIndex
         }
 
+        val evictedMeta = currentEvents.subList(0, eventsToEvict).lastOrNull { it.type == EventType.META }
+
         readWriteLock.writeLock().withLock {
             repeat(eventsToEvict) { events.removeAt(0) }
+            // A meta event states the viewport for every frame after it, so dropping one without
+            // re-stating it leaves the surviving frames with no dimensions to scale to.
+            if (evictedMeta != null && events.firstOrNull()?.type != EventType.META) {
+                events.add(0, evictedMeta)
+            }
         }
     }
 

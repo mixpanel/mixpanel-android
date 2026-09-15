@@ -1,6 +1,6 @@
 # mixpanel-android-common
 
-##### _April 27, 2026_ - [common-v1.0.1](https://github.com/mixpanel/mixpanel-android/releases/tag/common-v1.0.1)
+##### _September 01, 2026_ - [common-v1.1.0](https://github.com/mixpanel/mixpanel-android/releases/tag/common-v1.1.0)
 
 Internal shared utilities for Mixpanel's Android SDKs. **Not intended for direct use in application code** — public types are annotated `@RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)` and may change without notice. Application code should depend on `mixpanel-android` (or another Mixpanel SDK) instead, which pulls this artifact in transitively.
 

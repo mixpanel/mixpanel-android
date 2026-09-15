@@ -1,5 +1,12 @@
 # Changelog
 
+## [v8.11.0](https://github.com/mixpanel/mixpanel-android/tree/v8.11.0) (2026-09-09)
+
+### Features
+- Implement semver and date custom operators for flags runtime events ([#995](https://github.com/mixpanel/mixpanel-android/pull/995))
+
+[Full Changelog](https://github.com/mixpanel/mixpanel-android/compare/v8.10.0...v8.11.0)
+
 ## [v8.10.0](https://github.com/mixpanel/mixpanel-android/tree/v8.10.0) (2026-09-01)
 
 ### Features

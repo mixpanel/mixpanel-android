@@ -34,8 +34,8 @@ android {
 
     kotlinOptions {
         jvmTarget = "17"
-        languageVersion = "2.0"
-        apiVersion = "2.0"
+        languageVersion = libs.versions.kotlinLanguage.get()
+        apiVersion = libs.versions.kotlinLanguage.get()
     }
 
     publishing {
@@ -52,7 +52,7 @@ java {
 }
 
 kotlin {
-    coreLibrariesVersion = "2.0.0"
+    coreLibrariesVersion = libs.versions.kotlinTarget.get()
 }
 
 dependencies {
