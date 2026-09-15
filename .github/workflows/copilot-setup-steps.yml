@@ -115,7 +115,8 @@ jobs:
           rm -f *.deb
       
       # Set up environment for running instrumented tests
-      # The SDK uses instrumented tests exclusively (no unit tests)
+      # The SDK has JVM unit tests (:analytics:test) plus instrumented tests
+      # (:analytics:connectedAndroidTest), which need the emulator set up below.
       - name: Set up test environment
         run: |
           # Create AVD directory if it doesn't exist

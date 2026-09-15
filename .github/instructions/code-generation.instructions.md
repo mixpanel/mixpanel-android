@@ -44,11 +44,10 @@ public void newFeature(String param, JSONObject properties) {
     
     // 3. Try-catch everything
     try {
-        // 4. Queue to background thread
-        Message msg = Message.obtain();
-        msg.what = NEW_FEATURE_MESSAGE;
-        msg.obj = new FeatureDescription(param, properties, mToken);
-        mMessages.enqueueMessage(msg);
+        // 4. Queue to background thread via a typed AnalyticsMessages method
+        // (which internally does mWorker.runMessage(msg) — there is no public
+        // enqueueMessage; add a typed method for new message types)
+        mMessages.featureMessage(new FeatureDescription(param, properties, mToken));
         
     } catch (Exception e) {
         MPLog.e(LOGTAG, "Failed to process feature", e);
