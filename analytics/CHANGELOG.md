@@ -1,5 +1,12 @@
 # Changelog
 
+## [v8.11.1](https://github.com/mixpanel/mixpanel-android/tree/v8.11.1) (2026-09-15)
+
+### Fixes
+- restore Kotlin 2.0 consumer floor ([#1013](https://github.com/mixpanel/mixpanel-android/pull/1013))
+
+[Full Changelog](https://github.com/mixpanel/mixpanel-android/compare/v8.11.0...v8.11.1)
+
 ## [v8.11.0](https://github.com/mixpanel/mixpanel-android/tree/v8.11.0) (2026-09-09)
 
 ### Features
