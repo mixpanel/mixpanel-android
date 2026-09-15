@@ -223,11 +223,13 @@ class RemoteSettingsServiceTest {
             queryItems = listOf(
                 "recording" to "1",
                 "sdk_config" to "1",
-                "wireframe" to "1",
                 "\$os" to "Android",
                 "mp_lib" to mpLib,
-                "\$lib_version" to version
-            ),
+                "\$lib_version" to version,
+                "bundle_id" to testPackageName,
+                "build_number" to testVersionCode.toString(),
+                "wireframe" to "1"
+                ),
             headers = mapOf("Authorization" to "Basic dGVzdFRva2VuMTIzOg=="),
             timeout = 5000L
         )
