@@ -16,6 +16,7 @@ jobs:
     - name: Checkout the code
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
     - name: Build all modules
+      timeout-minutes: 60
       run: ./gradlew assemble
     - name: Enable KVM
       run: |
@@ -23,6 +24,7 @@ jobs:
         sudo udevadm control --reload-rules
         sudo udevadm trigger --name-match=kvm
     - name: Run Unit test
+      timeout-minutes: 60
       uses: reactivecircus/android-emulator-runner@e89f39f1abbbd05b1113a29cf4db69e7540cae5a  # v2
       with:
         api-level: 34
@@ -30,16 +32,22 @@ jobs:
         emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
         script: ./gradlew :analytics:createDebugCoverageReport
     - name: Run OpenFeature Provider tests
+      timeout-minutes: 60
       run: ./gradlew :openfeature-provider:test
     - name: Run Common module tests
+      timeout-minutes: 60
       run: ./gradlew :common:test
     - name: Run analytics JVM unit tests
+      timeout-minutes: 60
       run: ./gradlew :analytics:test
     - name: Run Common ktlint check
+      timeout-minutes: 60
       run: ./gradlew :common:ktlintCheck
     - name: Lint
+      timeout-minutes: 60
       run:  ./gradlew :analytics:lint
     - name: AnimalSniffer (Java/Android API compatibility)
+      timeout-minutes: 60
       run:  ./gradlew :analytics:animalsnifferRelease
     - name: Verify published Kotlin compatibility
       run:  ./gradlew verifyKotlinCompatibility
@@ -92,5 +100,6 @@ jobs:
         name: AnimalSniffer Report
         path: analytics/build/reports/animalsniffer/
     - name: Android docs
+      timeout-minutes: 60
       run:  ./gradlew --info :analytics:androidJavadocs
 
