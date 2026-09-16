@@ -35,8 +35,8 @@ internal open class RemoteSettingsService(
     private val version: String,
     private val mpLib: String,
     private val serverUrl: String = EndPoints.DEFAULT_BASE_URL,
-    bundleIdOverride: String? = null,
-    buildNumberOverride: String? = null
+    private val bundleIdOverride: String? = null,
+    private val buildNumberOverride: String? = null
 ) {
     companion object {
         private const val SETTINGS_TIMEOUT_MS = 5000L
