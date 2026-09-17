@@ -88,8 +88,11 @@ mContext = context; // Could be Activity
 
 **ALWAYS** follow the established data flow:
 ```
-MixpanelAPI → AnalyticsMessages → MPDbAdapter → HttpService
+MixpanelAPI ─ tracking ─→ AnalyticsMessages ─→ { MPDbAdapter (SQLite), HttpService }
+            └ feature flags ─→ FeatureFlagManager ─→ HttpService
 ```
+AnalyticsMessages owns both the DB adapter and the HTTP poster; MPDbAdapter never
+touches the network. Only AnalyticsMessages and FeatureFlagManager may perform HTTP.
 
 **NEVER** bypass layers:
 ```java

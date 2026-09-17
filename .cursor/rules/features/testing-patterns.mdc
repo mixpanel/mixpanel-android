@@ -1,6 +1,9 @@
-# Testing Patterns - Instrumented Tests Only
+# Testing Patterns
 
-**Description**: Rules for writing Android instrumented tests
+**Description**: Rules for writing tests. The SDK has two layers — JVM unit tests
+(`src/test/`, JUnit/Robolectric, run via `:analytics:test`) and instrumented tests
+(`src/androidTest/`, AndroidJUnit4, real device/emulator, run via `:analytics:connectedAndroidTest`).
+The patterns below cover the instrumented layer.
 **Glob**: src/androidTest/java/**/*.java
 
 ## Test Setup
