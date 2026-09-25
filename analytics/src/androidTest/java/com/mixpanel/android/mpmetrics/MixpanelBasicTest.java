@@ -56,7 +56,8 @@ public class MixpanelBasicTest {
     AnalyticsMessages messages =
         AnalyticsMessages.getInstance(
             InstrumentationRegistry.getInstrumentation().getContext(),
-            MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), null));
+            MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), null),
+            null);
     messages.hardKill();
     Thread.sleep(2000);
 
@@ -1139,7 +1140,7 @@ public class MixpanelBasicTest {
           final String token,
           final String instanceName,
           final DeviceIdProvider deviceIdProvider) {
-        String instanceKey = instanceName != null ? instanceName : token;
+        String instanceKey = MPConfig.resolveInstanceKey(instanceName, token);
         final String mixpanelPrefsName = "com.mixpanel.android.mpmetrics.Mixpanel";
         final SharedPreferences mpSharedPrefs =
             context.getSharedPreferences(mixpanelPrefsName, Context.MODE_PRIVATE);
@@ -1573,7 +1574,7 @@ public class MixpanelBasicTest {
           final String token,
           final String instanceName,
           final DeviceIdProvider deviceIdProvider) {
-        String instanceKey = instanceName != null ? instanceName : token;
+        String instanceKey = MPConfig.resolveInstanceKey(instanceName, token);
         final String mixpanelPrefsName = "com.mixpanel.android.mpmetrics.Mixpanel";
         final SharedPreferences mpSharedPrefs =
             context.getSharedPreferences(mixpanelPrefsName, Context.MODE_PRIVATE);
