@@ -446,6 +446,63 @@ class ScreenRecorderTest {
     }
 
     /**
+     * On app launch the activity window can be reported as a root view before it has been
+     * laid out, so it has a zero height while a second window (splash, dialog) already has
+     * real dimensions. Compositing onto a 0-height full-screen bitmap crashes in
+     * Bitmap.createBitmap, so the sub-window must be captured on its own instead.
+     */
+    @Test
+    fun testGetSubWindowInfo_returnsNull_whenFullScreenViewHasZeroHeight() {
+        val fullScreen = createMockView(1080, 0, 3f, screenX = 0, screenY = 0)
+        val dialog = createMockView(900, 600, 3f, screenX = 0, screenY = 600)
+
+        val info = ScreenRecorder.shared.getSubWindowInfo(dialog, fullScreen)
+
+        assertNull(info)
+    }
+
+    @Test
+    fun testGetSubWindowInfo_returnsNull_whenFullScreenViewHasZeroWidth() {
+        val fullScreen = createMockView(0, 1920, 3f, screenX = 0, screenY = 0)
+        val dialog = createMockView(900, 600, 3f, screenX = 0, screenY = 600)
+
+        val info = ScreenRecorder.shared.getSubWindowInfo(dialog, fullScreen)
+
+        assertNull(info)
+    }
+
+    // --- BitmapPool dimension guard (the Bitmap.createBitmap crash site) ---
+
+    @Test
+    fun testBitmapPoolAcquire_returnsNull_forZeroHeight() {
+        val pool = BitmapPool(context)
+        assertNull(pool.acquire(1080, 0))
+    }
+
+    @Test
+    fun testBitmapPoolAcquire_returnsNull_forZeroWidth() {
+        val pool = BitmapPool(context)
+        assertNull(pool.acquire(0, 1920))
+    }
+
+    @Test
+    fun testBitmapPoolAcquire_returnsNull_forNegativeDimensions() {
+        val pool = BitmapPool(context)
+        assertNull(pool.acquire(-1, 1920))
+        assertNull(pool.acquire(1080, -1))
+    }
+
+    @Test
+    fun testBitmapPoolAcquire_returnsBitmap_forPositiveDimensions() {
+        val pool = BitmapPool(context)
+        val bitmap = pool.acquire(320, 480)
+        assertNotNull(bitmap)
+        assertEquals(320, bitmap!!.width)
+        assertEquals(480, bitmap.height)
+        pool.release(bitmap)
+    }
+
+    /**
      * Test 16: Verify that scaling logic produces positive dimensions for typical device configurations
      */
     @Test

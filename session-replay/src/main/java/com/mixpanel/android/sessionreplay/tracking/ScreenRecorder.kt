@@ -164,6 +164,17 @@ internal class ScreenRecorder {
     internal fun getSubWindowInfo(rootView: View, fullScreenView: View?): SubWindowInfo? {
         if (fullScreenView == null || fullScreenView === rootView) return null
 
+        // The full-screen window may not have completed layout yet (e.g. the activity's
+        // decor view during app launch). Its zero dimension would otherwise become the
+        // composited bitmap's size and crash in Bitmap.createBitmap.
+        if (fullScreenView.width <= 0 || fullScreenView.height <= 0) {
+            Logger.warn(
+                "Full-screen view has invalid dimensions: ${fullScreenView.width}x${fullScreenView.height}, " +
+                    "capturing sub-window without compositing"
+            )
+            return null
+        }
+
         val fullScale = calculateBitmapScale(fullScreenView)
         val viewScale = calculateBitmapScale(rootView)
 
