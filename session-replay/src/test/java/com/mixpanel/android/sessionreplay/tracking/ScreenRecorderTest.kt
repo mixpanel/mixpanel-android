@@ -6,6 +6,8 @@ import android.util.DisplayMetrics
 import android.view.View
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -443,6 +445,61 @@ class ScreenRecorderTest {
         val view = createMockView(1080, 1920, 3f, screenX = 0, screenY = 0)
         val info = ScreenRecorder.shared.getSubWindowInfo(view, null)
         assertNull(info)
+    }
+
+    /**
+     * On app launch the activity window can be reported as a root view before it has been
+     * laid out, so it has a zero height while a second window (splash, dialog) already has
+     * real dimensions. Capturing the sub-window alone would lose its screen position;
+     * a later draw will retry after the full-screen view has been laid out.
+     */
+    @Test
+    fun testCaptureScreenshot_returnsNull_whenFullScreenViewHasZeroHeight() = runBlocking {
+        val fullScreen = createMockView(1080, 0, 3f, screenX = 0, screenY = 0)
+        val dialog = createMockView(900, 600, 3f, screenX = 0, screenY = 600)
+
+        assertNull(ScreenRecorder.shared.captureScreenshot(dialog, fullScreen))
+        verify(exactly = 0) { dialog.context }
+    }
+
+    @Test
+    fun testCaptureScreenshot_returnsNull_whenFullScreenViewHasZeroWidth() = runBlocking {
+        val fullScreen = createMockView(0, 1920, 3f, screenX = 0, screenY = 0)
+        val dialog = createMockView(900, 600, 3f, screenX = 0, screenY = 600)
+
+        assertNull(ScreenRecorder.shared.captureScreenshot(dialog, fullScreen))
+        verify(exactly = 0) { dialog.context }
+    }
+
+    // --- BitmapPool dimension guard (the Bitmap.createBitmap crash site) ---
+
+    @Test
+    fun testBitmapPoolAcquire_returnsNull_forZeroHeight() {
+        val pool = BitmapPool(context)
+        assertNull(pool.acquire(1080, 0))
+    }
+
+    @Test
+    fun testBitmapPoolAcquire_returnsNull_forZeroWidth() {
+        val pool = BitmapPool(context)
+        assertNull(pool.acquire(0, 1920))
+    }
+
+    @Test
+    fun testBitmapPoolAcquire_returnsNull_forNegativeDimensions() {
+        val pool = BitmapPool(context)
+        assertNull(pool.acquire(-1, 1920))
+        assertNull(pool.acquire(1080, -1))
+    }
+
+    @Test
+    fun testBitmapPoolAcquire_returnsBitmap_forPositiveDimensions() {
+        val pool = BitmapPool(context)
+        val bitmap = pool.acquire(320, 480)
+        assertNotNull(bitmap)
+        assertEquals(320, bitmap!!.width)
+        assertEquals(480, bitmap.height)
+        pool.release(bitmap)
     }
 
     /**

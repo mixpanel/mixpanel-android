@@ -453,6 +453,16 @@ internal class ScreenRecorder {
      *   the instant its pixels were captured, or `null` if capture fails.
      */
     suspend fun captureScreenshot(rootView: View, fullScreenView: View? = null): CapturedFrame? {
+        // Without a measured full-screen view, a sub-window cannot be placed in the
+        // same coordinate space as touches and wireframes. Wait for a later draw instead.
+        if (fullScreenView != null && (fullScreenView.width <= 0 || fullScreenView.height <= 0)) {
+            Logger.warn(
+                "Full-screen view has invalid dimensions: ${fullScreenView.width}x${fullScreenView.height}, " +
+                    "skipping screenshot capture"
+            )
+            return null
+        }
+
         // Initialize bitmap pool if not already done
         val pool = acquireBitmapPool(rootView.context)
 
