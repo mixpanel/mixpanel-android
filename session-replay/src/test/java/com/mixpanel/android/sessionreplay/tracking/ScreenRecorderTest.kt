@@ -6,6 +6,8 @@ import android.util.DisplayMetrics
 import android.view.View
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -448,27 +450,25 @@ class ScreenRecorderTest {
     /**
      * On app launch the activity window can be reported as a root view before it has been
      * laid out, so it has a zero height while a second window (splash, dialog) already has
-     * real dimensions. Compositing onto a 0-height full-screen bitmap crashes in
-     * Bitmap.createBitmap, so the sub-window must be captured on its own instead.
+     * real dimensions. Capturing the sub-window alone would lose its screen position;
+     * a later draw will retry after the full-screen view has been laid out.
      */
     @Test
-    fun testGetSubWindowInfo_returnsNull_whenFullScreenViewHasZeroHeight() {
+    fun testCaptureScreenshot_returnsNull_whenFullScreenViewHasZeroHeight() = runBlocking {
         val fullScreen = createMockView(1080, 0, 3f, screenX = 0, screenY = 0)
         val dialog = createMockView(900, 600, 3f, screenX = 0, screenY = 600)
 
-        val info = ScreenRecorder.shared.getSubWindowInfo(dialog, fullScreen)
-
-        assertNull(info)
+        assertNull(ScreenRecorder.shared.captureScreenshot(dialog, fullScreen))
+        verify(exactly = 0) { dialog.context }
     }
 
     @Test
-    fun testGetSubWindowInfo_returnsNull_whenFullScreenViewHasZeroWidth() {
+    fun testCaptureScreenshot_returnsNull_whenFullScreenViewHasZeroWidth() = runBlocking {
         val fullScreen = createMockView(0, 1920, 3f, screenX = 0, screenY = 0)
         val dialog = createMockView(900, 600, 3f, screenX = 0, screenY = 600)
 
-        val info = ScreenRecorder.shared.getSubWindowInfo(dialog, fullScreen)
-
-        assertNull(info)
+        assertNull(ScreenRecorder.shared.captureScreenshot(dialog, fullScreen))
+        verify(exactly = 0) { dialog.context }
     }
 
     // --- BitmapPool dimension guard (the Bitmap.createBitmap crash site) ---
