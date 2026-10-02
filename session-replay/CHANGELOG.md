@@ -1,5 +1,16 @@
 # Changelog
 
+## [session-replay-v1.5.1](https://github.com/mixpanel/mixpanel-android/tree/session-replay-v1.5.1) (2026-10-02)
+
+### Features
+- send app bundle_id and build_number as settings API query params ([#1008](https://github.com/mixpanel/mixpanel-android/pull/1008))
+
+### Fixes
+- skip capture before full-screen layout ([#1017](https://github.com/mixpanel/mixpanel-android/pull/1017))
+- restore Kotlin 2.0 consumer floor for analytics and openfeature ([#1013](https://github.com/mixpanel/mixpanel-android/pull/1013))
+
+[Full Changelog](https://github.com/mixpanel/mixpanel-android/compare/session-replay-v1.5.0...session-replay-v1.5.1)
+
 ## [session-replay-v1.5.0](https://github.com/mixpanel/mixpanel-android/tree/session-replay-v1.5.0) (2026-09-09)
 
 ### Features
