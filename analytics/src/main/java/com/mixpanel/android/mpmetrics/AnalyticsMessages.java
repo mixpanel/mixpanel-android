@@ -60,7 +60,6 @@ import org.json.JSONObject;
     /* package */ AnalyticsMessages(final Context context, MPConfig config) {
         mContext = context;
         mConfig = config;
-        mInstanceName = config.getInstanceName();
         mWorker = createWorker();
         getPoster().checkIsServerBlocked();
     }
@@ -72,20 +71,27 @@ import org.json.JSONObject;
     /**
      * Use this to get an instance of AnalyticsMessages instead of creating one directly for yourself.
      *
+     * <p>Instances are keyed by {@code MPConfig.getInstanceName()} when set, otherwise by the
+     * project {@code token}. This mirrors {@code MixpanelAPI.getInstance} so that two
+     * {@code MixpanelAPI} instances configured with different tokens (and no explicit instance
+     * name) do not share a worker, config, or HTTP poster.
+     *
      * @param messageContext should be the Main Activity of the application associated with these
      *     messages.
      * @param config The MPConfig configuration settings for the AnalyticsMessages instance.
+     * @param token The Mixpanel project token, used as the map key when no instance name is set.
      */
-    public static AnalyticsMessages getInstance(final Context messageContext, MPConfig config) {
+    public static AnalyticsMessages getInstance(
+            final Context messageContext, MPConfig config, String token) {
         synchronized (sInstances) {
             final Context appContext = messageContext.getApplicationContext();
             AnalyticsMessages ret;
-            String instanceName = config.getInstanceName();
-            if (!sInstances.containsKey(instanceName)) {
+            String instanceKey = MPConfig.resolveInstanceKey(config.getInstanceName(), token);
+            if (!sInstances.containsKey(instanceKey)) {
                 ret = new AnalyticsMessages(appContext, config);
-                sInstances.put(instanceName, ret);
+                sInstances.put(instanceKey, ret);
             } else {
-                ret = sInstances.get(instanceName);
+                ret = sInstances.get(instanceKey);
             }
             return ret;
         }
@@ -207,8 +213,8 @@ import org.json.JSONObject;
     private volatile HttpService mHttpService;
 
     protected RemoteService getPoster() {
+        String serverHost = extractHostFromUrl(mConfig.getEventsEndpoint());
         if (mHttpService == null) {
-            String serverHost = extractHostFromUrl(mConfig.getEventsEndpoint());
             mHttpService =
                     new HttpService(
                             mConfig.shouldGzipRequestPayload(),
@@ -216,7 +222,9 @@ import org.json.JSONObject;
                             mConfig.getBackupHost(),
                             serverHost);
         } else {
-            // Update backup host and listener in case they changed at runtime
+            // Re-sync mutable settings in case setServerURL/setBackupHost/etc. was called
+            // after the poster was first created.
+            mHttpService.setServerHost(serverHost);
             mHttpService.setBackupHost(mConfig.getBackupHost());
             mHttpService.setNetworkErrorListener(mNetworkErrorListener);
         }
@@ -860,7 +868,6 @@ import org.json.JSONObject;
 
     // Used across thread boundaries
     private final Worker mWorker;
-    private final String mInstanceName;
     protected final Context mContext;
     protected final MPConfig mConfig;
     protected MixpanelNetworkErrorListener mNetworkErrorListener;

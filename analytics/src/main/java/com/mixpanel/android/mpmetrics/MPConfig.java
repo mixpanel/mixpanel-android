@@ -349,6 +349,16 @@ public class MPConfig {
         return mInstanceName;
     }
 
+    /**
+     * Resolves the key used to identify a Mixpanel instance in the SDK's internal instance
+     * tables (AnalyticsMessages, MixpanelAPI, preferences file names, etc.). Instances are keyed
+     * by {@code instanceName} when set, falling back to the project {@code token}. Keep this the
+     * single source of truth — a mismatch causes multi-instance setups to silently share state.
+     */
+    /* package */ static String resolveInstanceKey(String instanceName, String token) {
+        return instanceName != null ? instanceName : token;
+    }
+
     public boolean getDisableAppOpenEvent() {
         return mDisableAppOpenEvent;
     }
