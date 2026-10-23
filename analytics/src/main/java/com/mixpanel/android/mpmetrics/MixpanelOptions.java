@@ -23,7 +23,8 @@ public class MixpanelOptions {
      */
     public static final Set<String> RESERVED_PROPERTY_KEYS = Collections.unmodifiableSet(
         new HashSet<>(Arrays.asList(
-            "token", "time", "distinct_id", "$device_id", "$user_id", "$had_persisted_distinct_id"
+            "token", "time", "distinct_id", "$device_id", "$user_id", "$company_id",
+            "$had_persisted_distinct_id"
         ))
     );
 
@@ -36,6 +37,7 @@ public class MixpanelOptions {
     private final String serverURL;
     private final ProxyServerInteractor proxyServerInteractor;
     private final Set<String> excludeProperties;
+    private final boolean hierarchicalGroups;
 
     private MixpanelOptions(Builder builder) {
         this.instanceName = builder.instanceName;
@@ -47,6 +49,7 @@ public class MixpanelOptions {
         this.mFeatureFlagOptions = builder.mFeatureFlagOptions;
         this.mAutocaptureOptions = builder.mAutocaptureOptions;
         this.excludeProperties = builder.excludeProperties;
+        this.hierarchicalGroups = builder.hierarchicalGroups;
     }
 
     public String getInstanceName() {
@@ -144,6 +147,16 @@ public class MixpanelOptions {
         return excludeProperties;
     }
 
+    /**
+     * Returns whether this instance tracks for a hierarchical groups project.
+     *
+     * @return true if hierarchical groups is enabled
+     * @see Builder#hierarchicalGroups(boolean)
+     */
+    public boolean isHierarchicalGroups() {
+        return hierarchicalGroups;
+    }
+
     public static class Builder {
         private String instanceName;
         private boolean optOutTrackingDefault = false;
@@ -156,6 +169,7 @@ public class MixpanelOptions {
         private String serverURL;
         private ProxyServerInteractor proxyServerInteractor;
         private Set<String> excludeProperties = Collections.emptySet();
+        private boolean hierarchicalGroups = false;
 
         public Builder() {
         }
@@ -412,6 +426,34 @@ public class MixpanelOptions {
                 // Defensive copy + immutable wrapper so callers can't mutate post-build.
                 this.excludeProperties = Collections.unmodifiableSet(new HashSet<>(excludeProperties));
             }
+            return this;
+        }
+
+        /**
+         * Tracks for a project that uses hierarchical groups. Set this to match the project
+         * from the first launch; it is not meant to be changed for an existing install.
+         *
+         * <p>On a hierarchical groups project Mixpanel builds the user's distinct id from
+         * {@code $company_id} and {@code $user_id}, so the company is part of the user's identity.
+         * When enabled:
+         * <ul>
+         *   <li>Identify with {@link MixpanelAPI#identify(com.mixpanel.android.identity.MixpanelIdentity)}. Every event then carries
+         *       {@code $company_id} beside {@code $user_id} and {@code $device_id}.</li>
+         *   <li>{@link MixpanelAPI.People} updates are sent to {@code /groups} as the
+         *       {@code $user_id} group profile within the company. {@code /groups} has no
+         *       {@code $add}, {@code $append} or {@code $merge}, so increment, append, merge and
+         *       trackCharge are dropped with an error log.</li>
+         *   <li>{@link MixpanelAPI.Group} updates carry the current {@code $company_id}, and are
+         *       dropped until a company is known.</li>
+         * </ul>
+         *
+         * <p>Defaults to false, which behaves exactly as before.
+         *
+         * @param hierarchicalGroups true if the project uses hierarchical groups
+         * @return This Builder instance for chaining.
+         */
+        public Builder hierarchicalGroups(boolean hierarchicalGroups) {
+            this.hierarchicalGroups = hierarchicalGroups;
             return this;
         }
 

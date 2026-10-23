@@ -105,7 +105,9 @@ dependencies {
     implementation(libs.androidx.lifecycle.process)
     implementation(libs.curtains)
     implementation(libs.androidx.ui.android)
-    implementation(libs.mixpanel.android.common)
+    // api, not implementation: MixpanelIdentity in :common is part of the public replay API.
+    // Switch back to libs.mixpanel.android.common once :common with MixpanelIdentity is published.
+    api(project(":common"))
 
     // Test dependencies
     testImplementation(libs.test.junit)

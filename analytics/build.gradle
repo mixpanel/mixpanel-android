@@ -162,11 +162,12 @@ tasks.register("androidJavadocs", Javadoc) {
 }
 
 dependencies {
-    // official release
-    implementation 'com.mixpanel.android:mixpanel-android-common:1.1.0'
+    // api, not implementation: MixpanelIdentity in :common is part of MixpanelAPI's public signatures.
+    // official release (switch back once :common with MixpanelIdentity is published)
+    // api 'com.mixpanel.android:mixpanel-android-common:1.1.0'
     signature 'net.sf.androidscents.signature:android-api-level-21:5.0.1_r2@signature'
     // or use below for local testing
-    // implementation project(':common')
+    api project(':common')
     implementation "androidx.annotation:annotation:1.8.2"
     implementation 'androidx.core:core:1.13.1'
     implementation 'androidx.lifecycle:lifecycle-process:2.6.2'

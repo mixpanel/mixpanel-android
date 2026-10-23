@@ -1,5 +1,7 @@
 package com.mixpanel.android.sessionreplay
 
+import com.mixpanel.android.identity.MixpanelIdentity
+import com.mixpanel.android.sessionreplay.utils.ReplayIdentity
 import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
@@ -272,6 +274,23 @@ class MPSessionReplayInstance(
 
     fun identify(distinctId: String) {
         flushService.updateDistinctId(distinctId)
+    }
+
+    /**
+     * Attributes recordings to the given identity, typically the one analytics reports through
+     * `MixpanelAPI.getIdentity()`. Replays then carry `$user_id`, `$company_id` and `$device_id`
+     * alongside `distinct_id`, so they resolve to the same user as the app's events, including on
+     * a project that uses hierarchical groups. Call it again whenever analytics identifies.
+     *
+     * An identity with neither a user id nor a device id is logged and ignored.
+     */
+    fun identify(identity: MixpanelIdentity) {
+        val distinctId = ReplayIdentity.distinctId(identity)
+        if (distinctId == null) {
+            Logger.warn("Can't identify Session Replay with $identity: it needs a user id or a device id")
+            return
+        }
+        flushService.updateIdentity(identity, distinctId)
     }
 
     fun addSensitiveView(view: View) {
