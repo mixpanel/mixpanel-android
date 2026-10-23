@@ -103,8 +103,8 @@ public class HierarchicalGroupsTest {
         assertEquals("user_123", props.getString("$user_id"));
         assertEquals("acme", props.getString("$company_id"));
         assertEquals(mixpanel.getAnonymousId(), props.getString("$device_id"));
-        assertEquals("acme", mixpanel.getCompanyId());
-        assertEquals("user_123", mixpanel.getDistinctId());
+        assertEquals("acme", mixpanel.getIdentity().getCompanyId());
+        assertEquals("$company:acme|$user:user_123", mixpanel.getDistinctId());
     }
 
     @Test
@@ -158,7 +158,7 @@ public class HierarchicalGroupsTest {
         mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
         mixpanel.identify("user_123");
 
-        assertEquals("acme", mixpanel.getCompanyId());
+        assertEquals("acme", mixpanel.getIdentity().getCompanyId());
         mixpanel.track("Viewed Report");
         assertEquals("acme", lastEventProperties("Viewed Report").getString("$company_id"));
     }
@@ -169,7 +169,7 @@ public class HierarchicalGroupsTest {
         mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
         mixpanel.identify("user_456");
 
-        assertNull(mixpanel.getCompanyId());
+        assertNull(mixpanel.getIdentity().getCompanyId());
         mixpanel.track("Viewed Report");
         JSONObject props = lastEventProperties("Viewed Report");
         assertEquals("user_456", props.getString("$user_id"));
@@ -183,7 +183,7 @@ public class HierarchicalGroupsTest {
         mixpanel.identify(new MixpanelIdentity("user_123", ""));
 
         assertEquals(anonymous, mixpanel.getDistinctId());
-        assertNull(mixpanel.getCompanyId());
+        assertNull(mixpanel.getIdentity().getCompanyId());
         assertEquals(0, countEvents("$identify"));
     }
 
@@ -208,7 +208,7 @@ public class HierarchicalGroupsTest {
         mixpanel.identify(new MixpanelIdentity("", "acme"));
 
         assertEquals(anonymous, mixpanel.getDistinctId());
-        assertNull(mixpanel.getCompanyId());
+        assertNull(mixpanel.getIdentity().getCompanyId());
         assertEquals(0, countEvents("$identify"));
     }
 
@@ -219,7 +219,7 @@ public class HierarchicalGroupsTest {
         mixpanel.identify(new MixpanelIdentity("user_123", "acme", "some_other_device"));
 
         assertEquals(deviceId, mixpanel.getAnonymousId());
-        assertEquals("user_123", mixpanel.getDistinctId());
+        assertEquals("user_123", mixpanel.getIdentity().getUserId());
         mixpanel.track("Viewed Report");
         assertEquals(deviceId, lastEventProperties("Viewed Report").getString("$device_id"));
     }
@@ -244,13 +244,57 @@ public class HierarchicalGroupsTest {
         assertEquals(new MixpanelIdentity("user_123", null, mixpanel.getAnonymousId()), mixpanel.getIdentity());
     }
 
+    // getDistinctId() reports the id Mixpanel resolves the user to
+
+    @Test
+    public void testDistinctIdIsDeviceBeforeIdentify() {
+        MixpanelAPI mixpanel = newApi(true);
+        assertEquals("$device:" + mixpanel.getAnonymousId(), mixpanel.getDistinctId());
+    }
+
+    @Test
+    public void testDistinctIdCombinesCompanyAndUser() throws JSONException {
+        MixpanelAPI mixpanel = newApi(true);
+        mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
+        assertEquals("$company:acme|$user:user_123", mixpanel.getDistinctId());
+
+        // Events still send the stored id; ingestion resolves the user from the identity keys
+        mixpanel.track("Viewed Report");
+        assertEquals("user_123", lastEventProperties("Viewed Report").getString("distinct_id"));
+
+        mixpanel.identify(new MixpanelIdentity("user_123", "globex"));
+        assertEquals("$company:globex|$user:user_123", mixpanel.getDistinctId());
+    }
+
+    @Test
+    public void testDistinctIdStaysOnDeviceUntilCompanyIsKnown() {
+        MixpanelAPI mixpanel = newApi(true);
+        mixpanel.identify("user_123");
+        assertEquals("$device:" + mixpanel.getAnonymousId(), mixpanel.getDistinctId());
+    }
+
+    @Test
+    public void testDistinctIdUnchangedWhenDisabled() {
+        MixpanelAPI mixpanel = newApi(false);
+        mixpanel.identify("user_123");
+        assertEquals("user_123", mixpanel.getDistinctId());
+    }
+
+    @Test
+    public void testResetReturnsToDeviceDistinctId() {
+        MixpanelAPI mixpanel = newApi(true);
+        mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
+        mixpanel.reset();
+        assertEquals("$device:" + mixpanel.getAnonymousId(), mixpanel.getDistinctId());
+    }
+
     @Test
     public void testResetClearsCompany() throws JSONException {
         MixpanelAPI mixpanel = newApi(true);
         mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
         mixpanel.reset();
 
-        assertNull(mixpanel.getCompanyId());
+        assertNull(mixpanel.getIdentity().getCompanyId());
         mixpanel.track("Opened");
         assertFalse(lastEventProperties("Opened").has("$company_id"));
     }
@@ -264,7 +308,7 @@ public class HierarchicalGroupsTest {
         mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
 
         assertEquals(anonymous, mixpanel.getDistinctId());
-        assertNull(mixpanel.getCompanyId());
+        assertNull(mixpanel.getIdentity().getCompanyId());
         assertEquals(0, countEvents("$identify"));
     }
 
