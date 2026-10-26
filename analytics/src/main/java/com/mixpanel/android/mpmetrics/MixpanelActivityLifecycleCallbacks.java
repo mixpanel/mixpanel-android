@@ -19,6 +19,7 @@ import java.lang.ref.WeakReference;
     private Runnable check;
     private boolean mIsForeground = false;
     private boolean mPaused = true;
+    private boolean mHasSeenActivity = false;
     private static Double sStartSessionTime;
     public static final int CHECK_DELAY = 500;
 
@@ -39,6 +40,7 @@ import java.lang.ref.WeakReference;
 
     @Override
     public void onActivityPaused(final Activity activity) {
+        mHasSeenActivity = true;
         mPaused = true;
 
         if (check != null) {
@@ -81,6 +83,7 @@ import java.lang.ref.WeakReference;
     public void onActivityResumed(Activity activity) {
         mCurrentActivity = new WeakReference<>(activity);
 
+        mHasSeenActivity = true;
         mPaused = false;
         boolean wasBackground = !mIsForeground;
         mIsForeground = true;
@@ -101,6 +104,20 @@ import java.lang.ref.WeakReference;
 
     protected boolean isInForeground() {
         return mIsForeground;
+    }
+
+    /**
+     * Marks the app as foregrounded when these callbacks were registered after an activity had
+     * already resumed. registerActivityLifecycleCallbacks does not replay onActivityResumed, so
+     * without this the first trip to the background after a deferred init would not flush.
+     * No-op once any activity callback has been received, since that state is authoritative.
+     */
+    /* package */ void onRegisteredWhileResumed() {
+        if (mHasSeenActivity) {
+            return;
+        }
+        mIsForeground = true;
+        mPaused = false;
     }
 
     private final MixpanelAPI mMpInstance;

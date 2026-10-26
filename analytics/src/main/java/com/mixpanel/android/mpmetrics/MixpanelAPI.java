@@ -2256,8 +2256,18 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
             if (mContext.getApplicationContext() instanceof Application) {
                 final Application app = (Application) mContext.getApplicationContext();
-                mMixpanelActivityLifecycleCallbacks = new MixpanelActivityLifecycleCallbacks(this, mConfig);
-                app.registerActivityLifecycleCallbacks(mMixpanelActivityLifecycleCallbacks);
+                final MixpanelActivityLifecycleCallbacks callbacks =
+                        new MixpanelActivityLifecycleCallbacks(this, mConfig);
+                mMixpanelActivityLifecycleCallbacks = callbacks;
+                app.registerActivityLifecycleCallbacks(callbacks);
+                // Activities that resumed before registration are not replayed, so seed the
+                // foreground state from the process lifecycle; otherwise the first background
+                // after a deferred init (e.g. from a cross-platform wrapper) never flushes.
+                new Handler(Looper.getMainLooper()).post(() -> {
+                    if (isProcessResumed()) {
+                        callbacks.onRegisteredWhileResumed();
+                    }
+                });
             } else {
                 MPLog.i(
                         LOGTAG,
@@ -2492,6 +2502,11 @@ public class MixpanelAPI implements FeatureFlagDelegate {
             MPLog.e(LOGTAG, "Your build version is below 14. This method will always return false.");
         }
         return false;
+    }
+
+    /* package */ boolean isProcessResumed() {
+        return ProcessLifecycleOwner.get().getLifecycle().getCurrentState()
+                .isAtLeast(Lifecycle.State.RESUMED);
     }
 
     /* package */ void onBackground() {
