@@ -2256,18 +2256,9 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
             if (mContext.getApplicationContext() instanceof Application) {
                 final Application app = (Application) mContext.getApplicationContext();
-                final MixpanelActivityLifecycleCallbacks callbacks =
-                        new MixpanelActivityLifecycleCallbacks(this, mConfig);
-                mMixpanelActivityLifecycleCallbacks = callbacks;
-                app.registerActivityLifecycleCallbacks(callbacks);
-                // Activities that resumed before registration are not replayed, so seed the
-                // foreground state from the process lifecycle; otherwise the first background
-                // after a deferred init (e.g. from a cross-platform wrapper) never flushes.
-                new Handler(Looper.getMainLooper()).post(() -> {
-                    if (isProcessResumed()) {
-                        callbacks.onRegisteredWhileResumed();
-                    }
-                });
+                mMixpanelActivityLifecycleCallbacks = new MixpanelActivityLifecycleCallbacks(this, mConfig);
+                app.registerActivityLifecycleCallbacks(mMixpanelActivityLifecycleCallbacks);
+                registerProcessLifecycleObserver(mMixpanelActivityLifecycleCallbacks);
             } else {
                 MPLog.i(
                         LOGTAG,
@@ -2275,6 +2266,26 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                                 + " background.");
             }
         }
+    }
+
+    /**
+     * Activities that resumed before the lifecycle callbacks were registered are not replayed,
+     * so the process lifecycle tells the callbacks the app is already in the foreground.
+     */
+    private void registerProcessLifecycleObserver(final MixpanelActivityLifecycleCallbacks callbacks) {
+        new Handler(Looper.getMainLooper()).post(() -> {
+            Lifecycle lifecycle = getProcessLifecycle();
+            if (lifecycle.getCurrentState().isAtLeast(Lifecycle.State.RESUMED)) {
+                callbacks.onProcessResumed();
+                lifecycle.addObserver(new DefaultLifecycleObserver() {
+                    @Override
+                    public void onPause(@NonNull LifecycleOwner owner) {
+                        lifecycle.removeObserver(this);
+                        callbacks.onProcessPaused();
+                    }
+                });
+            }
+        });
     }
 
     /**
@@ -2504,9 +2515,8 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         return false;
     }
 
-    /* package */ boolean isProcessResumed() {
-        return ProcessLifecycleOwner.get().getLifecycle().getCurrentState()
-                .isAtLeast(Lifecycle.State.RESUMED);
+    /* package */ Lifecycle getProcessLifecycle() {
+        return ProcessLifecycleOwner.get().getLifecycle();
     }
 
     /* package */ void onBackground() {
