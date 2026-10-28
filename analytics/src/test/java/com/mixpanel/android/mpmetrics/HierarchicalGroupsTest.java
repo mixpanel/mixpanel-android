@@ -3,6 +3,7 @@ package com.mixpanel.android.mpmetrics;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
@@ -153,27 +154,27 @@ public class HierarchicalGroupsTest {
     }
 
     @Test
-    public void testIdentifyingSameUserWithoutCompanyKeepsCompany() throws JSONException {
+    public void testIdentifyWithDistinctIdDoesNothing() {
         MixpanelAPI mixpanel = newApi(true);
-        mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
+        String anonymous = mixpanel.getDistinctId();
         mixpanel.identify("user_123");
 
-        assertEquals("acme", mixpanel.getIdentity().getCompanyId());
-        mixpanel.track("Viewed Report");
-        assertEquals("acme", lastEventProperties("Viewed Report").getString("$company_id"));
+        assertEquals(anonymous, mixpanel.getDistinctId());
+        assertNull(mixpanel.getIdentity().getUserId());
+        assertEquals(0, countEvents("$identify"));
     }
 
     @Test
-    public void testIdentifyingNewUserWithoutCompanyClearsCompany() throws JSONException {
+    public void testIdentifyWithDistinctIdKeepsCurrentIdentity() throws JSONException {
         MixpanelAPI mixpanel = newApi(true);
         mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
         mixpanel.identify("user_456");
 
-        assertNull(mixpanel.getIdentity().getCompanyId());
+        assertEquals("user_123", mixpanel.getIdentity().getUserId());
+        assertEquals("acme", mixpanel.getIdentity().getCompanyId());
         mixpanel.track("Viewed Report");
-        JSONObject props = lastEventProperties("Viewed Report");
-        assertEquals("user_456", props.getString("$user_id"));
-        assertFalse(props.has("$company_id"));
+        assertEquals("acme", lastEventProperties("Viewed Report").getString("$company_id"));
+        assertEquals(1, countEvents("$identify"));
     }
 
     @Test
@@ -188,14 +189,24 @@ public class HierarchicalGroupsTest {
     }
 
     @Test
-    public void testIdentityWithoutCompanyIsPlainIdentify() throws JSONException {
+    public void testIdentityWithoutCompanyDoesNothing() {
         MixpanelAPI mixpanel = newApi(true);
+        String anonymous = mixpanel.getDistinctId();
         mixpanel.identify(new MixpanelIdentity("user_123"));
-        mixpanel.track("Viewed Report");
 
-        JSONObject props = lastEventProperties("Viewed Report");
-        assertEquals("user_123", props.getString("$user_id"));
-        assertFalse(props.has("$company_id"));
+        assertEquals(anonymous, mixpanel.getDistinctId());
+        assertNull(mixpanel.getIdentity().getUserId());
+        assertEquals(0, countEvents("$identify"));
+    }
+
+    @Test
+    public void testIdentityWithoutCompanyKeepsCurrentIdentity() {
+        MixpanelAPI mixpanel = newApi(true);
+        mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
+        mixpanel.identify(new MixpanelIdentity("user_456"));
+
+        assertEquals("user_123", mixpanel.getIdentity().getUserId());
+        assertEquals("acme", mixpanel.getIdentity().getCompanyId());
         assertEquals(1, countEvents("$identify"));
     }
 
@@ -299,6 +310,62 @@ public class HierarchicalGroupsTest {
         assertFalse(lastEventProperties("Opened").has("$company_id"));
     }
 
+    @Test
+    public void testAliasIsDropped() {
+        MixpanelAPI mixpanel = newApi(true);
+        mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
+        mixpanel.alias("new_id", null);
+
+        assertEquals(0, countEvents("$create_alias"));
+    }
+
+    @Test
+    public void testOptInWithIdentityCarriesCompany() throws JSONException {
+        MixpanelAPI mixpanel = newApi(true);
+        mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
+        mixpanel.optOutTracking();
+        mixpanel.optInTrackingWithIdentity(new MixpanelIdentity("user_123", "acme"));
+
+        JSONObject props = lastEventProperties("$opt_in");
+        assertEquals("user_123", props.getString("$user_id"));
+        assertEquals("acme", props.getString("$company_id"));
+        assertEquals("acme", mixpanel.getIdentity().getCompanyId());
+    }
+
+    @Test
+    public void testOptInWithDistinctIdIsDropped() {
+        MixpanelAPI mixpanel = newApi(true);
+        mixpanel.optOutTracking();
+        mixpanel.optInTracking("user_123");
+        mixpanel.optInTracking("user_123", null);
+
+        assertTrue(mixpanel.hasOptedOutTracking());
+        assertEquals(0, countEvents("$opt_in"));
+    }
+
+    @Test
+    public void testOptInWithoutArgumentsStillWorks() {
+        MixpanelAPI mixpanel = newApi(true);
+        mixpanel.optOutTracking();
+        mixpanel.optInTracking();
+
+        assertFalse(mixpanel.hasOptedOutTracking());
+        assertEquals(1, countEvents("$opt_in"));
+    }
+
+    @Test
+    public void testOptInWithoutIdentityStaysAnonymous() throws JSONException {
+        MixpanelAPI mixpanel = newApi(true);
+        mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
+        mixpanel.optOutTracking();
+        mixpanel.optInTrackingWithIdentity(null, new JSONObject().put("source", "settings"));
+
+        JSONObject props = lastEventProperties("$opt_in");
+        assertEquals("settings", props.getString("source"));
+        assertFalse(props.has("$company_id"));
+        assertFalse(props.has("$user_id"));
+    }
+
     // Disabled: behaves exactly as before
 
     @Test
@@ -363,9 +430,23 @@ public class HierarchicalGroupsTest {
         people.append("history", "a");
         people.merge("settings", new JSONObject().put("theme", "dark"));
         people.trackCharge(9.99, null);
+        people.clearCharges();
 
         assertEquals(0, mPeople.size());
         assertEquals(0, mGroups.size());
+    }
+
+    @Test
+    public void testOptOutDeletesUserWithoutClearingCharges() throws JSONException {
+        MixpanelAPI mixpanel = newApi(true);
+        mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
+        mixpanel.optOutTracking();
+
+        assertEquals(1, mGroups.size());
+        JSONObject message = mGroups.get(0).getMessage();
+        assertTrue(message.has("$delete"));
+        assertEquals("$user_id", message.getString("$group_key"));
+        assertEquals("acme", message.getString("$company_id"));
     }
 
     @Test
@@ -397,7 +478,127 @@ public class HierarchicalGroupsTest {
         assertEquals(1, mGroups.size());
         JSONObject message = mGroups.get(0).getMessage();
         assertEquals("$user_id", message.getString("$group_key"));
-        assertEquals(new JSONArray().put("finance"), message.getJSONObject("$set").getJSONArray("team"));
+        assertEquals("finance", message.getJSONObject("$set").get("team"));
+    }
+
+    // Custom group membership: one group per key, stored as a single value
+
+    @Test
+    public void testSetGroupSendsSingleValueOnEvents() throws JSONException {
+        MixpanelAPI mixpanel = newApi(true);
+        mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
+        mixpanel.setGroup("team", "finance");
+        mixpanel.track("Viewed Report");
+
+        assertEquals("finance", lastEventProperties("Viewed Report").get("team"));
+    }
+
+    @Test
+    public void testSetGroupWithListIsDropped() {
+        MixpanelAPI mixpanel = newApi(true);
+        mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
+        mixpanel.setGroup("team", Collections.<Object>singletonList("finance"));
+        mixpanel.track("Viewed Report");
+
+        assertFalse(lastEventProperties("Viewed Report").has("team"));
+        assertEquals(0, mGroups.size());
+    }
+
+    @Test
+    public void testSetGroupWithArrayValueIsDropped() {
+        MixpanelAPI mixpanel = newApi(true);
+        mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
+        mixpanel.setGroup("team", (Object) new JSONArray().put("finance"));
+        mixpanel.track("Viewed Report");
+
+        assertFalse(lastEventProperties("Viewed Report").has("team"));
+        assertEquals(0, mGroups.size());
+    }
+
+    @Test
+    public void testSetGroupWithSeveralGroupsIsDropped() {
+        MixpanelAPI mixpanel = newApi(true);
+        mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
+        List<Object> teams = new ArrayList<>();
+        teams.add("finance");
+        teams.add("sales");
+        mixpanel.setGroup("team", teams);
+        mixpanel.track("Viewed Report");
+
+        assertFalse(lastEventProperties("Viewed Report").has("team"));
+        assertEquals(0, mGroups.size());
+    }
+
+    @Test
+    public void testAddGroupIsDropped() {
+        MixpanelAPI mixpanel = newApi(true);
+        mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
+        mixpanel.addGroup("team", "finance");
+        mixpanel.track("Viewed Report");
+
+        assertFalse(lastEventProperties("Viewed Report").has("team"));
+        assertEquals(0, mGroups.size());
+    }
+
+    @Test
+    public void testAddGroupToSecondGroupIsDropped() throws JSONException {
+        MixpanelAPI mixpanel = newApi(true);
+        mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
+        mixpanel.setGroup("team", "finance");
+        mixpanel.addGroup("team", "sales");
+        mixpanel.track("Viewed Report");
+
+        assertEquals("finance", lastEventProperties("Viewed Report").get("team"));
+        assertEquals(1, mGroups.size());
+    }
+
+    @Test
+    public void testRemoveGroupClearsTheGroup() throws JSONException {
+        MixpanelAPI mixpanel = newApi(true);
+        mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
+        mixpanel.setGroup("team", "finance");
+        mixpanel.removeGroup("team", "finance");
+        mixpanel.track("Viewed Report");
+
+        assertFalse(lastEventProperties("Viewed Report").has("team"));
+        assertEquals(2, mGroups.size());
+        assertEquals("team", mGroups.get(1).getMessage().getJSONArray("$unset").getString(0));
+    }
+
+    @Test
+    public void testRemoveOtherGroupDoesNothing() throws JSONException {
+        MixpanelAPI mixpanel = newApi(true);
+        mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
+        mixpanel.setGroup("team", "finance");
+        mixpanel.removeGroup("team", "sales");
+        mixpanel.track("Viewed Report");
+
+        assertEquals("finance", lastEventProperties("Viewed Report").get("team"));
+        assertEquals(1, mGroups.size());
+    }
+
+    @Test
+    public void testRemoveGroupClearsListStoredBeforeHierarchicalGroups() throws JSONException {
+        MixpanelAPI mixpanel = newApi(true);
+        mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
+        mixpanel.registerSuperProperties(new JSONObject().put("team", new JSONArray().put("finance")));
+        mixpanel.removeGroup("team", "finance");
+        mixpanel.track("Viewed Report");
+
+        assertFalse(lastEventProperties("Viewed Report").has("team"));
+    }
+
+    @Test
+    public void testDisabledGroupMembershipStaysAList() throws JSONException {
+        MixpanelAPI mixpanel = newApi(false);
+        mixpanel.setGroup("team", "finance");
+        mixpanel.addGroup("team", "sales");
+        mixpanel.track("Viewed Report");
+
+        JSONArray teams = lastEventProperties("Viewed Report").getJSONArray("team");
+        assertEquals(2, teams.length());
+        assertEquals("finance", teams.getString(0));
+        assertEquals("sales", teams.getString(1));
     }
 
     // Group profiles
@@ -419,6 +620,40 @@ public class HierarchicalGroupsTest {
         JSONObject team = mGroups.get(1).getMessage();
         assertEquals("team", team.getString("$group_key"));
         assertEquals("acme", team.getString("$company_id"));
+    }
+
+    @Test
+    public void testGetCompanyUpdatesIdentifiedCompany() throws JSONException {
+        MixpanelAPI mixpanel = newApi(true);
+        mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
+        mixpanel.getCompany().set("tier", "enterprise");
+
+        assertEquals(1, mGroups.size());
+        JSONObject message = mGroups.get(0).getMessage();
+        assertEquals("$company_id", message.getString("$group_key"));
+        assertEquals("acme", message.getString("$group_id"));
+        assertEquals("acme", message.getString("$company_id"));
+        assertEquals("enterprise", message.getJSONObject("$set").getString("tier"));
+        assertSame(mixpanel.getGroup("$company_id", "acme"), mixpanel.getCompany());
+    }
+
+    @Test
+    public void testGetCompanyBeforeIdentifyDropsUpdates() {
+        MixpanelAPI mixpanel = newApi(true);
+        MixpanelAPI.Group company = mixpanel.getCompany();
+        company.set("tier", "enterprise");
+        company.deleteGroup();
+
+        assertEquals(0, mGroups.size());
+    }
+
+    @Test
+    public void testGetCompanyWhenDisabledDropsUpdates() {
+        MixpanelAPI mixpanel = newApi(false);
+        mixpanel.getCompany().set("tier", "enterprise");
+
+        assertEquals(0, mGroups.size());
+        assertEquals(0, mPeople.size());
     }
 
     @Test
