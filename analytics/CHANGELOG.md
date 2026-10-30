@@ -3,7 +3,7 @@
 ## [v8.12.0](https://github.com/mixpanel/mixpanel-android/tree/v8.12.0) (2026-10-30)
 
 ### Features
-- graduate autocapture from beta to general availability ([#1024](https://github.com/mixpanel/mixpanel-android/pull/1024))
+- 🎉 Autocapture is now generally available — [clicks, rage clicks, and dead clicks](https://docs.mixpanel.com/docs/tracking-methods/sdks/android#click-events). ([#1024](https://github.com/mixpanel/mixpanel-android/pull/1024))
 
 [Full Changelog](https://github.com/mixpanel/mixpanel-android/compare/v8.11.1...v8.12.0)
 
