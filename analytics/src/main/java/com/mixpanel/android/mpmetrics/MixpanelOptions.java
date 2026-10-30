@@ -94,9 +94,6 @@ public class MixpanelOptions {
      * explicitly passes an {@link AutocaptureOptions} instance via
      * {@link Builder#autocaptureOptions(AutocaptureOptions)}.
      *
-     * <p><b>Experimental (beta).</b> Autocapture may contain issues, and its API and the
-     * properties it captures may change in a future release before general availability.
-     *
      * @return The {@link AutocaptureOptions} configuration, or null if not enabled.
      */
     @Nullable
@@ -270,9 +267,6 @@ public class MixpanelOptions {
          *         .build())
          *     .build())
          * }</pre>
-         *
-         * <p><b>Experimental (beta).</b> Autocapture may contain issues, and its API and the
-         * properties it captures may change in a future release before general availability.
          *
          * @param autocaptureOptions The AutocaptureOptions configuration.
          * @return This Builder instance for chaining.
