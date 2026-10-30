@@ -1,246 +1,221 @@
-# AGENTS.md - Mixpanel Android SDK
+# AGENTS.md — Mixpanel Android SDK
 
-This file enables AI agents to work autonomously on the Mixpanel Android SDK codebase. It synthesizes patterns from local AI systems into comprehensive cloud execution instructions.
+Canonical instructions for AI coding agents (Claude Code, Cursor, Copilot, Codex, etc.)
+working on this repository. `CLAUDE.md` imports this file via `@AGENTS.md` — edit **this**
+file; put Claude-specific additions (if ever needed) below the import in `CLAUDE.md`.
 
-## Project Overview
+**Mixpanel Android SDK** is a production analytics library used by thousands of Android
+apps. It prioritizes **reliability, thread safety, and backward compatibility above all
+else.** Reliability > features. When in doubt, follow existing patterns.
 
-**Mixpanel Android SDK** - A production analytics library used by thousands of Android applications worldwide. The SDK prioritizes reliability, thread safety, and backward compatibility above all else.
+## Context map — read on demand, not all at once
 
-**Critical Context Files:**
-- `CLAUDE.md` - Core patterns and conventions
-- `.claude/context/discovered-patterns.md` - Detailed coding standards
-- `.claude/context/architecture/system-design.md` - System architecture
-- `.cursor/rules/` - Behavioral enforcement rules
-- `.github/copilot-instructions.md` - Persistent coding guidance
+This file is the router. Open the deeper docs only when the task needs them:
 
-## Environment Setup
+- `.claude/context/codebase-map.md` — where things live (concern → file)
+- `.claude/context/discovered-patterns.md` — detailed coding standards
+- `.claude/context/architecture/system-design.md` — system architecture
+- `.claude/context/workflows/` — feature-development, testing, release workflows
+- `.cursor/rules/` — the same rules as Cursor `.mdc` enforcement files
+- `.github/copilot-instructions.md` — Copilot persistent guidance
+- Nested `AGENTS.md` files in `analytics/src/main/java/com/mixpanel/android/mpmetrics/`
+  and `analytics/src/androidTest/` — directory-local detail, loaded when working there
 
-Before beginning any task:
+## Project configuration
+
+- Min SDK 21; Target/Compile SDK 34 (`:session-replay` builds with compileSdk 35)
+- Gradle 9.3.1 (wrapper), AGP 8.13.2 (root `build.gradle` classpath), Kotlin 2.1.0
+  (`:common` pins language level 2.0), JDK 17 toolchains (`:analytics:mixpaneldemo` targets Java 8)
+- Runtime dependencies of `:analytics` are deliberately minimal (see `analytics/build.gradle`):
+  `mixpanel-android-common`, `androidx.annotation`, `androidx.core`,
+  `androidx.lifecycle:lifecycle-process`, `io.github.jamsesso:json-logic-java`
+  (plus a `gson` pin for its transitive JSON dep). **Do not add new runtime deps.**
+
+### Subprojects
+
+- **`:analytics`** (`analytics/`) — main `mixpanel-android` SDK. Consumes `:common` via its
+  **published Maven coordinate** (`com.mixpanel.android:mixpanel-android-common:X.Y.Z`), not
+  as a `project(':common')` dependency, so `:common` must be released before the main SDK
+  can pick up changes. Buys back independent snapshot publishing for `:common`.
+- **`:common`** — published as `com.mixpanel.android:mixpanel-android-common`. Holds
+  `MixpanelEventBridge` (Kotlin `SharedFlow` cross-SDK event dispatcher) and a Kotlin
+  JsonLogic implementation. Versioned independently (own `gradle.properties`).
+- **`:openfeature-provider`** — published as `com.mixpanel.android:mixpanel-android-openfeature`.
+  Consumes the main SDK via its published Maven coordinate.
+- **`:session-replay`** (`session-replay/`) — published as
+  `com.mixpanel.android:mixpanel-android-session-replay`, versioned independently
+  (own `gradle.properties`, CHANGELOG, README, and CI: `.github/workflows/session-replay-ci.yml`).
+- **`:analytics:mixpaneldemo`** and **`:session-replay:sessionreplaydemo`** — sample apps, not published.
+- **`build-logic/`** — included build with the `mixpanel.maven-publish` and `mixpanel.ktlint`
+  convention plugins used by the Kotlin modules.
+
+For local iteration across modules, swap the Maven dep for the commented-out `project(':...')`
+line in the consumer's build script (both `analytics/build.gradle` and
+`openfeature-provider/build.gradle.kts` carry one).
+
+## Environment setup
 
 ```bash
-# Verify environment
-./gradlew --version  # Should show Gradle with JDK 17
-adb devices          # Should show connected device/emulator for tests
-
-# Clean build to ensure fresh state
-./gradlew clean
-
-# Run quick verification
-./gradlew build
+./gradlew --version   # Gradle with JDK 17
+adb devices           # connected device/emulator (needed for instrumented tests only)
+./gradlew clean build
 ```
 
-## Core Principles (MANDATORY)
+## Build & test commands
 
-1. **NEVER CRASH THE HOST APP** - Wrap all operations in try-catch, fail silently with logging
-2. **THREAD SAFETY** - All public APIs must handle concurrent access correctly
-3. **NO EXTERNAL DEPENDENCIES** - Use only Android SDK and Java standard library
-4. **BACKWARDS COMPATIBILITY** - Never break existing public APIs
-5. **DEFENSIVE PROGRAMMING** - Check nulls, validate inputs, handle edge cases
+```bash
+# Build the library
+./gradlew :analytics:build
 
-## Task Categories
+# Unit tests (JVM, no device) — analytics/src/test/, JUnit/Robolectric
+./gradlew :analytics:test
 
-### ✅ GOOD for Delegation
+# Instrumented tests (require a device/emulator) — analytics/src/androidTest/, AndroidJUnit4
+# IMPORTANT: run from :analytics, NOT :analytics:mixpaneldemo
+./gradlew :analytics:connectedAndroidTest
 
-**Test Coverage Tasks:**
-- "Add comprehensive tests for feature flags functionality"
-- "Create thread safety tests for all public APIs"
-- "Add instrumented tests for offline mode behavior"
+# A single instrumented class / method / methods
+./gradlew :analytics:connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.TestClassName
+./gradlew :analytics:connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.TestClassName#testMethodName
+./gradlew :analytics:connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.TestClassName#testMethod1,testMethod2
 
-**Systematic Refactoring:**
-- "Update all database operations to use new transaction pattern"
-- "Add defensive null checks to all public methods"
-- "Implement proper resource cleanup in all try-finally blocks"
+# Build / install the demo app
+./gradlew :analytics:mixpaneldemo:build
+./gradlew :analytics:mixpaneldemo:installDebug
 
-**Documentation:**
-- "Generate JavaDoc for all public API methods"
-- "Create examples for each People API operation"
-- "Document all configuration options with examples"
+# Docs & coverage
+./gradlew :analytics:androidJavadocs
+./gradlew :analytics:createDebugCoverageReport   # combined coverage; needs device/emulator (CI uses this)
+./gradlew :analytics:jacocoTestReport            # custom unit-test coverage task (jacoco 0.8.12)
 
-**Code Quality:**
-- "Add MPLog statements to trace event flow"
-- "Implement lazy initialization for expensive objects"
-- "Ensure all constants follow CAPS_WITH_UNDERSCORES"
+# Lint — review analytics/build/reports/lint-results-debug.html
+./gradlew :analytics:lint
 
-### ❌ POOR for Delegation
-
-- UI/UX decisions (this is a library)
-- Performance optimization without metrics
-- Architecture changes
-- API design decisions
-- Breaking changes
-
-## Code Patterns Reference
-
-### Class Structure
-```java
-package com.mixpanel.android.mpmetrics;
-
-// Package-private by default
-class InternalHelper {
-    private static final String LOGTAG = "MixpanelAPI.Helper";
-    
-    // Immutable fields
-    private final Context mContext;
-    private final Object mLock = new Object();
-    
-    InternalHelper(Context context) {
-        mContext = context.getApplicationContext(); // Prevent leaks
-    }
-}
+# AnimalSniffer — fails on Java 9+ APIs and unguarded Android calls above minSdk.
+# Report: analytics/build/reports/animalsniffer/release.text
+./gradlew :analytics:animalsnifferRelease
 ```
 
-### Error Handling
-```java
-// ALWAYS wrap operations
-try {
-    riskyOperation();
-} catch (Exception e) {
-    MPLog.e(LOGTAG, "Operation failed", e);
-    // Continue gracefully - NEVER re-throw
-}
+### Testing approach
+
+- **Test source sets:**
+  - `analytics/src/test/` — **unit tests** (JVM via `:analytics:test`; JUnit 4, Robolectric 4.11.1, Mockito 5.x).
+  - `analytics/src/androidTest/` — **instrumented tests** (AndroidJUnit4 + espresso/truth/mockito-android, real device/emulator).
+  - `analytics/src/sharedTest/` — helpers wired into both source sets.
+- Async behavior is verified with the **BlockingQueue pattern**; `TestUtils` provides mocks.
+- Real database testing (not mocked). Thread-safety validation belongs in instrumented tests.
+
+## Core principles (MANDATORY)
+
+1. **NEVER CRASH THE HOST APP** — wrap operations in try-catch, log via `MPLog`, fail silently, never re-throw.
+2. **THREAD SAFETY** — every public API must handle concurrent access. Use dedicated lock objects, not `this`.
+3. **MINIMAL DEPENDENCIES** — never add a runtime dependency; the small allowed set is listed under Project configuration.
+4. **BACKWARD COMPATIBILITY** — never break existing public APIs.
+5. **DEFENSIVE PROGRAMMING** — null-check, validate inputs, handle edge cases, degrade gracefully.
+
+## Conventions
+
+- **Visibility:** prefer package-private for internals (a number of existing internals are historically public — don't add new public classes without cause).
+- **Fields:** `private final` with `m` prefix (`mContext`). Static nested classes for data models.
+- **Context:** always application context (`context.getApplicationContext()`); `WeakReference` for activity/callback refs.
+- **Concurrency:** background work runs on dedicated `HandlerThread`s (`AnalyticsWorker` in `AnalyticsMessages`; a second in `FeatureFlagManager`, which also owns a single-thread network executor) with `Message`-based dispatch. No `Service`/`ContentProvider` components. Use dedicated lock objects (not `this`); prefer synchronized blocks over synchronized methods.
+- **Resources:** close `Cursor`s and DB handles in `finally`; lazy-init expensive objects.
+- **Database:** direct SQLite (no ORM), enum-based table management, age-based cleanup. Queries are built with `rawQuery`.
+- **API design:** singleton keyed by instance name (or token) + app context; builder-style `MixpanelOptions`; fluent People/Group ops; method overloading for progressive disclosure.
+- **Config hierarchy:** Runtime (`MixpanelOptions`) > Manifest meta-data > compile-time defaults (`MPConfig`).
+
+## Architecture
+
+Producer-consumer with persistent storage. There are **two network paths**:
+
+```
+User code → MixpanelAPI ─ tracking ─→ AnalyticsMessages ─→ MPDbAdapter (SQLite queue)
+                        │                              └─→ HttpService ─→ Mixpanel servers
+                        └─ feature flags ─→ FeatureFlagManager ─→ HttpService (no SQLite)
 ```
 
-### Threading
+**Respect the layering:** `MixpanelAPI` never performs HTTP itself, and tracking never
+bypasses `AnalyticsMessages`/`MPDbAdapter`. `AnalyticsMessages` owns *both* the DB adapter
+and its poster (`MPDbAdapter` never talks to the network). The only `performRequest`
+callers are `AnalyticsMessages` and `FeatureFlagManager`.
+
+- **MixpanelAPI** — singleton entry point (`getInstance()`); events, people, groups, feature flags.
+- **AnalyticsMessages** — user-thread↔background message queue; batching, retry, offline.
+- **MPDbAdapter** — SQLite persistence and offline queue.
+- **PersistentIdentity** — distinct/anonymous IDs, super properties (SharedPreferences).
+- **HttpService** (`util/`) — HTTP client; GZIP is opt-in via `MPConfig` (default off);
+  hardcoded timeouts; 3-attempt retry with short linear backoff.
+- **FeatureFlagManager** — TTL-based flag caching (in-memory + SharedPreferences blob),
+  refreshed on demand (identify/reset, first foreground, TTL expiry) — no periodic timer.
+
+Implementation notes: events batch every ~60s (`FlushInterval`) or on app background;
+SQLite queues offline; automatic lifecycle events are configurable; a minimal consumer
+ProGuard rule ships in `analytics/proguard.txt` (release builds do not minify).
+
+## Working on this codebase
+
+**Good for autonomous work:** test coverage, systematic refactors (defensive null checks,
+resource cleanup, tracing logs), JavaDoc/examples, mechanical style conformance.
+
+**Needs a human:** API design, breaking changes, architecture changes, performance work
+without metrics, anything UI/UX (this is a library).
+
+**Common pitfalls:** Activity context (use application context); synchronizing on `this`;
+unclosed `Cursor`s; forgetting BlockingQueue for async assertions; ignoring the config hierarchy.
+
+### Illustrative patterns
+
 ```java
-// Queue to background thread
+// Error handling — always wrap, log, continue. NEVER re-throw.
+try { riskyOperation(); }
+catch (Exception e) { MPLog.e(LOGTAG, "Operation failed", e); }
+
+// Threading — queue to the background thread (internal to AnalyticsMessages;
+// callers use its typed methods like eventsMessage()/peopleMessage()/postToServer())
 Message msg = Message.obtain();
 msg.what = ENQUEUE_EVENTS;
-msg.obj = new EventDescription(event, properties, token);
-mMessages.enqueueMessage(msg);
+msg.obj  = new EventDescription(event, properties, token);
+mWorker.runMessage(msg);
 ```
 
-### Testing Pattern
 ```java
-@RunWith(AndroidJUnit4.class)
-@LargeTest
-public class FeatureTest {
-    private BlockingQueue<String> mMessages;
-    
-    @Test
-    public void testAsync() throws Exception {
-        mMixpanel.track("Event");
-        String message = mMessages.poll(2, TimeUnit.SECONDS);
-        assertNotNull("Should receive message", message);
-    }
-}
+// Async test — BlockingQueue with a timeout
+mMixpanel.track("Event");
+String message = mMessages.poll(2, TimeUnit.SECONDS);
+assertNotNull("Should receive message", message);
 ```
 
-## Validation Requirements
+## Validation before opening a PR
 
-Before submitting any PR, you MUST:
+1. `./gradlew clean :analytics:build` — no errors/warnings.
+2. `./gradlew :analytics:test` — unit tests pass.
+3. `./gradlew :analytics:connectedAndroidTest` — instrumented tests pass (device/emulator).
+4. `./gradlew :analytics:lint` and `./gradlew :analytics:animalsnifferRelease` — clean.
+5. Manually verify via the demo app when behavior changed.
 
-### 1. Build Validation
-```bash
-./gradlew clean :analytics:build
-# Must pass with no errors or warnings
-```
+**PR checklist:** no new runtime deps · try-catch around new operations · thread safety
+verified · tests added (unit and/or instrumented) · no public-API breaks · JavaDoc on public
+methods · `m`-prefixed fields · application context only.
 
-### 2. Test Validation
-```bash
-# Run all instrumented tests (requires device/emulator)
-# IMPORTANT: Run from the analytics module, not :analytics:mixpaneldemo
-./gradlew :analytics:connectedAndroidTest
-# All tests must pass
+## Release process
 
-# Run specific test class
-./gradlew :analytics:connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.TestClassName
+Semantic versioning (X.Y.Z) per module, published to Maven Central via the Central Portal.
+**Releases are driven entirely by GitHub Actions — there is no local release script.**
 
-# Run specific test method
-./gradlew :analytics:connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.TestClassName#testMethodName
-```
-
-### 3. Code Style Check
-```bash
-./gradlew :analytics:lint
-# Review any warnings in analytics/build/reports/lint-results-debug.html
-
-./gradlew :analytics:animalsnifferRelease
-# Fails on Java 9+ APIs and unguarded Android calls above minSdk.
-# Report at analytics/build/reports/animalsniffer/release.text
-```
-
-### 4. Manual Verification
-```bash
-# Test with demo app
-./gradlew :analytics:mixpaneldemo:installDebug
-# Manually verify the feature works
-```
-
-### 5. PR Checklist
-- [ ] No new external dependencies added
-- [ ] All new code has try-catch blocks
-- [ ] Thread safety verified for concurrent access
-- [ ] Instrumented tests added for new features
-- [ ] No breaking changes to public APIs
-- [ ] JavaDoc added for public methods
-- [ ] Follows 'm' prefix convention for fields
-- [ ] Uses application context (not Activity)
-
-## Architecture Boundaries
-
-**Data Flow:** MixpanelAPI → AnalyticsMessages → MPDbAdapter → HttpService
-
-**NEVER:**
-- Skip layers (e.g., MixpanelAPI calling HttpService directly)
-- Create new public classes (keep internals package-private)
-- Add Service or ContentProvider components
-- Use reflection or dynamic class loading
-- Create unit tests (instrumented only)
-
-## Common Pitfalls
-
-1. **Activity Context** - Always use application context
-2. **Synchronization** - Use dedicated lock objects, not 'this'
-3. **Resource Cleanup** - Always close Cursors in finally blocks
-4. **Testing** - Must use BlockingQueue for async verification
-5. **Configuration** - Respect hierarchy: Runtime > Manifest > Default
-
-## PR Preparation
-
-Your PR description should include:
-
-```markdown
-## Summary
-- Added comprehensive tests for [feature]
-- Improved thread safety in [component]
-- Fixed resource leak in [class]
-
-## Changes
-- Added X new test cases
-- Updated Y classes to follow patterns
-- Cleaned up Z resources properly
-
-## Testing
-- [x] All tests pass locally
-- [x] Demo app tested manually
-- [x] No memory leaks detected
-- [x] Thread safety verified
-
-## Validation
-- `./gradlew :analytics:build` - ✅ Passed
-- `./gradlew :analytics:connectedAndroidTest` - ✅ All tests pass
-- `./gradlew :analytics:lint` - ✅ No new warnings
-- `./gradlew :analytics:animalsnifferRelease` - ✅ No API compatibility violations
-```
-
-## Success Metrics
-
-Your task is successful when:
-1. All existing tests still pass
-2. New tests provide meaningful coverage
-3. Code follows established patterns exactly
-4. No external dependencies introduced
-5. PR can be merged without modification
-
-## Quick Reference
-
-- **Visibility**: Package-private by default
-- **Fields**: Private final with 'm' prefix
-- **Errors**: Catch all, log, continue
-- **Threading**: HandlerThread + Messages
-- **Testing**: Instrumented only with BlockingQueue
-- **Context**: Application context always
-- **Database**: Try-finally for Cursors
-- **API**: Overload for convenience, null for optional
-
-Remember: This SDK is critical infrastructure. Reliability > Features. When in doubt, check the patterns in `.claude/context/discovered-patterns.md`.
+- `VERSION_NAME` lives in each module's `gradle.properties`
+  (`analytics/`, `common/`, `openfeature-provider/`, `session-replay/`).
+- `.github/workflows/prepare-release.yml` — bumps `VERSION_NAME`, updates README,
+  generates the changelog, and opens a release PR.
+- `.github/workflows/release-maven-central.yml` — parameterized by module (`inputs.module`,
+  per-module tag prefixes): validates the version, builds, tests, publishes to OSSRH staging,
+  triggers the Portal upload (`publishing_type=user_managed`), and creates a draft GitHub
+  release/tag.
+- Credentials (CI secrets → env): `MAVEN_CENTRAL_USERNAME`, `MAVEN_CENTRAL_PASSWORD`
+  (secret `MAVEN_CENTRAL_TOKEN`), `SIGNING_KEY` (`GPG_PRIVATE_KEY`),
+  `SIGNING_PASSWORD` (`GPG_PASSPHRASE`) — wired in
+  `build-logic/convention/src/main/kotlin/MavenPublishConventionPlugin.kt`.
+- Deployments appear at https://central.sonatype.com/publishing/deployments; finish with a
+  manual release from the Portal UI.
+- Published coordinates: `com.mixpanel.android:mixpanel-android`,
+  `…:mixpanel-android-common`, `…:mixpanel-android-openfeature`,
+  `…:mixpanel-android-session-replay`.
