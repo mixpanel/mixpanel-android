@@ -34,11 +34,20 @@ class FlushService(
     // Pre-compute delay in milliseconds, capping to prevent overflow
     private val flushIntervalMs: Long = if (flushInterval >= Long.MAX_VALUE / 1000) Long.MAX_VALUE else flushInterval * 1000
 
+    // Identity of one replay. A flush keeps the replay that was current when it was requested,
+    // so events drained after start() rotates the replay are not sent under the new replay id.
+    private class Replay {
+        val id: String = UUID.randomUUID().toString()
+        val startTime: Double = Date().time / 1000.0 // Convert to seconds
+        var seqId: Int = 0
+    }
+
     private var flushJob: Job? = null
-    private var seqId: Int = 0
-    private var replayStartTime: Double = Date().time / 1000.0 // Convert to seconds
-    private var batchStartTime: Double = replayStartTime
-    var replayId: String = UUID.randomUUID().toString()
+
+    @Volatile
+    private var currentReplay = Replay()
+    val replayId: String
+        get() = currentReplay.id
 
     // Mutex to guarantee serial execution of flush events
     private val flushMutex = Mutex()
@@ -50,10 +59,7 @@ class FlushService(
     }
 
     fun start() {
-        seqId = 0
-        replayStartTime = Date().time / 1000.0
-        batchStartTime = replayStartTime
-        replayId = UUID.randomUUID().toString()
+        currentReplay = Replay()
 
         // Skip auto-flush if interval is <=0 (disabled)
         if (flushIntervalMs <= 0L) {
@@ -65,8 +71,9 @@ class FlushService(
             while (isActive) {
                 delay(flushIntervalMs)
                 if (!wifiOnly || networkMonitor.isUsingWiFi) {
+                    val replay = currentReplay
                     flushMutex.withLock {
-                        flushBatch(false)
+                        flushBatch(replay, false)
                     }
                 }
             }
@@ -103,9 +110,10 @@ class FlushService(
             return
         }
 
+        val replay = currentReplay
         lifecycleScope.launch(coroutineDispatcher) {
             flushMutex.withLock {
-                flushBatch(forAll)
+                flushBatch(replay, forAll)
                 withContext(Dispatchers.Main) {
                     onComplete()
                 }
@@ -113,7 +121,10 @@ class FlushService(
         }
     }
 
-    private suspend fun flushBatch(forAll: Boolean) {
+    private suspend fun flushBatch(
+        replay: Replay,
+        forAll: Boolean
+    ) {
         do {
             // Check if we're in exponential backoff before attempting to flush
             if (flushRequest.isInBackoff()) {
@@ -129,15 +140,15 @@ class FlushService(
             val payloadInfo = PayloadInfo(
                 events,
                 batchStartTime,
-                seqId,
-                replayId,
-                ((Date().time / 1000.0) - replayStartTime).toInt() * 1000,
-                replayStartTime
+                replay.seqId,
+                replay.id,
+                ((Date().time / 1000.0) - replay.startTime).toInt() * 1000,
+                replay.startTime
             )
 
             val success = flushRequest.sendRequest(payloadInfo)
             if (success) {
-                seqId++
+                replay.seqId++
             } else {
                 Logger.warn("Failed to flush events to the server.")
                 eventService.prependEvents(events)
