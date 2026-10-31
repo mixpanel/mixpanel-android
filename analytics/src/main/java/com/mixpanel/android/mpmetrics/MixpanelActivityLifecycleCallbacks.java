@@ -19,6 +19,7 @@ import java.lang.ref.WeakReference;
     private Runnable check;
     private boolean mIsForeground = false;
     private boolean mPaused = true;
+    private boolean mHasSeenActivity = false;
     private static Double sStartSessionTime;
     public static final int CHECK_DELAY = 500;
 
@@ -39,6 +40,7 @@ import java.lang.ref.WeakReference;
 
     @Override
     public void onActivityPaused(final Activity activity) {
+        mHasSeenActivity = true;
         mPaused = true;
 
         if (check != null) {
@@ -81,6 +83,7 @@ import java.lang.ref.WeakReference;
     public void onActivityResumed(Activity activity) {
         mCurrentActivity = new WeakReference<>(activity);
 
+        mHasSeenActivity = true;
         mPaused = false;
         boolean wasBackground = !mIsForeground;
         mIsForeground = true;
@@ -101,6 +104,21 @@ import java.lang.ref.WeakReference;
 
     protected boolean isInForeground() {
         return mIsForeground;
+    }
+
+    /* package */ void onProcessResumed() {
+        if (!mHasSeenActivity) {
+            mIsForeground = true;
+            mPaused = false;
+        }
+    }
+
+    /* package */ void onProcessPaused() {
+        if (!mHasSeenActivity && mIsForeground) {
+            mIsForeground = false;
+            mPaused = true;
+            mMpInstance.onBackground();
+        }
     }
 
     private final MixpanelAPI mMpInstance;
