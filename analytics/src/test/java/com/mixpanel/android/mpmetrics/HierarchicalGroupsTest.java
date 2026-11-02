@@ -18,6 +18,7 @@ import com.mixpanel.android.util.RemoteService;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -563,6 +564,48 @@ public class HierarchicalGroupsTest {
 
         assertFalse(lastEventProperties("Viewed Report").has("team"));
         assertEquals(0, mGroups.size());
+    }
+
+    @Test
+    public void testTrackWithGroupsSendsSingleValue() throws JSONException {
+        MixpanelAPI mixpanel = newApi(true);
+        mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
+        Map<String, Object> groups = new HashMap<>();
+        groups.put("team", "finance");
+        mixpanel.trackWithGroups("Viewed Report", new HashMap<String, Object>(), groups);
+
+        assertEquals("finance", lastEventProperties("Viewed Report").get("team"));
+    }
+
+    @Test
+    public void testTrackWithGroupsWithListIsDropped() {
+        MixpanelAPI mixpanel = newApi(true);
+        mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
+        Map<String, Object> groups = new HashMap<>();
+        groups.put("team", Collections.singletonList("finance"));
+        mixpanel.trackWithGroups("Viewed Report", new HashMap<String, Object>(), groups);
+        groups.put("team", new JSONArray().put("finance"));
+        mixpanel.trackWithGroups("Viewed Report", null, groups);
+        groups.put("team", new String[] {"finance"});
+        mixpanel.trackWithGroups("Viewed Report", new HashMap<String, Object>(), groups);
+
+        assertEquals(0, countEvents("Viewed Report"));
+    }
+
+    @Test
+    public void testTrackWithGroupsWithListWhenOff() throws JSONException {
+        MixpanelAPI mixpanel = newApi(false);
+        Map<String, Object> groups = new HashMap<>();
+        List<Object> teams = new ArrayList<>();
+        teams.add("finance");
+        teams.add("sales");
+        groups.put("team", teams);
+        mixpanel.trackWithGroups("Viewed Report", new HashMap<String, Object>(), groups);
+
+        JSONArray sent = lastEventProperties("Viewed Report").getJSONArray("team");
+        assertEquals(2, sent.length());
+        assertEquals("finance", sent.getString(0));
+        assertEquals("sales", sent.getString(1));
     }
 
     @Test

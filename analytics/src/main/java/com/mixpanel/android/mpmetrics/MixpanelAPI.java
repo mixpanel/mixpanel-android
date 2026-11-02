@@ -1113,6 +1113,19 @@ public class MixpanelAPI implements FeatureFlagDelegate {
             String eventName, Map<String, Object> properties, Map<String, Object> groups) {
         if (hasOptedOutTracking()) return;
 
+        if (mHierarchicalGroups && null != groups) {
+            for (Entry<String, Object> e : groups.entrySet()) {
+                if (isGroupList(e.getValue())) {
+                    MPLog.e(
+                            LOGTAG,
+                            "trackWithGroups with a list is not supported for hierarchical groups projects, which "
+                                    + "allow one " + e.getKey() + " per user. Use one group id per key. The event "
+                                    + "was dropped.");
+                    return;
+                }
+            }
+        }
+
         if (null == groups) {
             trackMap(eventName, properties);
         } else if (null == properties) {
@@ -1618,7 +1631,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
             return;
         }
         // Hierarchical groups read a list as the name of one group, not as membership in each
-        if (groupID instanceof JSONArray || groupID instanceof Collection || groupID.getClass().isArray()) {
+        if (isGroupList(groupID)) {
             logSingleGroupOnly("setGroup with a list", groupKey);
             return;
         }
@@ -1628,6 +1641,11 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         } catch (JSONException e) {
             MPLog.w(LOGTAG, "groupKey must be non-null");
         }
+    }
+
+    private static boolean isGroupList(Object groupID) {
+        return groupID instanceof JSONArray || groupID instanceof Collection
+                || (groupID != null && groupID.getClass().isArray());
     }
 
     private void logSingleGroupOnly(String operation, String groupKey) {
