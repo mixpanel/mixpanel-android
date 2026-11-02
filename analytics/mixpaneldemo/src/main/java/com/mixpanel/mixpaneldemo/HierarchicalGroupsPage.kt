@@ -59,34 +59,34 @@ fun HierarchicalGroupsPage(navController: NavHostController) {
     val teamId = remember { mutableStateOf("android_team") }
 
     // The same group profile operations, for the company and for the custom team_id group
-    fun groupActions(label: String, groupKey: String, group: () -> MixpanelAPI.Group) = listOf(
+    fun groupActions(label: String, groupKey: String, group: () -> MixpanelAPI.Group?) = listOf(
         Triple("$label: Set Property", "Group: set \"tier\" on $groupKey", {
             println("Setting a $label property")
-            group().set("tier", "enterprise")
+            group()?.set("tier", "enterprise")
         }),
         Triple("$label: Set Properties (Map)", "Group: setMap on $groupKey", {
             println("Setting multiple $label properties")
-            group().setMap(mapOf("size" to 12, "region" to "us"))
+            group()?.setMap(mapOf("size" to 12, "region" to "us"))
         }),
         Triple("$label: Set Property Once", "Group: setOnce \"created\" on $groupKey", {
             println("Setting a $label property once")
-            group().setOnce("created", "2026-10-27")
+            group()?.setOnce("created", "2026-10-27")
         }),
         Triple("$label: Union Property", "Group: union \"tags\" on $groupKey", {
             println("Union $label property")
-            group().union("tags", JSONArray(listOf("android")))
+            group()?.union("tags", JSONArray(listOf("android")))
         }),
         Triple("$label: Remove Property", "Group: remove from \"tags\" on $groupKey", {
             println("Removing from $label property")
-            group().remove("tags", "android")
+            group()?.remove("tags", "android")
         }),
         Triple("$label: Unset Property", "Group: unset \"tier\" on $groupKey", {
             println("Unsetting a $label property")
-            group().unset("tier")
+            group()?.unset("tier")
         }),
         Triple("$label: Delete Group", "Group: delete $groupKey", {
             println("Deleting $label group")
-            group().deleteGroup()
+            group()?.deleteGroup()
         })
     )
 

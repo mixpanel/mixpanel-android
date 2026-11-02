@@ -1717,24 +1717,26 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      *
      * <p>Only for projects that use hierarchical groups, enabled with {@link
      * MixpanelOptions.Builder#hierarchicalGroups(boolean)}. On any other project, or before a company
-     * is identified, the returned group drops every update with an error log, so it is never null.
+     * is identified, this returns null and logs an error.
      *
      * <p>The company is fixed when this is called, so a group kept across {@link #reset()} or a new
      * identify still updates the earlier company.
      *
-     * @return the identified company's {@link Group}
+     * @return the identified company's {@link Group}, or null if hierarchical groups are not enabled
+     *     or no company is identified
      */
+    @Nullable
     public Group getCompany() {
         if (!mHierarchicalGroups) {
-            return new UnavailableGroup(
-                    "getCompany() is only for hierarchical groups projects, enabled with "
-                            + "hierarchicalGroups(true) in MixpanelOptions.");
+            MPLog.e(LOGTAG, "getCompany() is only for hierarchical groups projects, enabled with "
+                    + "hierarchicalGroups(true) in MixpanelOptions.");
+            return null;
         }
         final String companyId = mPersistentIdentity.getEventsCompanyId();
         if (companyId == null) {
-            return new UnavailableGroup(
-                    "getCompany() needs a company. Call identify(new MixpanelIdentity(userId, companyId)) "
-                            + "first.");
+            MPLog.e(LOGTAG, "getCompany() needs a company. Call identify(new MixpanelIdentity(userId, "
+                    + "companyId)) first.");
+            return null;
         }
         return getGroup(COMPANY_ID_GROUP_KEY, companyId);
     }
@@ -3286,69 +3288,6 @@ public class MixpanelAPI implements FeatureFlagDelegate {
             return getDistinctId() != null;
         }
     } // PeopleImpl
-
-    // A Group with nothing to update, from getCompany() when there is no company
-    private static class UnavailableGroup implements Group {
-        private final String mReason;
-
-        UnavailableGroup(String reason) {
-            mReason = reason;
-        }
-
-        private void drop() {
-            MPLog.e(LOGTAG, mReason + " The update was dropped.");
-        }
-
-        @Override
-        public void set(String propertyName, Object value) {
-            drop();
-        }
-
-        @Override
-        public void setMap(Map<String, Object> properties) {
-            drop();
-        }
-
-        @Override
-        public void set(JSONObject properties) {
-            drop();
-        }
-
-        @Override
-        public void setOnce(String propertyName, Object value) {
-            drop();
-        }
-
-        @Override
-        public void setOnceMap(Map<String, Object> properties) {
-            drop();
-        }
-
-        @Override
-        public void setOnce(JSONObject properties) {
-            drop();
-        }
-
-        @Override
-        public void union(String name, JSONArray value) {
-            drop();
-        }
-
-        @Override
-        public void remove(String name, Object value) {
-            drop();
-        }
-
-        @Override
-        public void unset(String name) {
-            drop();
-        }
-
-        @Override
-        public void deleteGroup() {
-            drop();
-        }
-    }
 
     private class GroupImpl implements Group {
         private final String mGroupKey;

@@ -791,7 +791,7 @@ public class HierarchicalGroupsScenariosTest {
 
     @Test
     public void testSetCompanyPropertyBeforeIdentifyIsUnsupported() {
-        mMixpanel.getCompany().set("tier", "enterprise");
+        assertNull(mMixpanel.getCompany());
 
         assertNothingSent();
     }

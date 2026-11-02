@@ -638,22 +638,29 @@ public class HierarchicalGroupsTest {
     }
 
     @Test
-    public void testGetCompanyBeforeIdentifyDropsUpdates() {
+    public void testGetCompanyBeforeIdentifyIsNull() {
         MixpanelAPI mixpanel = newApi(true);
-        MixpanelAPI.Group company = mixpanel.getCompany();
-        company.set("tier", "enterprise");
-        company.deleteGroup();
 
+        assertNull(mixpanel.getCompany());
         assertEquals(0, mGroups.size());
     }
 
     @Test
-    public void testGetCompanyWhenDisabledDropsUpdates() {
-        MixpanelAPI mixpanel = newApi(false);
-        mixpanel.getCompany().set("tier", "enterprise");
+    public void testGetCompanyAfterResetIsNull() {
+        MixpanelAPI mixpanel = newApi(true);
+        mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
+        mixpanel.reset();
 
+        assertNull(mixpanel.getCompany());
+    }
+
+    @Test
+    public void testGetCompanyWhenDisabledIsNull() {
+        MixpanelAPI mixpanel = newApi(false);
+        mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
+
+        assertNull(mixpanel.getCompany());
         assertEquals(0, mGroups.size());
-        assertEquals(0, mPeople.size());
     }
 
     @Test
