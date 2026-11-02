@@ -410,6 +410,28 @@ public class HierarchicalGroupsTest {
     // User profiles
 
     @Test
+    public void testWithIdentityDropsUpdates() {
+        MixpanelAPI mixpanel = newApi(true);
+        mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
+        MixpanelAPI.People other = mixpanel.getPeople().withIdentity("user_456");
+        other.set("plan", "pro");
+        other.union("tags", new JSONArray().put("a"));
+        other.deleteUser();
+
+        assertEquals(0, mPeople.size());
+        assertEquals(0, mGroups.size());
+    }
+
+    @Test
+    public void testDisabledWithIdentitySendsToEngage() throws JSONException {
+        MixpanelAPI mixpanel = newApi(false);
+        mixpanel.getPeople().withIdentity("user_456").set("plan", "pro");
+
+        assertEquals(1, mPeople.size());
+        assertEquals("user_456", mPeople.get(0).getMessage().getString("$distinct_id"));
+    }
+
+    @Test
     public void testPeopleUpdatesBecomeUserIdGroupProfiles() throws JSONException {
         MixpanelAPI mixpanel = newApi(true);
         mixpanel.identify(new MixpanelIdentity("user_123", "acme"));

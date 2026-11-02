@@ -3232,12 +3232,29 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                 public void identify(String distinctId) {
                     throw new RuntimeException("This MixpanelPeople object has a fixed, constant distinctId");
                 }
+
+                @Override
+                String hierarchicalGroupsUnsupportedReason() {
+                    return "withIdentity(String) is not supported for hierarchical groups projects, which "
+                            + "identify a user by company and user id. Use identify(new MixpanelIdentity(userId, "
+                            + "companyId)) and getPeople().";
+                }
             };
+        }
+
+        // Why this People can't update a hierarchical groups user profile, or null when it can
+        String hierarchicalGroupsUnsupportedReason() {
+            return null;
         }
 
         private void recordPeopleUpdate(String actionType, Object properties) throws JSONException {
             if (!mHierarchicalGroups) {
                 recordPeopleMessage(stdPeopleMessage(actionType, properties));
+                return;
+            }
+            final String unsupportedReason = hierarchicalGroupsUnsupportedReason();
+            if (unsupportedReason != null) {
+                MPLog.e(LOGTAG, unsupportedReason + " The " + actionType + " update was dropped.");
                 return;
             }
             // A hierarchical groups user profile is a group profile keyed by $user_id, so it
