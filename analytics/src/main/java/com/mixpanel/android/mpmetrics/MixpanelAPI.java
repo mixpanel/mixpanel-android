@@ -267,7 +267,8 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                         new FlagsConfig(
                                 mFeatureFlagOptions.isEnabled(),
                                 mFeatureFlagOptions.getContext(),
-                                variantLookupPolicy),
+                                variantLookupPolicy,
+                                mHierarchicalGroups),
                         flagsCachePrefs);
 
         if (options.isOptOutTrackingDefault()

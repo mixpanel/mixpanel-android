@@ -9,6 +9,7 @@ import android.os.Message;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
+import com.mixpanel.android.identity.MixpanelIdentity;
 import com.mixpanel.android.util.Base64Coder;
 import com.mixpanel.android.util.JsonUtils;
 import com.mixpanel.android.util.MPConstants;
@@ -809,7 +810,9 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
     }
 
     final MPConfig config = delegate.getMPConfig();
-    final String distinctId = delegate.getDistinctId();
+    final MixpanelIdentity hierarchicalIdentity = getHierarchicalIdentity(delegate);
+    final String distinctId =
+        hierarchicalIdentity != null ? hierarchicalIdentity.getUserId() : delegate.getDistinctId();
     final String deviceId = delegate.getAnonymousId();
 
     if (distinctId == null) {
@@ -827,6 +830,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
       if (deviceId != null) {
         contextJson.put("device_id", deviceId);
       }
+      putHierarchicalIdentity(contextJson, hierarchicalIdentity);
 
       Map<String, Object> params = new HashMap<>();
       params.put("context", contextJson.toString());
@@ -1254,10 +1258,14 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
     String endpoint = mFlagsRecordingEndpoint + def.flagId + "/first-time-events";
 
     // Build request body
+    final MixpanelIdentity hierarchicalIdentity = getHierarchicalIdentity(delegate);
     JSONObject body = new JSONObject();
-    body.put("distinct_id", delegate.getDistinctId());
+    body.put(
+        "distinct_id",
+        hierarchicalIdentity != null ? hierarchicalIdentity.getUserId() : delegate.getDistinctId());
     body.put("project_id", def.projectId);
     body.put("first_time_event_hash", def.firstTimeEventHash);
+    putHierarchicalIdentity(body, hierarchicalIdentity);
 
     byte[] requestBodyBytes = body.toString().getBytes(StandardCharsets.UTF_8);
 
@@ -1285,6 +1293,32 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
     if (!result.isSuccess()) {
       MPLog.w(LOGTAG, "Recording API returned non-success response for event " + def.getCompositeKey());
     }
+  }
+
+  /**
+   * Returns the identity to send on a hierarchical groups project once a company is identified, or
+   * null otherwise. The flags service builds the combined id from $user_id and $company_id, so these
+   * requests send the user id as distinct_id rather than {@link FeatureFlagDelegate#getDistinctId()}.
+   */
+  @Nullable
+  private MixpanelIdentity getHierarchicalIdentity(@NonNull FeatureFlagDelegate delegate) {
+    if (!mFlagsConfig.hierarchicalGroups) {
+      return null;
+    }
+    final MixpanelIdentity identity = delegate.getIdentity();
+    if (identity == null || identity.getUserId() == null || identity.getCompanyId() == null) {
+      return null;
+    }
+    return identity;
+  }
+
+  private static void putHierarchicalIdentity(
+      @NonNull JSONObject json, @Nullable MixpanelIdentity hierarchicalIdentity) throws JSONException {
+    if (hierarchicalIdentity == null) {
+      return;
+    }
+    json.put("$user_id", hierarchicalIdentity.getUserId());
+    json.put("$company_id", hierarchicalIdentity.getCompanyId());
   }
 
   /**

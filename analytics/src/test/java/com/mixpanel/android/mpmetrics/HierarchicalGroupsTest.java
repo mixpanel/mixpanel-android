@@ -2,17 +2,30 @@ package com.mixpanel.android.mpmetrics;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.test.core.app.ApplicationProvider;
 import com.mixpanel.android.identity.MixpanelIdentity;
+import com.mixpanel.android.util.OfflineMode;
+import com.mixpanel.android.util.ProxyServerInteractor;
+import com.mixpanel.android.util.RemoteService;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
+import javax.net.ssl.SSLSocketFactory;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -20,6 +33,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
+import org.robolectric.shadows.ShadowLooper;
 
 /**
  * Hierarchical groups is fixed by {@link MixpanelOptions.Builder#hierarchicalGroups(boolean)}.
@@ -706,5 +720,197 @@ public class HierarchicalGroupsTest {
     public void testOptionDefaultsToDisabled() {
         assertFalse(new MixpanelOptions.Builder().build().isHierarchicalGroups());
         assertTrue(new MixpanelOptions.Builder().hierarchicalGroups(true).build().isHierarchicalGroups());
+    }
+
+    // Feature flags: requests send $user_id and $company_id once a company is identified
+
+    private static final String FLAGS_RESPONSE =
+            "{\"flags\":{\"checkout\":{\"variant_key\":\"on\",\"variant_value\":true,"
+                    + "\"experiment_id\":\"exp_1\",\"is_experiment_active\":true}},"
+                    + "\"pending_first_time_events\":[{\"flag_key\":\"upgrade_banner\",\"flag_id\":\"flag_1\","
+                    + "\"project_id\":123,\"first_time_event_hash\":\"HASH\",\"event_name\":\"Upgraded\","
+                    + "\"pending_variant\":{\"variant_key\":\"shown\",\"variant_value\":true}}]}";
+
+    private static class FlagsRequest {
+        final String endpointUrl;
+        final Map<String, Object> params;
+        final byte[] body;
+
+        FlagsRequest(String endpointUrl, Map<String, Object> params, byte[] body) {
+            this.endpointUrl = endpointUrl;
+            this.params = params;
+            this.body = body;
+        }
+    }
+
+    private final BlockingQueue<FlagsRequest> mFlagsRequests = new LinkedBlockingQueue<>();
+
+    private final RemoteService mFlagsService = new RemoteService() {
+        @Override
+        public boolean isOnline(Context context, OfflineMode offlineMode) {
+            return true;
+        }
+
+        @Override
+        public void checkIsServerBlocked() {}
+
+        @Override
+        public RequestResult performRequest(
+                @NonNull String endpointUrl,
+                @Nullable ProxyServerInteractor interactor,
+                @Nullable Map<String, Object> params,
+                @Nullable Map<String, String> headers,
+                @Nullable byte[] requestBodyBytes,
+                @Nullable SSLSocketFactory socketFactory) {
+            return performRequest(
+                    HttpMethod.POST, endpointUrl, interactor, params, headers, requestBodyBytes, socketFactory);
+        }
+
+        @Override
+        public RequestResult performRequest(
+                @NonNull HttpMethod method,
+                @NonNull String endpointUrl,
+                @Nullable ProxyServerInteractor interactor,
+                @Nullable Map<String, Object> params,
+                @Nullable Map<String, String> headers,
+                @Nullable byte[] requestBodyBytes,
+                @Nullable SSLSocketFactory socketFactory) {
+            mFlagsRequests.add(new FlagsRequest(endpointUrl, params, requestBodyBytes));
+            String response = endpointUrl.endsWith("/first-time-events") ? "{}" : FLAGS_RESPONSE;
+            return RequestResult.success(response.getBytes(StandardCharsets.UTF_8), endpointUrl);
+        }
+    };
+
+    private MixpanelAPI newFlagsApi(boolean hierarchicalGroups) {
+        MixpanelOptions options = new MixpanelOptions.Builder()
+                .hierarchicalGroups(hierarchicalGroups)
+                .featureFlagOptions(new FeatureFlagOptions.Builder().enabled(true).build())
+                .build();
+        return new TestUtils.CleanMixpanelAPI(
+                mContext, new TestUtils.EmptyPreferences(mContext), UUID.randomUUID().toString(), options) {
+            @Override
+            protected AnalyticsMessages getAnalyticsMessages() {
+                return mCapturing;
+            }
+
+            @Override
+            RemoteService getHttpService() {
+                return mFlagsService;
+            }
+        };
+    }
+
+    /** Waits for the next request whose endpoint ends with the given suffix. */
+    private FlagsRequest takeFlagsRequest(String endpointSuffix) throws InterruptedException {
+        for (int i = 0; i < 50; i++) {
+            LooperTestUtils.idleAllLoopers();
+            FlagsRequest request = mFlagsRequests.poll(100, TimeUnit.MILLISECONDS);
+            if (request != null && request.endpointUrl.endsWith(endpointSuffix)) {
+                return request;
+            }
+        }
+        throw new AssertionError("No request to " + endpointSuffix);
+    }
+
+    private JSONObject fetchFlagsContext(MixpanelAPI mixpanel) throws Exception {
+        mixpanel.getFlags().loadFlags();
+        FlagsRequest request = takeFlagsRequest("/flags/");
+        return new JSONObject((String) request.params.get("context"));
+    }
+
+    private void waitForFlagsReady(MixpanelAPI mixpanel) {
+        for (int i = 0; i < 50 && !mixpanel.getFlags().areFlagsReady(); i++) {
+            LooperTestUtils.idleAllLoopers();
+        }
+        assertTrue(mixpanel.getFlags().areFlagsReady());
+    }
+
+    private static List<String> keys(JSONObject json) {
+        List<String> keys = new ArrayList<>();
+        for (Iterator<String> it = json.keys(); it.hasNext(); ) {
+            keys.add(it.next());
+        }
+        Collections.sort(keys);
+        return keys;
+    }
+
+    @Test
+    public void testFlagsContextCarriesUserAndCompanyAfterIdentify() throws Exception {
+        MixpanelAPI mixpanel = newFlagsApi(true);
+        mixpanel.identify(new MixpanelIdentity("user_123", "company_123"));
+
+        JSONObject context = fetchFlagsContext(mixpanel);
+        assertEquals("user_123", context.getString("distinct_id"));
+        assertEquals(mixpanel.getAnonymousId(), context.getString("device_id"));
+        assertEquals("user_123", context.getString("$user_id"));
+        assertEquals("company_123", context.getString("$company_id"));
+        assertEquals(4, context.length());
+    }
+
+    @Test
+    public void testFlagsContextBeforeIdentifyIsUnchanged() throws Exception {
+        MixpanelAPI mixpanel = newFlagsApi(true);
+
+        JSONObject context = fetchFlagsContext(mixpanel);
+        assertEquals(mixpanel.getDistinctId(), context.getString("distinct_id"));
+        assertEquals("$device:" + mixpanel.getAnonymousId(), context.getString("distinct_id"));
+        assertEquals(mixpanel.getAnonymousId(), context.getString("device_id"));
+        assertEquals(java.util.Arrays.asList("device_id", "distinct_id"), keys(context));
+    }
+
+    @Test
+    public void testFlagsContextUnchangedWhenDisabled() throws Exception {
+        MixpanelAPI mixpanel = newFlagsApi(false);
+        mixpanel.identify(new MixpanelIdentity("user_123"));
+
+        JSONObject context = fetchFlagsContext(mixpanel);
+        assertEquals("user_123", context.getString("distinct_id"));
+        assertEquals(mixpanel.getAnonymousId(), context.getString("device_id"));
+        assertEquals(java.util.Arrays.asList("device_id", "distinct_id"), keys(context));
+    }
+
+    @Test
+    public void testFirstTimeEventBodyCarriesUserAndCompany() throws Exception {
+        MixpanelAPI mixpanel = newFlagsApi(true);
+        mixpanel.identify(new MixpanelIdentity("user_123", "company_123"));
+        mixpanel.getFlags().loadFlags();
+        takeFlagsRequest("/flags/");
+        waitForFlagsReady(mixpanel);
+
+        mixpanel.track("Upgraded");
+        FlagsRequest request = takeFlagsRequest("/flags/flag_1/first-time-events");
+        JSONObject body = new JSONObject(new String(request.body, StandardCharsets.UTF_8));
+        assertEquals("user_123", body.getString("distinct_id"));
+        assertEquals(123, body.getLong("project_id"));
+        assertEquals("HASH", body.getString("first_time_event_hash"));
+        assertEquals("user_123", body.getString("$user_id"));
+        assertEquals("company_123", body.getString("$company_id"));
+        assertEquals(5, body.length());
+    }
+
+    @Test
+    public void testExperimentStartedCarriesUserAndCompany() throws Exception {
+        MixpanelAPI mixpanel = newFlagsApi(true);
+        mixpanel.identify(new MixpanelIdentity("user_123", "company_123"));
+        mixpanel.getFlags().loadFlags();
+        takeFlagsRequest("/flags/");
+        waitForFlagsReady(mixpanel);
+
+        MixpanelFlagVariant variant =
+                mixpanel.getFlags().getVariantSync("checkout", new MixpanelFlagVariant("fallback", null));
+        assertEquals("on", variant.key);
+        JSONObject props = null;
+        for (int i = 0; i < 50 && props == null; i++) {
+            ShadowLooper.idleMainLooper();
+            LooperTestUtils.idleAllLoopers();
+            if (countEvents("$experiment_started") > 0) {
+                props = lastEventProperties("$experiment_started");
+            }
+        }
+        assertNotNull("$experiment_started was not tracked", props);
+        assertEquals("checkout", props.getString("Experiment name"));
+        assertEquals("user_123", props.getString("distinct_id"));
+        assertEquals("user_123", props.getString("$user_id"));
+        assertEquals("company_123", props.getString("$company_id"));
     }
 }
