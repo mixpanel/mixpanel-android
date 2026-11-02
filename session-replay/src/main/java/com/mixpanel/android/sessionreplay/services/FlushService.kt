@@ -46,6 +46,8 @@ class FlushService(
 
     internal fun getDistinctId(): String = flushRequest.distinctId
 
+    internal fun getIdentity(): MixpanelIdentity? = flushRequest.identity
+
     internal fun updateDistinctId(newDistinctId: String) {
         flushRequest.updateDistinctId(newDistinctId)
     }
