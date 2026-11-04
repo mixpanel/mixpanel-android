@@ -3459,7 +3459,13 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         }
 
         private JSONObject stdGroupMessage(String actionType, Object properties) throws JSONException {
-            final String companyId = mHierarchicalGroups ? mPersistentIdentity.getEventsCompanyId() : null;
+            String companyId = null;
+            if (mHierarchicalGroups) {
+                // A company handle stays bound to its own company across identify() and reset()
+                companyId = COMPANY_ID_GROUP_KEY.equals(mGroupKey)
+                        ? String.valueOf(mGroupID)
+                        : mPersistentIdentity.getEventsCompanyId();
+            }
             return MixpanelAPI.this.stdGroupMessage(mGroupKey, mGroupID, companyId, actionType, properties);
         }
     } // GroupImpl

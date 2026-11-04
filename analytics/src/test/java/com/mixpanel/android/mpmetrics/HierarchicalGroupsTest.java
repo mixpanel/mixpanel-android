@@ -717,6 +717,34 @@ public class HierarchicalGroupsTest {
     }
 
     @Test
+    public void testSavedCompanyKeepsItsCompanyAfterIdentify() throws JSONException {
+        MixpanelAPI mixpanel = newApi(true);
+        mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
+        MixpanelAPI.Group acme = mixpanel.getCompany();
+        mixpanel.identify(new MixpanelIdentity("user_123", "globex"));
+        acme.set("tier", "enterprise");
+
+        assertEquals(1, mGroups.size());
+        JSONObject message = mGroups.get(0).getMessage();
+        assertEquals("acme", message.getString("$group_id"));
+        assertEquals("acme", message.getString("$company_id"));
+    }
+
+    @Test
+    public void testSavedCompanyStillUpdatesAfterReset() throws JSONException {
+        MixpanelAPI mixpanel = newApi(true);
+        mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
+        MixpanelAPI.Group acme = mixpanel.getCompany();
+        mixpanel.reset();
+        acme.set("tier", "enterprise");
+
+        assertEquals(1, mGroups.size());
+        JSONObject message = mGroups.get(0).getMessage();
+        assertEquals("acme", message.getString("$group_id"));
+        assertEquals("acme", message.getString("$company_id"));
+    }
+
+    @Test
     public void testGetCompanyBeforeIdentifyIsNull() {
         MixpanelAPI mixpanel = newApi(true);
 
