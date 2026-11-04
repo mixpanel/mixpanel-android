@@ -1,0 +1,19 @@
+{
+  "viewport": [
+    1080,
+    2340
+  ],
+  "elements": [
+    {
+      "role": "text",
+      "text": "This label is far too long to ship intact and mus…",
+      "bounds": [
+        16,
+        16,
+        900,
+        60
+      ],
+      "maskDecision": "NONE"
+    }
+  ]
+}

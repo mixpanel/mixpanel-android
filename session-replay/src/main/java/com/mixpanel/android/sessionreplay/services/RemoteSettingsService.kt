@@ -10,17 +10,23 @@ import com.mixpanel.android.sessionreplay.network.Network
 import com.mixpanel.android.sessionreplay.network.RequestMethod
 import com.mixpanel.android.sessionreplay.network.SdkConfig
 import com.mixpanel.android.sessionreplay.network.SettingsResponse
+import com.mixpanel.android.sessionreplay.utils.DeviceInfo
 import com.mixpanel.android.sessionreplay.utils.EndPoints
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 /**
  * Result from checking settings endpoint, containing recording status, SDK config, and event triggers.
+ *
+ * [isWireframeEnabled] is the server-side wireframe kill switch. It defaults to enabled because
+ * the `wireframe` field is only requested when the app opted in to wireframes. Once an explicit
+ * disable is cached, it remains disabled until the server explicitly re-enables it.
  */
 internal data class RemoteSettingsResult(
     val isRecordingEnabled: Boolean,
     val sdkConfig: SdkConfig? = null,
-    val isFromCache: Boolean = false
+    val isFromCache: Boolean = false,
+    val isWireframeEnabled: Boolean = true
 )
 
 internal open class RemoteSettingsService(
@@ -28,7 +34,9 @@ internal open class RemoteSettingsService(
     private val network: Network = Network(),
     private val version: String,
     private val mpLib: String,
-    private val serverUrl: String = EndPoints.DEFAULT_BASE_URL
+    private val serverUrl: String = EndPoints.DEFAULT_BASE_URL,
+    private val bundleIdOverride: String? = null,
+    private val buildNumberOverride: String? = null
 ) {
     companion object {
         private const val SETTINGS_TIMEOUT_MS = 5000L
@@ -40,34 +48,52 @@ internal open class RemoteSettingsService(
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     }
 
+    private val bundleId: String? by lazy { bundleIdOverride ?: DeviceInfo.bundleId(context) }
+    private val buildNumber: String? by lazy { buildNumberOverride ?: DeviceInfo.buildNumber(context) }
+
     private fun recordingEnabledKey(token: String) = "mp_sr_recording_${token}_enabled"
     private fun recordingTimestampKey(token: String) = "mp_sr_recording_${token}_timestamp"
     private fun sdkConfigKey(token: String) = "mp_sr_recording_${token}_sdk_config"
+    private fun wireframeEnabledKey(token: String) = "mp_sr_wireframe_${token}_enabled"
 
     /**
      * Checks settings from the Mixpanel endpoint and returns both recording status and SDK config.
+     *
+     * @param wireframesRequested whether this app opted in to wireframes. When true the request asks
+     *   for the wireframe kill switch (`wireframe=1`) so the server can turn capture off remotely.
      */
-    open suspend fun fetchRemoteSettings(token: String): RemoteSettingsResult = try {
-        performRemoteSettingsFetch(token)
+    open suspend fun fetchRemoteSettings(token: String, wireframesRequested: Boolean = false): RemoteSettingsResult = try {
+        performRemoteSettingsFetch(token, wireframesRequested)
     } catch (e: Exception) {
         Logger.warn("Settings check failed: ${e.message}")
         getCachedSettingsResult(token)
     }
 
-    private suspend fun performRemoteSettingsFetch(token: String): RemoteSettingsResult {
+    private suspend fun performRemoteSettingsFetch(token: String, wireframesRequested: Boolean): RemoteSettingsResult {
         Logger.info("Checking settings for project")
+
+        val queryItems = mutableListOf(
+            "recording" to "1",
+            "sdk_config" to "1",
+            "\$os" to "Android",
+            "mp_lib" to mpLib,
+            "\$lib_version" to version
+        )
+
+        // Include app bundle ID and build number to enable server-side SDK blocking
+        // per app ID and app build version. Either is omitted if unavailable.
+        bundleId?.let { queryItems.add("bundle_id" to it) }
+        buildNumber?.let { queryItems.add("build_number" to it) }
+        if (bundleId == null || buildNumber == null) {
+            Logger.warn("Incomplete app info for settings request: bundleId=$bundleId, buildNumber=$buildNumber")
+        }
+        if (wireframesRequested) queryItems.add("wireframe" to "1")
 
         val apiRequest = APIRequest(
             endPoint = EndPoints.settings(serverUrl),
             method = RequestMethod.GET,
             requestBody = null,
-            queryItems = listOf(
-                "recording" to "1",
-                "sdk_config" to "1",
-                "\$os" to "Android",
-                "mp_lib" to mpLib,
-                "\$lib_version" to version
-            ),
+            queryItems = queryItems,
             headers = mapOf(
                 "Authorization" to "Basic ${Base64.encodeToString("$token:".toByteArray(), Base64.NO_WRAP)}"
             ),
@@ -101,6 +127,8 @@ internal open class RemoteSettingsService(
             cacheRecordingDisabled(token)
         }
 
+        val isWireframeEnabled = resolveWireframeEnabled(settingsResponse, token)
+
         val finalSdkConfig = sdkConfig?.also {
             // Cache SDK config if present (includes event triggers)
             cacheSdkConfig(token, it)
@@ -115,7 +143,8 @@ internal open class RemoteSettingsService(
         RemoteSettingsResult(
             isRecordingEnabled = isEnabled,
             sdkConfig = finalSdkConfig,
-            isFromCache = false
+            isFromCache = false,
+            isWireframeEnabled = isWireframeEnabled
         )
     } catch (e: Exception) {
         Logger.error("Failed to parse settings response: ${e.message}")
@@ -145,8 +174,63 @@ internal open class RemoteSettingsService(
         return RemoteSettingsResult(
             isRecordingEnabled = checkCachedRecordingState(token),
             sdkConfig = cachedSdkConfig,
-            isFromCache = true
+            isFromCache = true,
+            isWireframeEnabled = checkCachedWireframeState(token)
         )
+    }
+
+    // --- Wireframe Kill Switch ---
+
+    /**
+     * Reads the wireframe kill switch off a fresh response and refreshes its cache.
+     *
+     * An absent `wireframe` field means the switch was never asked for (wireframes off locally) or
+     * the server had nothing to say. In that case, preserve a previously cached disable; with no
+     * cached verdict, capture defaults to on for backward compatibility with older services.
+     */
+    private fun resolveWireframeEnabled(settingsResponse: SettingsResponse, token: String): Boolean {
+        val wireframe = settingsResponse.wireframe ?: return checkCachedWireframeState(token)
+
+        return if (wireframe.isEnabled) {
+            Logger.info("Wireframe settings check complete: enabled")
+            clearWireframeCache(token)
+            true
+        } else {
+            Logger.warn("Wireframe capture is disabled via remote settings")
+            wireframe.error?.let { error -> Logger.warn("Wireframe settings error message: $error") }
+            cacheWireframeDisabled(token)
+            false
+        }
+    }
+
+    private fun cacheWireframeDisabled(token: String) {
+        try {
+            prefs.edit { putBoolean(wireframeEnabledKey(token), false) }
+        } catch (e: Exception) {
+            Logger.error("Failed to cache wireframe state: ${e.message}")
+        }
+    }
+
+    private fun clearWireframeCache(token: String) {
+        try {
+            prefs.edit { remove(wireframeEnabledKey(token)) }
+        } catch (e: Exception) {
+            Logger.error("Failed to clear wireframe cache: ${e.message}")
+        }
+    }
+
+    private fun checkCachedWireframeState(token: String): Boolean = try {
+        val key = wireframeEnabledKey(token)
+        if (prefs.contains(key)) {
+            prefs.getBoolean(key, true).also { isEnabled ->
+                if (!isEnabled) Logger.info("Using cached wireframe state: disabled")
+            }
+        } else {
+            true
+        }
+    } catch (e: Exception) {
+        Logger.error("Failed to check cached wireframe state: ${e.message}")
+        true // Default to enabled on error
     }
 
     // --- Recording Enabled Cache ---

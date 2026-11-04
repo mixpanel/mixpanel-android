@@ -4,9 +4,8 @@ import com.mixpanel.android.sessionreplay.services.EventService
 import com.mixpanel.android.sessionreplay.utils.EventType
 import com.mixpanel.android.sessionreplay.utils.IncrementalSource
 import com.mixpanel.android.sessionreplay.utils.PayloadObjectId
+import com.mixpanel.android.sessionreplay.utils.MouseInteraction
 import com.mixpanel.android.sessionreplay.utils.SessionReplayEncoder
-import com.mixpanel.android.sessionreplay.utils.TimingAdjustment
-import com.mixpanel.android.sessionreplay.utils.TouchInteraction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
@@ -37,13 +36,13 @@ class EventServiceTests {
     private val touchEvent = SessionEvent(
         type = EventType.INCREMENTAL_SNAPSHOT,
         data = SessionEventData.DetailedData(
-            source = IncrementalSource.TOUCH_INTERACTION,
-            type = TouchInteraction.START,
+            source = IncrementalSource.MOUSE_INTERACTION,
+            type = MouseInteraction.TOUCH_START,
             id = PayloadObjectId.MAIN_SNAPSHOT,
             x = 0,
             y = 0
         ),
-        timestamp = System.currentTimeMillis() + TimingAdjustment.TOUCH_INTERACTION
+        timestamp = System.currentTimeMillis()
     )
 
     private lateinit var mainScreenshotEvent: SessionEvent
@@ -247,5 +246,39 @@ class EventServiceTests {
             delay(500)
 
             assertEquals(4, eventService.eventsCount)
+        }
+
+    private val metaEvent = SessionEvent(
+        type = EventType.META,
+        data = SessionEventData.DimensionData(411, 519),
+        timestamp = System.currentTimeMillis()
+    )
+
+    @Test
+    fun testEvictionKeepsTheViewportInFrontOfSurvivingFrames() =
+        runTest {
+            val eventService = EventService(queueSizeLimit = 5)
+            eventService.enqueueEvent(metaEvent)
+            repeat(5) { eventService.enqueueEvent(touchEvent) }
+
+            delay(500)
+
+            // The meta was the oldest event, but the frames behind it still need its dimensions.
+            val remaining = eventService.dequeueEvents(10)
+            assertEquals(EventType.META, remaining.first().type)
+            assertEquals(1, remaining.count { it.type == EventType.META })
+        }
+
+    @Test
+    fun testEvictionStaysBoundedWhileRestatingTheViewport() =
+        runTest {
+            val eventService = EventService(queueSizeLimit = 5)
+            eventService.enqueueEvent(metaEvent)
+            repeat(50) { eventService.enqueueEvent(touchEvent) }
+
+            delay(500)
+
+            // Re-stating the viewport costs one slot and must not stall eviction.
+            assertTrue(eventService.eventsCount <= 6)
         }
 }

@@ -64,13 +64,22 @@ class BitmapPool(
      *
      * @param width The desired width of the bitmap
      * @param height The desired height of the bitmap
-     * @return A [Bitmap] ready for use, or null if allocation fails (e.g., OutOfMemoryError)
+     * @return A [Bitmap] ready for use, or null if the requested dimensions are not positive
+     *   or allocation fails (e.g., OutOfMemoryError)
      */
     fun acquire(
         width: Int,
         height: Int
     ): Bitmap? =
         lock.withLock {
+            // Bitmap.createBitmap throws IllegalArgumentException for non-positive dimensions,
+            // which would crash the host app. A window that has not finished layout yet
+            // (e.g. during app launch) legitimately reports 0 width or height.
+            if (width <= 0 || height <= 0) {
+                Logger.warn("Cannot acquire bitmap with non-positive dimensions ($width x $height)")
+                return null
+            }
+
             // Search for a matching bitmap by dimensions
             val iterator = pool.iterator()
             while (iterator.hasNext()) {

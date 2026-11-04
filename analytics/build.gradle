@@ -1,5 +1,7 @@
 plugins {
     id 'com.android.library'
+    id 'org.jetbrains.kotlin.android'
+    id 'org.jetbrains.kotlin.plugin.compose'
     id 'mixpanel.maven-publish'
     id 'jacoco'
     id 'ru.vyarus.animalsniffer' version '2.0.0'
@@ -24,6 +26,21 @@ android {
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = "17"
+        // Consumers compiling against this AAR must be able to read its Kotlin
+        // metadata. Kotlin 2.1 bumped the .kotlin_module binary format from 1 to
+        // 2, which older compilers fail to *parse* (InvalidProtocolBufferException)
+        // rather than warn about -- -Xskip-metadata-version-check does not help.
+        // The root buildscript is on KGP 2.1, so clamp the emitted metadata the
+        // way :common and :session-replay already do. See kotlinTarget in
+        // gradle/libs.versions.toml.
+        languageVersion = libs.versions.kotlinLanguage.get()
+        apiVersion = libs.versions.kotlinLanguage.get()
+    }
+    buildFeatures {
+        compose true
     }
 
 
@@ -105,6 +122,13 @@ java {
     }
 }
 
+kotlin {
+    // KGP adds kotlin-stdlib implicitly at the plugin's own version, which would
+    // publish a compile-scope dependency on stdlib 2.1.x -- itself carrying the
+    // format-2 module metadata. Pin it to the supported consumer floor.
+    coreLibrariesVersion = libs.versions.kotlinTarget.get()
+}
+
 
 tasks.register("androidJavadocs", Javadoc) {
     dependsOn 'assembleRelease'
@@ -126,7 +150,8 @@ tasks.register("androidJavadocs", Javadoc) {
             '**/util/RemoteService.java',
             '**/ResourceIds.java',
             '**/ResourceReader.java',
-            '**/*.md'
+            '**/*.md',
+            '**/*.kt'
     )
 
     options {
@@ -138,7 +163,7 @@ tasks.register("androidJavadocs", Javadoc) {
 
 dependencies {
     // official release
-    implementation 'com.mixpanel.android:mixpanel-android-common:1.0.1'
+    implementation 'com.mixpanel.android:mixpanel-android-common:1.1.0'
     signature 'net.sf.androidscents.signature:android-api-level-21:5.0.1_r2@signature'
     // or use below for local testing
     // implementation project(':common')
@@ -146,8 +171,13 @@ dependencies {
     implementation 'androidx.core:core:1.13.1'
     implementation 'androidx.lifecycle:lifecycle-process:2.6.2'
     implementation 'io.github.jamsesso:json-logic-java:1.1.0'
+    // Curtains: root view (window) observation for autocapture dialog/popup tracking.
+    // Compatible with other Curtains consumers (e.g., Session Replay SDK).
+    implementation 'com.squareup.curtains:curtains:1.2.5'
     // json-logic-java pulls in an outdated json with cve
     implementation 'com.google.code.gson:gson:2.13.2'
+    // Compose UI for autocapture semantics extraction (optional - graceful degradation if not present)
+    compileOnly 'androidx.compose.ui:ui:1.7.7'
     // AndroidJUnitRunner and JUnit Rules
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test:core:1.6.1'
@@ -162,6 +192,13 @@ dependencies {
     testImplementation 'androidx.test:core:1.5.0'
     testImplementation 'org.json:json:20231013'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
+    // Compose dependencies for androidTest only (Compose autocapture tests)
+    androidTestImplementation platform('androidx.compose:compose-bom:2024.12.01')
+    androidTestImplementation 'androidx.compose.ui:ui'
+    androidTestImplementation 'androidx.compose.material3:material3'
+    androidTestImplementation 'androidx.compose.ui:ui-test-junit4'
+    androidTestImplementation 'androidx.activity:activity-compose:1.9.1'
+    debugImplementation 'androidx.compose.ui:ui-test-manifest:1.7.7'
 }
 
 jacoco {

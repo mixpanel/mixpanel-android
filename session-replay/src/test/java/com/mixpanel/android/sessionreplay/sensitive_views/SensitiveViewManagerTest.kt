@@ -453,7 +453,7 @@ class SensitiveViewManagerTest {
     @Test
     fun `test MaskRegionsListener is notified when mask regions are detected`() {
         // Arrange
-        val capturedEntries = mutableListOf<Map<Rect, MaskDecision>>()
+        val capturedEntries = mutableListOf<Map<Rect, InternalMaskDecision>>()
         val listener = MaskRegionsListener { entries ->
             capturedEntries.add(entries)
         }
@@ -478,7 +478,7 @@ class SensitiveViewManagerTest {
         val expectedRect = Rect(10, 20, 100, 80)
         assertTrue(
             "Text entry mask entries should contain the correct rect",
-            entries[expectedRect] == MaskDecision.TEXT_ENTRY
+            entries[expectedRect] == InternalMaskDecision.TEXT_ENTRY
         )
 
         // Cleanup
@@ -488,7 +488,7 @@ class SensitiveViewManagerTest {
     @Test
     fun `test MaskRegionsListener receives empty entries when no sensitive views`() {
         // Arrange
-        val capturedEntries = mutableListOf<Map<Rect, MaskDecision>>()
+        val capturedEntries = mutableListOf<Map<Rect, InternalMaskDecision>>()
         val listener = MaskRegionsListener { entries ->
             capturedEntries.add(entries)
         }
@@ -513,7 +513,7 @@ class SensitiveViewManagerTest {
     @Test
     fun `test MaskRegionsListener receives multiple entries for multiple sensitive views`() {
         // Arrange
-        val capturedEntries = mutableListOf<Map<Rect, MaskDecision>>()
+        val capturedEntries = mutableListOf<Map<Rect, InternalMaskDecision>>()
         val listener = MaskRegionsListener { entries ->
             capturedEntries.add(entries)
         }
@@ -554,7 +554,7 @@ class SensitiveViewManagerTest {
         assertTrue("Listener should have been called", capturedEntries.isNotEmpty())
         val entries = capturedEntries.first()
         // EditTexts are text entry masks (security-enforced)
-        val textEntryEntries = entries.filter { it.value == MaskDecision.TEXT_ENTRY }
+        val textEntryEntries = entries.filter { it.value == InternalMaskDecision.TEXT_ENTRY }
         assertTrue("Should have at least 2 text entry mask entries", textEntryEntries.size >= 2)
 
         // Cleanup
@@ -596,7 +596,7 @@ class SensitiveViewManagerTest {
     @Test
     fun `test MaskRegionsListener categorizes auto and text entry masks correctly`() {
         // Arrange
-        val capturedEntries = mutableListOf<Map<Rect, MaskDecision>>()
+        val capturedEntries = mutableListOf<Map<Rect, InternalMaskDecision>>()
         val listener = MaskRegionsListener { entries ->
             capturedEntries.add(entries)
         }
@@ -644,17 +644,100 @@ class SensitiveViewManagerTest {
         val editTextRect = Rect(0, 0, 100, 50)
         assertTrue(
             "EditText should be in text entry mask entries",
-            entries[editTextRect] == MaskDecision.TEXT_ENTRY
+            entries[editTextRect] == InternalMaskDecision.TEXT_ENTRY
         )
 
         // TextView should be auto mask
         val textViewRect = Rect(0, 60, 100, 110)
         assertTrue(
             "TextView should be in auto mask entries",
-            entries[textViewRect] == MaskDecision.AUTO
+            entries[textViewRect] == InternalMaskDecision.AUTO
         )
 
         // Cleanup
         SensitiveViewManager.setMaskRegionsListener(null)
+    }
+
+    /**
+     * Whether the walk would mask [view] — the same seam the class tests above use.
+     * `needsMasking` is true when the pass produced any mask rect at all, so a spy is needed to
+     * satisfy the visibility and bounds gates that a detached view would otherwise fail.
+     */
+    private fun wouldMask(view: View): Boolean {
+        val spied = spyk(view)
+        every { spied.isShown } returns true
+        every { spied.getGlobalVisibleRect(any()) } answers {
+            firstArg<Rect>().set(0, 0, 100, 40)
+            true
+        }
+        return SensitiveViewManager.processSubviews(spied).needsMasking
+    }
+
+    // ---- Re-initialization lifetime -----------------------------------------------------
+
+    /**
+     * A new initialization is a new initialization: registered classes must not survive
+     * `deinitialize`, so the incoming config decides what is masked.
+     *
+     * These used to persist. The visible cost was that a *narrowed* `autoMaskedViews` could not
+     * take effect on re-initialize — React Native implements auto-masking through
+     * `addSensitiveClass`, so the first initialize's registrations kept masking for the life of
+     * the process, and `syncAutoMaskedClass` refuses to drop a customer-registered class so
+     * nothing could undo it.
+     */
+    @Test
+    fun `test deinitialize clears registered sensitive classes`() {
+        class CustomView(context: android.content.Context) : View(context)
+
+        SensitiveViewManager.addSensitiveClass(CustomView::class.java)
+        SensitiveViewManager.autoMaskedViews = setOf(AutoMaskedView.Text)
+        assertTrue("precondition: the registration is in effect", wouldMask(CustomView(context)))
+
+        SensitiveViewManager.deinitialize()
+        SensitiveViewManager.autoMaskedViews = setOf(AutoMaskedView.Text)
+
+        assertFalse(
+            "a registered class must not survive deinitialize",
+            wouldMask(CustomView(context))
+        )
+    }
+
+    /**
+     * The React Native shape, end to end: masking a class and then re-initializing with the
+     * category turned off must actually stop masking.
+     *
+     * This is the case that made the old behaviour a bug rather than a preference — a customer
+     * narrowing `autoMaskedViews` to get readable wireframes got no effect at all.
+     */
+    @Test
+    fun `test re-initialize with the category off stops masking that class`() {
+        // First "initialize": Text is auto-masked, so the bridge registers its text class.
+        SensitiveViewManager.autoMaskedViews = setOf(AutoMaskedView.Text)
+        SensitiveViewManager.addSensitiveClass(TextView::class.java)
+        assertTrue(wouldMask(TextView(context)))
+
+        // Second "initialize" with nothing auto-masked: the bridge registers nothing.
+        SensitiveViewManager.deinitialize()
+        SensitiveViewManager.autoMaskedViews = emptySet()
+
+        assertFalse(
+            "the new config must win over the previous initialize's registrations",
+            wouldMask(TextView(context))
+        )
+    }
+
+    /**
+     * `EditText` is not a developer registration but the always-masked text-entry guarantee,
+     * seeded at construction and refused by `removeSensitiveClass`. Clearing registrations must
+     * not take it with them, or every input silently unmasks until something re-seeds it.
+     */
+    @Test
+    fun `test deinitialize keeps inputs always masked`() {
+        SensitiveViewManager.deinitialize()
+
+        assertTrue(
+            "an EditText must be masked even before any config is applied",
+            wouldMask(EditText(context))
+        )
     }
 }

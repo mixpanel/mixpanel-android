@@ -1,0 +1,30 @@
+{
+  "viewport": [
+    1080,
+    2340
+  ],
+  "elements": [
+    {
+      "role": "text",
+      "text": "Outgoing screen",
+      "bounds": [
+        0,
+        0,
+        276,
+        45
+      ],
+      "maskDecision": "NONE"
+    },
+    {
+      "role": "text",
+      "text": "Incoming screen",
+      "bounds": [
+        0,
+        0,
+        280,
+        45
+      ],
+      "maskDecision": "NONE"
+    }
+  ]
+}

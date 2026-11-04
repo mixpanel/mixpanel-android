@@ -45,6 +45,9 @@ class MavenPublishConventionPlugin : Plugin<Project> {
         with(target) {
             pluginManager.apply("maven-publish")
             pluginManager.apply("signing")
+            // Published artifacts must stay readable by the Kotlin version
+            // declared in the catalog; see KotlinCompatibilityConventionPlugin.
+            pluginManager.apply("mixpanel.kotlin-compatibility")
 
             // Register JAR tasks for Maven Central requirements
             registerJarTasks()

@@ -1,5 +1,6 @@
 package com.mixpanel.android.sessionreplay
 
+import android.annotation.SuppressLint
 import android.content.Context
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.Lifecycle
@@ -42,6 +43,7 @@ class SessionReplayCallbackTest {
     private val testDispatcher = UnconfinedTestDispatcher()
 
     @Before
+    @SuppressLint("UnspecifiedRegisterReceiverFlag")
     fun setUp() {
         mockContext = mockk()
         mockRemoteSettingsService = mockk()

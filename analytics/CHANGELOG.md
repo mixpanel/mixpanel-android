@@ -1,5 +1,44 @@
 # Changelog
 
+## [v8.12.0](https://github.com/mixpanel/mixpanel-android/tree/v8.12.0) (2026-10-30)
+
+### Features
+- 🎉 Autocapture is now generally available — [clicks, rage clicks, and dead clicks](https://docs.mixpanel.com/docs/tracking-methods/sdks/android#click-events). ([#1024](https://github.com/mixpanel/mixpanel-android/pull/1024))
+
+[Full Changelog](https://github.com/mixpanel/mixpanel-android/compare/v8.11.1...v8.12.0)
+
+## [v8.11.1](https://github.com/mixpanel/mixpanel-android/tree/v8.11.1) (2026-09-15)
+
+### Fixes
+- restore Kotlin 2.0 consumer floor ([#1013](https://github.com/mixpanel/mixpanel-android/pull/1013))
+
+[Full Changelog](https://github.com/mixpanel/mixpanel-android/compare/v8.11.0...v8.11.1)
+
+## [v8.11.0](https://github.com/mixpanel/mixpanel-android/tree/v8.11.0) (2026-09-09)
+
+### Features
+- Implement semver and date custom operators for flags runtime events ([#995](https://github.com/mixpanel/mixpanel-android/pull/995))
+
+[Full Changelog](https://github.com/mixpanel/mixpanel-android/compare/v8.10.0...v8.11.0)
+
+## [v8.10.0](https://github.com/mixpanel/mixpanel-android/tree/v8.10.0) (2026-09-01)
+
+### Features
+- autocapture (beta) — clicks, rage clicks and dead clicks ([#1000](https://github.com/mixpanel/mixpanel-android/pull/1000))
+
+[Full Changelog](https://github.com/mixpanel/mixpanel-android/compare/v8.9.0...v8.10.0)
+
+## [v8.9.0](https://github.com/mixpanel/mixpanel-android/tree/v8.9.0) (2026-07-06)
+
+### Features
+- extend Source.Fallback with Reason enum (SDK-79) ([#981](https://github.com/mixpanel/mixpanel-android/pull/981))
+- add trackScreenView and trackScreenLeave tracking methods ([#980](https://github.com/mixpanel/mixpanel-android/pull/980))
+
+### Fixes
+- expose Flags.shutdown() to release worker thread + executor ([#984](https://github.com/mixpanel/mixpanel-android/pull/984))
+
+[Full Changelog](https://github.com/mixpanel/mixpanel-android/compare/v8.8.0...v8.9.0)
+
 ## [v8.8.0](https://github.com/mixpanel/mixpanel-android/tree/v8.8.0) (2026-06-01)
 
 ### Features

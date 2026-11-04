@@ -12,6 +12,10 @@ gradlePlugin {
             id = "mixpanel.maven-publish"
             implementationClass = "MavenPublishConventionPlugin"
         }
+        register("kotlinCompatibility") {
+            id = "mixpanel.kotlin-compatibility"
+            implementationClass = "KotlinCompatibilityConventionPlugin"
+        }
         register("ktlint") {
             id = "mixpanel.ktlint"
             implementationClass = "KtlintConventionPlugin"

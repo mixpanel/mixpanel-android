@@ -1,0 +1,30 @@
+{
+  "viewport": [
+    1080,
+    2340
+  ],
+  "elements": [
+    {
+      "role": "text",
+      "text": "Base",
+      "bounds": [
+        0,
+        0,
+        85,
+        45
+      ],
+      "maskDecision": "NONE"
+    },
+    {
+      "role": "text",
+      "text": "Raised",
+      "bounds": [
+        0,
+        0,
+        114,
+        45
+      ],
+      "maskDecision": "NONE"
+    }
+  ]
+}

@@ -74,6 +74,15 @@ fun LandingPage(navController: NavHostController) {
             ) {
                 Text("Groups")
             }
+            Button(
+                onClick = { navController.navigate("autocaptureTestPage") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(red = 76, green = 175, blue = 80)),
+            ) {
+                Text("Autocapture Test")
+            }
         }
     }
 }

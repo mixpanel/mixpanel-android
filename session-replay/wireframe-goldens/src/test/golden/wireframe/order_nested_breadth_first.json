@@ -1,0 +1,41 @@
+{
+  "viewport": [
+    1080,
+    2340
+  ],
+  "elements": [
+    {
+      "role": "text",
+      "text": "Footer",
+      "bounds": [
+        16,
+        150,
+        400,
+        60
+      ],
+      "maskDecision": "NONE"
+    },
+    {
+      "role": "text",
+      "text": "Card title",
+      "bounds": [
+        0,
+        16,
+        400,
+        60
+      ],
+      "maskDecision": "NONE"
+    },
+    {
+      "role": "text",
+      "text": "Card body",
+      "bounds": [
+        0,
+        76,
+        400,
+        60
+      ],
+      "maskDecision": "NONE"
+    }
+  ]
+}

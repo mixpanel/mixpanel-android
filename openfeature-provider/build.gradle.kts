@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
+
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
@@ -41,9 +43,21 @@ java {
     }
 }
 
+kotlin {
+    // Match :analytics, :common and :session-replay -- keep the published Kotlin
+    // metadata and the implicit kotlin-stdlib dependency on the 2.0 consumer
+    // floor. See kotlinTarget in gradle/libs.versions.toml.
+    coreLibrariesVersion = libs.versions.kotlinTarget.get()
+    compilerOptions {
+        val lang = KotlinVersion.fromVersion(libs.versions.kotlinLanguage.get())
+        apiVersion.set(lang)
+        languageVersion.set(lang)
+    }
+}
+
 dependencies {
     // official release
-    implementation("com.mixpanel.android:mixpanel-android:8.5.0")
+    implementation("com.mixpanel.android:mixpanel-android:8.9.0")
     // or use below for local testing
     // implementation(project(":analytics"))
 

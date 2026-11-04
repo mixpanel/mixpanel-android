@@ -38,24 +38,14 @@ object SessionReplayEncoder {
             null
         }
 
-    fun jsonPayload(payloadInfo: PayloadInfo): String? {
-        val batchStartTimestamp = payloadInfo.sessionEvents.minOfOrNull { it.timestamp } ?: Date().time
-
-        val metaEvent = SessionEvent(
-            type = EventType.META,
-            data = SessionEventData.DimensionData(DeviceInfo.screenWidth, DeviceInfo.screenHeight),
-            timestamp = batchStartTimestamp
-        )
-        val allEvents = listOf(metaEvent) + payloadInfo.sessionEvents
-
-        return try {
-            val jsonString = json.encodeToString(allEvents)
-            jsonString
+    /** Meta events are queued alongside the frames they describe, so a batch carries its own. */
+    fun jsonPayload(payloadInfo: PayloadInfo): String? =
+        try {
+            json.encodeToString(payloadInfo.sessionEvents)
         } catch (e: Exception) {
             Logger.error("Failed to encode/save JSON: ${e.message}")
             null
         }
-    }
 
     fun deserialize(jsonString: String): SessionTrackingData? =
         try {
@@ -77,7 +67,15 @@ object SessionReplayEncoder {
 
     fun getCurrentTimestampMillis(): Long = Date().time
 
-    fun incrementalSessionEvent(image: ByteArray): SessionEvent {
+    /**
+     * @param timestamp When the frame was captured. Defaults to now for callers with no
+     *   capture instant to hand; the recording path always passes one, because this function
+     *   runs on the event serial queue — arbitrarily long after the screen it describes.
+     */
+    fun incrementalSessionEvent(
+        image: ByteArray,
+        timestamp: Long = getCurrentTimestampMillis()
+    ): SessionEvent {
         val attributesData = SessionEventData.AttributesData(
             source = IncrementalSource.MUTATION,
             texts = emptyList(),
@@ -94,16 +92,20 @@ object SessionReplayEncoder {
         return SessionEvent(
             type = EventType.INCREMENTAL_SNAPSHOT,
             data = attributesData,
-            timestamp = getCurrentTimestampMillis()
+            timestamp = timestamp
         )
     }
 
-    fun mainSessionEvent(image: ByteArray): SessionEvent? = try {
+    /** @param timestamp See [incrementalSessionEvent]. */
+    fun mainSessionEvent(
+        image: ByteArray,
+        timestamp: Long = getCurrentTimestampMillis()
+    ): SessionEvent? = try {
         val replayJson = ReplayJSONTemplate.mainEventJSON(
             imageBase64 = android.util.Base64.encodeToString(image, android.util.Base64.NO_WRAP),
-            timestamp = getCurrentTimestampMillis()
+            timestamp = timestamp
         )
-        val x = json.decodeFromString<SessionEvent>(replayJson).also { it.timestamp = getCurrentTimestampMillis() }
+        val x = json.decodeFromString<SessionEvent>(replayJson).also { it.timestamp = timestamp }
         x
     } catch (e: Exception) {
         Logger.error("Error decoding main event JSON: ${e.message}")

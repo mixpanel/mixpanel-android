@@ -1,0 +1,30 @@
+{
+  "viewport": [
+    1080,
+    2340
+  ],
+  "elements": [
+    {
+      "role": "text",
+      "text": "Visible",
+      "bounds": [
+        0,
+        0,
+        112,
+        45
+      ],
+      "maskDecision": "NONE"
+    },
+    {
+      "role": "text",
+      "text": "Transparent secret",
+      "bounds": [
+        0,
+        45,
+        318,
+        45
+      ],
+      "maskDecision": "NONE"
+    }
+  ]
+}

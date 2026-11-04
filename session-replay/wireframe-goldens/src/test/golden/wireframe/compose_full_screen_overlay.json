@@ -1,0 +1,30 @@
+{
+  "viewport": [
+    1080,
+    2340
+  ],
+  "elements": [
+    {
+      "role": "text",
+      "text": "Checkout total $84.20",
+      "bounds": [
+        0,
+        0,
+        369,
+        45
+      ],
+      "maskDecision": "NONE"
+    },
+    {
+      "role": "text",
+      "text": "Loading",
+      "bounds": [
+        0,
+        0,
+        135,
+        45
+      ],
+      "maskDecision": "NONE"
+    }
+  ]
+}
