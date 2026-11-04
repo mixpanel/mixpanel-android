@@ -929,7 +929,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      *
      * @param identity the user, and on a hierarchical groups project their company
      */
-    public void identify(MixpanelIdentity identity) {
+    public void identify(@NonNull MixpanelIdentity identity) {
         if (hasOptedOutTracking()) return;
         if (identity == null) {
             MPLog.e(LOGTAG, "Can't identify with a null MixpanelIdentity.");
@@ -1311,6 +1311,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      *
      * @return the current identity
      */
+    @NonNull
     public MixpanelIdentity getIdentity() {
         synchronized (mPersistentIdentity) {
             return new MixpanelIdentity(
@@ -1914,7 +1915,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      *     <p>See also {@link #optInTrackingWithIdentity(MixpanelIdentity, JSONObject)} and {@link
      *     #optOutTracking()}.
      */
-    public void optInTrackingWithIdentity(MixpanelIdentity identity) {
+    public void optInTrackingWithIdentity(@Nullable MixpanelIdentity identity) {
         optInTrackingWithIdentity(identity, null);
     }
 
@@ -1930,7 +1931,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      *     <p>See also {@link #optInTrackingWithIdentity(MixpanelIdentity)} and {@link
      *     #optOutTracking()}.
      */
-    public void optInTrackingWithIdentity(MixpanelIdentity identity, JSONObject properties) {
+    public void optInTrackingWithIdentity(@Nullable MixpanelIdentity identity, JSONObject properties) {
         mPersistentIdentity.setOptOutTracking(false, mToken);
         if (identity != null) {
             identify(identity);
