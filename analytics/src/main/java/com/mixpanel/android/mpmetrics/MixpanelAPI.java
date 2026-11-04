@@ -244,9 +244,11 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         mEventTimings = mPersistentIdentity.getTimeEvents();
 
         mFeatureFlagOptions = options.getFeatureFlagOptions();
-        mExcludeProperties = options.getExcludeProperties();
-        warnIfStrippingLibProperties(mExcludeProperties);
         mHierarchicalGroups = options.isHierarchicalGroups();
+        mExcludeProperties = mHierarchicalGroups
+                ? withoutCompanyId(options.getExcludeProperties())
+                : options.getExcludeProperties();
+        warnIfStrippingLibProperties(mExcludeProperties);
         // Resolve the effective policy once at init: a persisting policy with non-positive TTL
         // is collapsed to NetworkOnly, since "persist on every fetch but the TTL makes nothing
         // ever serve" does no useful work. Logs a warning when the substitution happens.
@@ -2979,6 +2981,16 @@ public class MixpanelAPI implements FeatureFlagDelegate {
     private static String storedPrefsName(String token, String instanceName) {
         final String instanceKey = instanceName != null ? instanceName : token;
         return "com.mixpanel.android.mpmetrics.MixpanelAPI_" + instanceKey;
+    }
+
+    // Hierarchical groups ingestion requires $company_id, so it is never stripped there
+    private static Set<String> withoutCompanyId(Set<String> excludeProperties) {
+        if (!excludeProperties.contains(COMPANY_ID_GROUP_KEY)) {
+            return excludeProperties;
+        }
+        Set<String> kept = new LinkedHashSet<>(excludeProperties);
+        kept.remove(COMPANY_ID_GROUP_KEY);
+        return Collections.unmodifiableSet(kept);
     }
 
     private static void warnIfStrippingLibProperties(Set<String> excludeProperties) {

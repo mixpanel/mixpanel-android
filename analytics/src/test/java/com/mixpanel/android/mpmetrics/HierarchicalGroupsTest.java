@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -76,8 +77,13 @@ public class HierarchicalGroupsTest {
     }
 
     private MixpanelAPI newApi(boolean hierarchicalGroups) {
+        return newApi(hierarchicalGroups, null);
+    }
+
+    private MixpanelAPI newApi(boolean hierarchicalGroups, Set<String> excludeProperties) {
         MixpanelOptions options = new MixpanelOptions.Builder()
                 .hierarchicalGroups(hierarchicalGroups)
+                .excludeProperties(excludeProperties)
                 .build();
         return new TestUtils.CleanMixpanelAPI(
                 mContext, new TestUtils.EmptyPreferences(mContext), UUID.randomUUID().toString(), options) {
@@ -86,6 +92,15 @@ public class HierarchicalGroupsTest {
                 return mCapturing;
             }
         };
+    }
+
+    private AnalyticsMessages.EventDescription lastEvent(String eventName) {
+        for (int i = mEvents.size() - 1; i >= 0; i--) {
+            if (mEvents.get(i).getEventName().equals(eventName)) {
+                return mEvents.get(i);
+            }
+        }
+        throw new AssertionError("No " + eventName + " event was tracked");
     }
 
     private JSONObject lastEventProperties(String eventName) {
@@ -805,8 +820,14 @@ public class HierarchicalGroupsTest {
     }
 
     @Test
-    public void testCompanyIdIsReserved() {
-        assertTrue(MixpanelOptions.RESERVED_PROPERTY_KEYS.contains("$company_id"));
+    public void testCompanyIdIsNeverExcluded() {
+        newApi(true, Collections.singleton("$company_id")).track("Hierarchical Report");
+        newApi(false, Collections.singleton("$company_id")).track("Legacy Report");
+
+        assertFalse(lastEvent("Hierarchical Report").getExcludeProperties().contains("$company_id"));
+        // without hierarchical groups $company_id is an ordinary property a customer can exclude
+        assertTrue(lastEvent("Legacy Report").getExcludeProperties().contains("$company_id"));
+        assertFalse(MixpanelOptions.RESERVED_PROPERTY_KEYS.contains("$company_id"));
     }
 
     @Test

@@ -23,8 +23,7 @@ public class MixpanelOptions {
      */
     public static final Set<String> RESERVED_PROPERTY_KEYS = Collections.unmodifiableSet(
         new HashSet<>(Arrays.asList(
-            "token", "time", "distinct_id", "$device_id", "$user_id", "$company_id",
-            "$had_persisted_distinct_id"
+            "token", "time", "distinct_id", "$device_id", "$user_id", "$had_persisted_distinct_id"
         ))
     );
 
@@ -404,7 +403,8 @@ public class MixpanelOptions {
          * <p>Use this to reduce per-payload size or to suppress properties the project has
          * no interest in. Matching is exact, case-sensitive, and applied only to top-level
          * property keys (values that are themselves objects are not traversed). Keys in
-         * {@link MixpanelOptions#RESERVED_PROPERTY_KEYS} are never stripped, even if listed.
+         * {@link MixpanelOptions#RESERVED_PROPERTY_KEYS} are never stripped, even if listed, and
+         * neither is {@code $company_id} on a hierarchical groups project.
          *
          * <p><b>Recommended: do not strip {@code mp_lib} or {@code $lib_version}.</b> Mixpanel
          * does not need them for ingestion or identity resolution, so stripping them is
