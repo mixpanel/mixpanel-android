@@ -3299,8 +3299,13 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                                 + "hierarchical groups equivalent. The update was dropped.");
                 return;
             }
-            final String userId = getDistinctId();
-            final String companyId = mPersistentIdentity.getEventsCompanyId();
+            final String userId;
+            final String companyId;
+            // One snapshot, so a concurrent identify can't update one user's profile in another company
+            synchronized (mPersistentIdentity) {
+                userId = getDistinctId();
+                companyId = mPersistentIdentity.getEventsCompanyId();
+            }
             if (userId == null || companyId == null) {
                 MPLog.e(
                         LOGTAG,
@@ -3556,9 +3561,19 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         final double timeSecondsDouble = System.currentTimeMillis() / 1000.0;
         // The stored id, not getDistinctId(): ingestion resolves a hierarchical user from the
         // identity keys below, so the combined form is never sent
-        final String distinctId = mPersistentIdentity.getEventsDistinctId();
-        final String anonymousId = getAnonymousId();
-        final String userId = getUserId();
+        final String distinctId;
+        final String anonymousId;
+        final String userId;
+        String companyId = null;
+        // One snapshot, so a concurrent identify can't pair one user with another company
+        synchronized (mPersistentIdentity) {
+            distinctId = mPersistentIdentity.getEventsDistinctId();
+            anonymousId = getAnonymousId();
+            userId = getUserId();
+            if (mHierarchicalGroups) {
+                companyId = mPersistentIdentity.getEventsCompanyId();
+            }
+        }
         messageProps.put("time", System.currentTimeMillis());
         messageProps.put("distinct_id", distinctId);
         messageProps.put(
@@ -3569,11 +3584,8 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         if (userId != null) {
             messageProps.put("$user_id", userId);
         }
-        if (mHierarchicalGroups) {
-            final String companyId = mPersistentIdentity.getEventsCompanyId();
-            if (companyId != null) {
-                messageProps.put("$company_id", companyId);
-            }
+        if (companyId != null) {
+            messageProps.put("$company_id", companyId);
         }
 
         if (null != eventBegin) {
