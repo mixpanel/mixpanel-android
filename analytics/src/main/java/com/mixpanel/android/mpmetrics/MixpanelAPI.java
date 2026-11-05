@@ -1250,14 +1250,13 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      * the user, so once both are known this returns {@code $company:{companyId}|$user:{userId}}.
      * Until a company is known, Mixpanel ignores the user id and keeps the user under the device,
      * so this returns the device form. The combined form is Mixpanel's own format, and it cannot
-     * be parsed back when either id contains {@code |}.
+     * be parsed back when either id contains {@code |}, so don't use this on a hierarchical groups
+     * project: prefer {@link #getIdentity()}, whose user, company and device ids every Mixpanel
+     * SDK accepts directly.
      *
      * @return The distinct id that uniquely identifies the current user.
      * @see #identify(String)
-     * @deprecated Use {@link #getIdentity()} instead. Its user, company and device ids are what
-     *     every Mixpanel SDK accepts directly, so nothing has to build or parse a combined id.
      */
-    @Deprecated
     public String getDistinctId() {
         final String eventsDistinctId = mPersistentIdentity.getEventsDistinctId();
         if (!mHierarchicalGroups) {
