@@ -994,12 +994,12 @@ public class HierarchicalGroupsTest {
         mixpanel.track("Upgraded");
         FlagsRequest request = takeFlagsRequest("/flags/flag_1/first-time-events");
         JSONObject body = new JSONObject(new String(request.body, StandardCharsets.UTF_8));
-        assertEquals("user_123", body.getString("distinct_id"));
+        assertFalse(body.has("distinct_id"));
         assertEquals(123, body.getLong("project_id"));
         assertEquals("HASH", body.getString("first_time_event_hash"));
         assertEquals("user_123", body.getString("$user_id"));
         assertEquals("company_123", body.getString("$company_id"));
-        assertEquals(5, body.length());
+        assertEquals(4, body.length());
     }
 
     @Test

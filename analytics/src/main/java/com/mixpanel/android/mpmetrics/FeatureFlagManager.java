@@ -1260,9 +1260,10 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
     // Build request body
     final MixpanelIdentity hierarchicalIdentity = getHierarchicalIdentity(delegate);
     JSONObject body = new JSONObject();
-    body.put(
-        "distinct_id",
-        hierarchicalIdentity != null ? hierarchicalIdentity.getUserId() : delegate.getDistinctId());
+    // On a hierarchical groups project the user is $user_id and $company_id, so no distinct_id
+    if (hierarchicalIdentity == null) {
+      body.put("distinct_id", delegate.getDistinctId());
+    }
     body.put("project_id", def.projectId);
     body.put("first_time_event_hash", def.firstTimeEventHash);
     putHierarchicalIdentity(body, hierarchicalIdentity);
@@ -1297,8 +1298,9 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
 
   /**
    * Returns the identity to send on a hierarchical groups project once a company is identified, or
-   * null otherwise. The flags service builds the combined id from $user_id and $company_id, so these
-   * requests send the user id as distinct_id rather than {@link FeatureFlagDelegate#getDistinctId()}.
+   * null otherwise. The flags service builds the combined id from $user_id and $company_id, so the
+   * flags request sends the user id as distinct_id rather than
+   * {@link FeatureFlagDelegate#getDistinctId()}, and first-time events send no distinct_id.
    */
   @Nullable
   private MixpanelIdentity getHierarchicalIdentity(@NonNull FeatureFlagDelegate delegate) {
