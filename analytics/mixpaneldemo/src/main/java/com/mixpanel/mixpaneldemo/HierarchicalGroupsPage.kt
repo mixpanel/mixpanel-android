@@ -32,7 +32,7 @@ import org.json.JSONObject
 
 // Hierarchical groups is an init-time option and instances are cached per token, so this page
 // uses its own project rather than the one DemoApplication initializes.
-const val MIXPANEL_HG_PROJECT_TOKEN = "0d15128ec05aa2ba0fb3d45185f63a11"
+const val MIXPANEL_HG_PROJECT_TOKEN = "YOUR_HG_PROJECT_TOKEN"
 
 // Filter logcat on "HGDemo|MixpanelAPI.API|MixpanelAPI.Messages" to see each call followed by
 // what it did: MixpanelAPI.API logs warnings and dropped calls, and MixpanelAPI.Messages logs
