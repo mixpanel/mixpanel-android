@@ -197,13 +197,11 @@ public class HierarchicalGroupsScenariosTest {
     // Identify
 
     @Test
-    public void testIdentify() throws JSONException {
-        String anonymousDistinctId = deviceDistinctId();
+    public void testIdentify() {
         identify();
 
-        JSONObject props = onlyEvent("$identify");
-        assertIdentified(props);
-        assertEquals(anonymousDistinctId, props.getString("$anon_distinct_id"));
+        // No $identify: the next event's identity keys tie the device to the user
+        assertTrue(mSent.isEmpty());
     }
 
     // Track (Identified)
@@ -697,14 +695,9 @@ public class HierarchicalGroupsScenariosTest {
         clearSent();
         mMixpanel.optInTrackingWithIdentity(new MixpanelIdentity(USER_ID, COMPANY_ID));
 
-        // $identify and $opt_in, in that order, both carrying the user and company
-        assertEquals(2, mSent.size());
-        assertEquals(TRACK, mSent.get(0).endpoint);
-        assertEquals("$identify", mSent.get(0).eventName);
-        assertIdentified(mSent.get(0).body);
-        assertEquals(TRACK, mSent.get(1).endpoint);
-        assertEquals("$opt_in", mSent.get(1).eventName);
-        assertIdentified(mSent.get(1).body);
+        // Only $opt_in, carrying the user and company
+        JSONObject props = onlyEvent("$opt_in");
+        assertIdentified(props);
         assertFalse(mMixpanel.hasOptedOutTracking());
     }
 

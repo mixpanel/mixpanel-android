@@ -139,13 +139,17 @@ public class HierarchicalGroupsTest {
     }
 
     @Test
-    public void testIdentifyEventCarriesTheNewCompany() throws JSONException {
+    public void testIdentifyTracksNoIdentifyEvent() throws JSONException {
         MixpanelAPI mixpanel = newApi(true);
         mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
+        assertEquals(0, countEvents("$identify"));
 
-        JSONObject props = lastEventProperties("$identify");
+        // The next event carries the identity keys that tie the device to the user
+        mixpanel.track("Viewed Report");
+        JSONObject props = lastEventProperties("Viewed Report");
         assertEquals("acme", props.getString("$company_id"));
         assertEquals("user_123", props.getString("$user_id"));
+        assertEquals(mixpanel.getAnonymousId(), props.getString("$device_id"));
     }
 
     @Test
@@ -173,11 +177,10 @@ public class HierarchicalGroupsTest {
     public void testCompanyChangeIsAnIdentityChange() throws JSONException {
         MixpanelAPI mixpanel = newApi(true);
         mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
-        mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
-        assertEquals(1, countEvents("$identify"));
+        assertEquals("$company:acme|$user:user_123", mixpanel.getDistinctId());
 
         mixpanel.identify(new MixpanelIdentity("user_123", "globex"));
-        assertEquals(2, countEvents("$identify"));
+        assertEquals("$company:globex|$user:user_123", mixpanel.getDistinctId());
 
         mixpanel.track("Viewed Report");
         assertEquals("globex", lastEventProperties("Viewed Report").getString("$company_id"));
@@ -204,7 +207,6 @@ public class HierarchicalGroupsTest {
         assertEquals("acme", mixpanel.getIdentity().getCompanyId());
         mixpanel.track("Viewed Report");
         assertEquals("acme", lastEventProperties("Viewed Report").getString("$company_id"));
-        assertEquals(1, countEvents("$identify"));
     }
 
     @Test
@@ -237,7 +239,6 @@ public class HierarchicalGroupsTest {
 
         assertEquals("user_123", mixpanel.getIdentity().getUserId());
         assertEquals("acme", mixpanel.getIdentity().getCompanyId());
-        assertEquals(1, countEvents("$identify"));
     }
 
     @Test
@@ -275,7 +276,7 @@ public class HierarchicalGroupsTest {
 
         // What analytics reports, it accepts back unchanged
         mixpanel.identify(mixpanel.getIdentity());
-        assertEquals(1, countEvents("$identify"));
+        assertEquals(new MixpanelIdentity("user_123", "acme", mixpanel.getAnonymousId()), mixpanel.getIdentity());
     }
 
     @Test

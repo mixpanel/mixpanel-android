@@ -916,9 +916,10 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      * mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
      * }</pre>
      *
-     * <p>Calling this with the current user and a different company is an identity change and
-     * tracks {@code $identify}, as switching users does. An identity without both a user id and a
-     * company id is logged and ignored.
+     * <p>Calling this with the current user and a different company is an identity change, as
+     * switching users is. No {@code $identify} event is tracked: Mixpanel ties the device to the
+     * user from the {@code $device_id}, {@code $user_id} and {@code $company_id} on later events.
+     * An identity without both a user id and a company id is logged and ignored.
      *
      * <p>On any other project Mixpanel ignores {@code $company_id}, so an identity that names a
      * company is logged and ignored rather than attributed without it. An identity with a null or
@@ -1004,12 +1005,16 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                     mFeatureFlagManager.reset();
                     mFeatureFlagManager.loadFlags();
                 }
-                try {
-                    JSONObject identifyPayload = new JSONObject();
-                    identifyPayload.put("$anon_distinct_id", currentEventsDistinctId);
-                    track("$identify", identifyPayload);
-                } catch (JSONException e) {
-                    MPLog.e(LOGTAG, "Could not track $identify event");
+                // A hierarchical groups project ties the device to the user from the identity keys
+                // on later events, so it has no $identify
+                if (!mHierarchicalGroups) {
+                    try {
+                        JSONObject identifyPayload = new JSONObject();
+                        identifyPayload.put("$anon_distinct_id", currentEventsDistinctId);
+                        track("$identify", identifyPayload);
+                    } catch (JSONException e) {
+                        MPLog.e(LOGTAG, "Could not track $identify event");
+                    }
                 }
             }
 
