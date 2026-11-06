@@ -3558,8 +3558,8 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         // Don't allow super properties or referral properties to override these fields,
         // but DO allow the caller to override them in their given properties.
         final double timeSecondsDouble = System.currentTimeMillis() / 1000.0;
-        // The stored id, not getDistinctId(): ingestion resolves a hierarchical user from the
-        // identity keys below, so the combined form is never sent
+        // The stored id, not getDistinctId(): it is sent only before a hierarchical user is
+        // identified, and ingestion resolves an identified one from the identity keys below
         final String distinctId;
         final String anonymousId;
         final String userId;
@@ -3574,7 +3574,10 @@ public class MixpanelAPI implements FeatureFlagDelegate {
             }
         }
         messageProps.put("time", System.currentTimeMillis());
-        messageProps.put("distinct_id", distinctId);
+        // On a hierarchical groups project the user is $user_id and $company_id, so no distinct_id
+        if (userId == null || companyId == null) {
+            messageProps.put("distinct_id", distinctId);
+        }
         messageProps.put(
                 "$had_persisted_distinct_id", mPersistentIdentity.getHadPersistedDistinctId());
         if (anonymousId != null) {

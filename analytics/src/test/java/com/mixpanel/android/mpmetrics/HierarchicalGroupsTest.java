@@ -299,9 +299,9 @@ public class HierarchicalGroupsTest {
         mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
         assertEquals("$company:acme|$user:user_123", mixpanel.getDistinctId());
 
-        // Events still send the stored id; ingestion resolves the user from the identity keys
+        // Events send no distinct_id; ingestion resolves the user from the identity keys
         mixpanel.track("Viewed Report");
-        assertEquals("user_123", lastEventProperties("Viewed Report").getString("distinct_id"));
+        assertFalse(lastEventProperties("Viewed Report").has("distinct_id"));
 
         mixpanel.identify(new MixpanelIdentity("user_123", "globex"));
         assertEquals("$company:globex|$user:user_123", mixpanel.getDistinctId());
@@ -1023,7 +1023,7 @@ public class HierarchicalGroupsTest {
         }
         assertNotNull("$experiment_started was not tracked", props);
         assertEquals("checkout", props.getString("Experiment name"));
-        assertEquals("user_123", props.getString("distinct_id"));
+        assertFalse(props.has("distinct_id"));
         assertEquals("user_123", props.getString("$user_id"));
         assertEquals("company_123", props.getString("$company_id"));
     }

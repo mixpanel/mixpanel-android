@@ -138,7 +138,7 @@ public class HierarchicalGroupsScenariosTest {
     }
 
     private void assertIdentified(JSONObject props) throws JSONException {
-        assertEquals(USER_ID, props.getString("distinct_id"));
+        assertFalse(props.has("distinct_id"));
         assertEquals(USER_ID, props.getString("$user_id"));
         assertEquals(COMPANY_ID, props.getString("$company_id"));
         assertEquals(mMixpanel.getAnonymousId(), props.getString("$device_id"));
