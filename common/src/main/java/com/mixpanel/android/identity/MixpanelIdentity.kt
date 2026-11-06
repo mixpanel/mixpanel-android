@@ -25,12 +25,23 @@ package com.mixpanel.android.identity
  * @property companyId the id of the user's top-level company, on a hierarchical groups project
  * @property deviceId the device id analytics assigned. Events and replays that carry it are
  *     attributed to the device until the user is known, then follow the user.
+ * @constructor For internal use by the Mixpanel SDKs only, which own the device id. Apps create an
+ *     identity with the constructor that takes only a user id and company id.
  */
-class MixpanelIdentity @JvmOverloads constructor(
+class MixpanelIdentity(
     val userId: String?,
-    val companyId: String? = null,
-    val deviceId: String? = null
+    val companyId: String?,
+    val deviceId: String?
 ) {
+
+    /**
+     * Creates an identity for a user and, on a hierarchical groups project, their company.
+     *
+     * @param userId the user's id
+     * @param companyId the id of the user's company, on a hierarchical groups project
+     */
+    @JvmOverloads
+    constructor(userId: String?, companyId: String? = null) : this(userId, companyId, null)
 
     override fun equals(other: Any?): Boolean = other is MixpanelIdentity &&
         userId == other.userId &&

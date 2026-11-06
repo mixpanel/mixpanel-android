@@ -38,6 +38,6 @@ class MixpanelIdentityTest {
             MixpanelIdentity("user_123", "acme", "device_abc").toString()
         )
         assertEquals("MixpanelIdentity(userId=user_123)", MixpanelIdentity("user_123").toString())
-        assertEquals("MixpanelIdentity(deviceId=device_abc)", MixpanelIdentity(null, deviceId = "device_abc").toString())
+        assertEquals("MixpanelIdentity(deviceId=device_abc)", MixpanelIdentity(null, null, "device_abc").toString())
     }
 }
