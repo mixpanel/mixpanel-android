@@ -9,6 +9,7 @@ import com.mixpanel.android.mpmetrics.MixpanelOptions
 class DemoApplication : Application() {
     override fun onCreate() {
         super.onCreate()
+        if (!MAIN_INSTANCE_ENABLED) return
 
         // Initialize Mixpanel with autocapture enabled
         val autocaptureOptions = AutocaptureOptions.Builder().build()

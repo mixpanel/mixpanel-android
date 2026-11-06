@@ -1,5 +1,7 @@
 package com.mixpanel.android.sessionreplay
 
+import com.mixpanel.android.identity.MixpanelIdentity
+import com.mixpanel.android.sessionreplay.utils.ReplayIdentity
 import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
@@ -260,18 +262,42 @@ class MPSessionReplayInstance(
     fun getSessionReplayUrl(): String? {
         if (!hasStartedRecording) return null
 
-        return EndPoints.SESSION_REPLAY_REDIRECT.toUri().buildUpon()
+        val builder = EndPoints.SESSION_REPLAY_REDIRECT.toUri().buildUpon()
             .appendQueryParameter("replay_id", getReplayId())
             .appendQueryParameter("distinct_id", getDistinctId())
             .appendQueryParameter("token", token)
-            .build()
-            .toString()
+        // On a hierarchical groups project the redirect builds the profile's distinct id from these
+        val identity = flushService.getIdentity()
+        val userId = identity?.userId?.takeIf { it.isNotEmpty() }
+        val companyId = identity?.companyId?.takeIf { it.isNotEmpty() }
+        if (userId != null && companyId != null) {
+            builder.appendQueryParameter("\$user_id", userId)
+                .appendQueryParameter("\$company_id", companyId)
+        }
+        return builder.build().toString()
     }
 
     fun isRecording(): Boolean = hasStartedRecording
 
     fun identify(distinctId: String) {
         flushService.updateDistinctId(distinctId)
+    }
+
+    /**
+     * Attributes recordings to the given identity, typically the one analytics reports through
+     * `MixpanelAPI.getIdentity()`. Replays then carry `$user_id`, `$company_id` and `$device_id`
+     * alongside `distinct_id`, so they resolve to the same user as the app's events, including on
+     * a project that uses hierarchical groups. Call it again whenever analytics identifies.
+     *
+     * An identity with neither a user id nor a device id is logged and ignored.
+     */
+    fun identify(identity: MixpanelIdentity) {
+        val distinctId = ReplayIdentity.distinctId(identity)
+        if (distinctId == null) {
+            Logger.warn("Can't identify Session Replay with $identity: it needs a user id or a device id")
+            return
+        }
+        flushService.updateIdentity(identity, distinctId)
     }
 
     fun addSensitiveView(view: View) {

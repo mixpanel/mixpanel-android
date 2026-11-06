@@ -8,6 +8,7 @@ import android.os.Looper;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.test.core.app.ApplicationProvider;
+import com.mixpanel.android.identity.MixpanelIdentity;
 import com.mixpanel.android.util.MPLog;
 import com.mixpanel.android.util.OfflineMode;
 import com.mixpanel.android.util.ProxyServerInteractor;
@@ -170,6 +171,11 @@ public class FeatureFlagManagerTest {
     @Override
     public String getAnonymousId() {
       return anonymousIdToReturn;
+    }
+
+    @Override
+    public MixpanelIdentity getIdentity() {
+      return null;
     }
 
     @Override

@@ -1,10 +1,12 @@
 package com.mixpanel.android.sessionreplay.network
 
 import android.content.Context
+import com.mixpanel.android.identity.MixpanelIdentity
 import com.mixpanel.android.sessionreplay.logging.Logger
 import com.mixpanel.android.sessionreplay.utils.APIConstants
 import com.mixpanel.android.sessionreplay.utils.EndPoints
 import com.mixpanel.android.sessionreplay.utils.PayloadInfo
+import com.mixpanel.android.sessionreplay.utils.ReplayIdentity
 import com.mixpanel.android.sessionreplay.utils.SessionReplayEncoder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -19,17 +21,33 @@ import kotlin.math.pow
 
 open class FlushRequest(
     private val token: String,
-    @Volatile internal var distinctId: String,
+    distinctId: String,
     private val serverUrl: String = EndPoints.DEFAULT_BASE_URL,
     private val network: Network = Network()
 ) {
+    // One reference, so a flush never pairs a new distinct id with the previous identity
+    private class Identifiers(val distinctId: String, val identity: MixpanelIdentity?)
+
+    @Volatile
+    private var identifiers = Identifiers(distinctId, null)
+
+    internal val distinctId: String
+        get() = identifiers.distinctId
+
+    internal val identity: MixpanelIdentity?
+        get() = identifiers.identity
+
     open var networkRequestsAllowedAfterTime = 0.0
     open var networkConsecutiveFailures = 0
     private val headers = mutableMapOf<String, String>()
     private val endPointUrl: String = EndPoints.record(serverUrl)
 
     internal fun updateDistinctId(newDistinctId: String) {
-        distinctId = newDistinctId
+        identifiers = Identifiers(newDistinctId, null)
+    }
+
+    internal fun updateIdentity(newIdentity: MixpanelIdentity, newDistinctId: String) {
+        identifiers = Identifiers(newDistinctId, newIdentity)
     }
 
     init {
@@ -98,10 +116,11 @@ open class FlushRequest(
         }
     }
 
-    private fun buildQueryItems(payloadInfo: PayloadInfo): List<Pair<String, String>> =
-        listOf(
+    private fun buildQueryItems(payloadInfo: PayloadInfo): List<Pair<String, String>> {
+        val current = identifiers
+        return listOf(
             "format" to "gzip",
-            "distinct_id" to distinctId,
+            "distinct_id" to current.distinctId,
             "seq" to payloadInfo.seq.toString(),
             "batch_start_time" to payloadInfo.batchStartTime.toString(),
             "replay_id" to payloadInfo.replayId,
@@ -109,7 +128,8 @@ open class FlushRequest(
             "replay_start_time" to payloadInfo.replayStartTime.toString(),
             "\$lib_version" to APIConstants.currentLibVersion,
             "mp_lib" to APIConstants.currentMpLib
-        )
+        ) + ReplayIdentity.queryItems(current.identity)
+    }
 
     private fun updateRetryDelay() {
         var retryTime = 0.0

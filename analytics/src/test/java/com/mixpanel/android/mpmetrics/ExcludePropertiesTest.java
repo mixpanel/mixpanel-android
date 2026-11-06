@@ -54,6 +54,7 @@ public class ExcludePropertiesTest {
         props.put("distinct_id", "abc-123");
         props.put("$device_id", "device-xyz");
         props.put("$user_id", "user-42");
+        props.put("$company_id", "company-7");
         props.put("$insert_id", "insert-1");
         props.put("$had_persisted_distinct_id", true);
         props.put("mp_lib", "android");

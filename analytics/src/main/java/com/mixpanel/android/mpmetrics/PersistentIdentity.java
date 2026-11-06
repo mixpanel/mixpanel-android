@@ -239,6 +239,21 @@ import com.mixpanel.android.util.MPLog;
         writeIdentities();
     }
 
+    public synchronized String getEventsCompanyId() {
+        if (! mIdentitiesLoaded) {
+            readIdentities();
+        }
+        return mEventsCompanyId;
+    }
+
+    public synchronized void setEventsCompanyId(String eventsCompanyId) {
+        if (! mIdentitiesLoaded) {
+            readIdentities();
+        }
+        mEventsCompanyId = eventsCompanyId;
+        writeIdentities();
+    }
+
     public synchronized String getPeopleDistinctId() {
         if (! mIdentitiesLoaded) {
             readIdentities();
@@ -595,6 +610,7 @@ import com.mixpanel.android.util.MPLog;
 
         mEventsDistinctId = prefs.getString("events_distinct_id", null);
         mEventsUserIdPresent = prefs.getBoolean("events_user_id_present", false);
+        mEventsCompanyId = prefs.getString("events_company_id", null);
         mPeopleDistinctId = prefs.getString("people_distinct_id", null);
         mAnonymousId = prefs.getString("anonymous_id", null);
         mHadPersistedDistinctId = prefs.getBoolean("had_persisted_distinct_id", false);
@@ -684,6 +700,7 @@ import com.mixpanel.android.util.MPLog;
 
             prefsEditor.putString("events_distinct_id", mEventsDistinctId);
             prefsEditor.putBoolean("events_user_id_present", mEventsUserIdPresent);
+            prefsEditor.putString("events_company_id", mEventsCompanyId);
             prefsEditor.putString("people_distinct_id", mPeopleDistinctId);
             prefsEditor.putString("anonymous_id", mAnonymousId);
             prefsEditor.putBoolean("had_persisted_distinct_id", mHadPersistedDistinctId);
@@ -711,6 +728,7 @@ import com.mixpanel.android.util.MPLog;
     private boolean mIdentitiesLoaded;
     private String mEventsDistinctId;
     private boolean mEventsUserIdPresent;
+    private String mEventsCompanyId;
     private String mPeopleDistinctId;
     private String mAnonymousId;
     private boolean mHadPersistedDistinctId;

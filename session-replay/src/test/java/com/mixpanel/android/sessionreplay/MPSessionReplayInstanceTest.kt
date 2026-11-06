@@ -14,6 +14,7 @@ import com.mixpanel.android.sessionreplay.services.FlushService
 import com.mixpanel.android.sessionreplay.tracking.ScreenRecorder
 import com.mixpanel.android.sessionreplay.wireframe.WireframeEmitter
 import io.mockk.Runs
+import com.mixpanel.android.identity.MixpanelIdentity
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
@@ -243,5 +244,27 @@ class MPSessionReplayInstanceTest {
 
         // Verify that the distinctId was updated
         assertEquals("newDistinctId", instance.getDistinctId())
+    }
+
+    @Test
+    fun testIdentifyWithIdentityUpdatesIdentityAndDistinctId() {
+        val mockFlushService = mockk<FlushService>(relaxed = true)
+        val instance =
+            MPSessionReplayInstance(
+                mockContext,
+                "token",
+                "originalDistinctId",
+                MPSessionReplayConfig(),
+                flushService = mockFlushService,
+                lifecycleScope = testScope
+            )
+
+        val identity = MixpanelIdentity("user_123", "acme", "device_abc")
+        instance.identify(identity)
+        verify { mockFlushService.updateIdentity(identity, "user_123") }
+
+        // Neither a user nor a device: nothing to attribute recordings to
+        instance.identify(MixpanelIdentity(null, "acme"))
+        verify(exactly = 1) { mockFlushService.updateIdentity(any(), any()) }
     }
 }
