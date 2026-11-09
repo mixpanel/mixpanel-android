@@ -375,6 +375,26 @@ public class HierarchicalGroupsTest {
     }
 
     @Test
+    public void testOptInWithIdentityWithoutCompanyIsDropped() {
+        MixpanelAPI mixpanel = newApi(true);
+        mixpanel.optOutTracking();
+        mixpanel.optInTrackingWithIdentity(new MixpanelIdentity("user_123"));
+
+        assertTrue(mixpanel.hasOptedOutTracking());
+        assertEquals(0, countEvents("$opt_in"));
+    }
+
+    @Test
+    public void testOptInWithCompanyWhenDisabledIsDropped() {
+        MixpanelAPI mixpanel = newApi(false);
+        mixpanel.optOutTracking();
+        mixpanel.optInTrackingWithIdentity(new MixpanelIdentity("user_123", "acme"));
+
+        assertTrue(mixpanel.hasOptedOutTracking());
+        assertEquals(0, countEvents("$opt_in"));
+    }
+
+    @Test
     public void testOptInWithoutArgumentsStillWorks() {
         MixpanelAPI mixpanel = newApi(true);
         mixpanel.optOutTracking();

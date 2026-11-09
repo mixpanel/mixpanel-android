@@ -938,30 +938,13 @@ public class MixpanelAPI implements FeatureFlagDelegate {
             MPLog.e(LOGTAG, "Can't identify with a null MixpanelIdentity.");
             return;
         }
+        final String identityError = identityError(identity);
+        if (identityError != null) {
+            MPLog.e(LOGTAG, identityError + " Nothing was identified.");
+            return;
+        }
         final String userId = identity.getUserId();
         final String companyId = identity.getCompanyId();
-        if (mHierarchicalGroups) {
-            if (userId == null || userId.isEmpty() || companyId == null || companyId.isEmpty()) {
-                MPLog.e(
-                        LOGTAG,
-                        "Can't identify " + identity + ": hierarchical groups projects identify a user by "
-                                + "company and user id, so both are required. Nothing was identified.");
-                return;
-            }
-        } else {
-            if (userId == null || userId.isEmpty()) {
-                MPLog.e(LOGTAG, "Can't identify " + identity + " without a user id. Nothing was identified.");
-                return;
-            }
-            if (companyId != null) {
-                MPLog.e(
-                        LOGTAG,
-                        "Can't identify " + identity + ": a company requires hierarchicalGroups(true) in "
-                                + "MixpanelOptions. Mixpanel ignores $company_id on other projects, so nothing "
-                                + "was identified.");
-                return;
-            }
-        }
         final String deviceId = identity.getDeviceId();
         if (deviceId != null && !deviceId.equals(getAnonymousId())) {
             MPLog.w(
@@ -971,6 +954,28 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                             + "with MixpanelOptions.Builder.deviceIdProvider().");
         }
         identify(userId, companyId, true);
+    }
+
+    // Why an identity can't be used on this project, or null when it can. Callers add what was dropped.
+    @Nullable
+    private String identityError(@NonNull MixpanelIdentity identity) {
+        final String userId = identity.getUserId();
+        final String companyId = identity.getCompanyId();
+        if (mHierarchicalGroups) {
+            if (userId == null || userId.isEmpty() || companyId == null || companyId.isEmpty()) {
+                return "Can't identify " + identity + ": hierarchical groups projects identify a user by "
+                        + "company and user id, so both are required.";
+            }
+        } else {
+            if (userId == null || userId.isEmpty()) {
+                return "Can't identify " + identity + " without a user id.";
+            }
+            if (companyId != null) {
+                return "Can't identify " + identity + ": a company requires hierarchicalGroups(true) in "
+                        + "MixpanelOptions. Mixpanel ignores $company_id on other projects.";
+            }
+        }
+        return null;
     }
 
     private void identify(String distinctId, String companyId, boolean usePeople) {
@@ -1931,13 +1936,19 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      * internally track an opt-in event to your project.
      *
      * @param identity Optional user, and on a hierarchical groups project their company. This will
-     *     call {@link #identify(MixpanelIdentity)}.
+     *     call {@link #identify(MixpanelIdentity)}. An identity it would refuse is logged, and the
+     *     user stays opted out.
      * @param properties Optional JSONObject that could be passed to add properties to the opt-in
      *     event that is sent to Mixpanel.
      *     <p>See also {@link #optInTrackingWithIdentity(MixpanelIdentity)} and {@link
      *     #optOutTracking()}.
      */
     public void optInTrackingWithIdentity(@Nullable MixpanelIdentity identity, JSONObject properties) {
+        final String identityError = identity == null ? null : identityError(identity);
+        if (identityError != null) {
+            MPLog.e(LOGTAG, identityError + " The user is still opted out.");
+            return;
+        }
         mPersistentIdentity.setOptOutTracking(false, mToken);
         if (identity != null) {
             identify(identity);
