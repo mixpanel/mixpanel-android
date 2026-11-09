@@ -444,6 +444,95 @@ public class HierarchicalGroupsTest {
         assertFalse(lastEventProperties("Viewed Report").has("$company_id"));
     }
 
+    // Records calls to the public overridable members that master's reset(), alias() and
+    // optInTracking() went through, so an app subclass overriding them still sees those calls.
+    private MixpanelAPI newRecordingApi(boolean hierarchicalGroups, final List<String> calls) {
+        MixpanelOptions options = new MixpanelOptions.Builder()
+                .hierarchicalGroups(hierarchicalGroups)
+                .build();
+        return new TestUtils.CleanMixpanelAPI(
+                mContext, new TestUtils.EmptyPreferences(mContext), UUID.randomUUID().toString(), options) {
+            @Override
+            protected AnalyticsMessages getAnalyticsMessages() {
+                return mCapturing;
+            }
+
+            @Override
+            public void identify(String distinctId, boolean usePeople) {
+                calls.add("identify(" + distinctId + "," + usePeople + ")");
+                super.identify(distinctId, usePeople);
+            }
+
+            @Override
+            public String getDistinctId() {
+                calls.add("getDistinctId");
+                return super.getDistinctId();
+            }
+
+            @Override
+            public void optInTracking(String distinctId, JSONObject properties) {
+                calls.add("optInTracking(" + distinctId + "," + properties + ")");
+                super.optInTracking(distinctId, properties);
+            }
+        };
+    }
+
+    @Test
+    public void testDisabledResetCallsPublicIdentify() {
+        List<String> calls = Collections.synchronizedList(new ArrayList<String>());
+        MixpanelAPI mixpanel = newRecordingApi(false, calls);
+        mixpanel.identify("user_123");
+        calls.clear();
+
+        mixpanel.reset();
+
+        String newId = mixpanel.getDistinctId();
+        assertTrue(calls.toString(), calls.contains("identify(" + newId + ",false)"));
+    }
+
+    @Test
+    public void testDisabledAliasWithNullOriginalUsesGetDistinctId() throws JSONException {
+        List<String> calls = Collections.synchronizedList(new ArrayList<String>());
+        MixpanelAPI mixpanel = newRecordingApi(false, calls);
+        mixpanel.identify("user_123");
+        calls.clear();
+
+        mixpanel.alias("alias_123", null);
+
+        assertTrue(calls.toString(), calls.contains("getDistinctId"));
+        JSONObject props = lastEventProperties("$create_alias");
+        assertEquals("alias_123", props.getString("alias"));
+        assertEquals("user_123", props.getString("distinct_id"));
+    }
+
+    @Test
+    public void testDisabledOptInTrackingCallsOptInTrackingWithNulls() {
+        List<String> calls = Collections.synchronizedList(new ArrayList<String>());
+        MixpanelAPI mixpanel = newRecordingApi(false, calls);
+        mixpanel.optOutTracking();
+        calls.clear();
+
+        mixpanel.optInTracking();
+
+        assertEquals(Collections.singletonList("optInTracking(null,null)"), calls);
+        assertFalse(mixpanel.hasOptedOutTracking());
+        assertEquals(1, countEvents("$opt_in"));
+    }
+
+    @Test
+    public void testEnabledOptInTrackingStillOptsIn() {
+        List<String> calls = Collections.synchronizedList(new ArrayList<String>());
+        MixpanelAPI mixpanel = newRecordingApi(true, calls);
+        mixpanel.optOutTracking();
+        calls.clear();
+
+        mixpanel.optInTracking();
+
+        assertFalse(calls.toString(), calls.contains("optInTracking(null,null)"));
+        assertFalse(mixpanel.hasOptedOutTracking());
+        assertEquals(1, countEvents("$opt_in"));
+    }
+
     // User profiles
 
     @Test

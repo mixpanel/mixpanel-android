@@ -827,7 +827,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
             return;
         }
         if (distinct_id == null) {
-            distinct_id = mPersistentIdentity.getEventsDistinctId();
+            distinct_id = getDistinctId();
         }
         if (alias.equals(distinct_id)) {
             MPLog.w(
@@ -1798,7 +1798,11 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         mPersistentIdentity.clearPreferences();
         getAnalyticsMessages()
                 .clearAnonymousUpdatesMessage(new AnalyticsMessages.MixpanelDescription(mToken));
-        identify(mPersistentIdentity.getEventsDistinctId(), null, false);
+        if (mHierarchicalGroups) {
+            identify(mPersistentIdentity.getEventsDistinctId(), null, false);
+        } else {
+            identify(getDistinctId(), false);
+        }
         flush();
 
         // identify() above no-ops its loadFlags() branch because reset has already overwritten
@@ -1862,7 +1866,11 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      * <p>See also {@link #optOutTracking()}.
      */
     public void optInTracking() {
-        optInTrackingWithIdentity(null, null);
+        if (mHierarchicalGroups) {
+            optInTrackingWithIdentity(null, null);
+        } else {
+            optInTracking(null, null);
+        }
     }
 
     /**
