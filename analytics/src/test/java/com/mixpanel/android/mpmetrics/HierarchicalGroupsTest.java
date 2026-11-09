@@ -8,10 +8,12 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
+import android.os.Bundle;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.test.core.app.ApplicationProvider;
 import com.mixpanel.android.identity.MixpanelIdentity;
+import com.mixpanel.android.util.Base64Coder;
 import com.mixpanel.android.util.OfflineMode;
 import com.mixpanel.android.util.ProxyServerInteractor;
 import com.mixpanel.android.util.RemoteService;
@@ -1438,7 +1440,11 @@ public class HierarchicalGroupsTest {
     }
 
     private MixpanelAPI newQueueApi(final QueueDatabase database) {
-        final AnalyticsMessages messages = new AnalyticsMessages(mContext, MPConfig.getInstance(mContext, null)) {
+        return newQueueApi(database, MPConfig.getInstance(mContext, null));
+    }
+
+    private MixpanelAPI newQueueApi(final QueueDatabase database, MPConfig config) {
+        final AnalyticsMessages messages = new AnalyticsMessages(mContext, config) {
             @Override
             protected RemoteService getPoster() {
                 return mFlagsService;
@@ -1513,6 +1519,181 @@ public class HierarchicalGroupsTest {
         } finally {
             database.deleteDB();
         }
+    }
+
+    @Test
+    public void testMovingQueuedUpdatesReportsRowsMoved() throws JSONException {
+        MPDbAdapter adapter = new MPDbAdapter(mContext, "HierarchicalGroups-" + UUID.randomUUID(),
+                MPConfig.getInstance(mContext, null));
+        try {
+            assertEquals(0, adapter.pushAnonymousUpdatesToUserProfileDb("TOKEN", "user_123", "acme"));
+
+            adapter.addJSON(new JSONObject().put("$set", new JSONObject().put("plan", "pro")), "TOKEN",
+                    MPDbAdapter.Table.ANONYMOUS_PEOPLE);
+            assertEquals(1, adapter.pushAnonymousUpdatesToUserProfileDb("TOKEN", "user_123", "acme"));
+
+            adapter.addJSON(new JSONObject().put("$set", new JSONObject().put("plan", "team")), "TOKEN",
+                    MPDbAdapter.Table.ANONYMOUS_PEOPLE);
+            adapter.addJSON(new JSONObject().put("$unset", new JSONArray().put("team")), "TOKEN",
+                    MPDbAdapter.Table.ANONYMOUS_PEOPLE);
+            assertEquals(2, adapter.pushAnonymousUpdatesToUserProfileDb("TOKEN", "user_123", "acme"));
+        } finally {
+            adapter.deleteDB();
+        }
+    }
+
+    @Test
+    public void testOneUpdateBeforeIdentifySchedulesGroupsFlush() throws Exception {
+        QueueDatabase database = new QueueDatabase(mContext);
+        Bundle metaData = new Bundle();
+        metaData.putInt("com.mixpanel.android.MPConfig.FlushInterval", 0);
+        try {
+            MixpanelAPI mixpanel = newQueueApi(database, new MPConfig(metaData, mContext, null));
+            mixpanel.getPeople().set("plan", "pro");
+            database.awaitWrites(1);
+            mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
+            database.awaitWrites(1);
+
+            // Nothing but the move schedules a flush here
+            FlagsRequest request = takeRequestContaining("/groups");
+            JSONArray sent = new JSONArray(Base64Coder.decodeString((String) request.params.get("data")));
+            assertEquals(1, sent.length());
+            JSONObject message = sent.getJSONObject(0);
+            assertEquals("pro", message.getJSONObject("$set").getString("plan"));
+            assertEquals("$user_id", message.getString("$group_key"));
+            assertEquals("user_123", message.getString("$group_id"));
+            assertEquals("acme", message.getString("$company_id"));
+            stopWorker(mixpanel.getAnalyticsMessages());
+        } finally {
+            database.deleteDB();
+        }
+    }
+
+    // Stops a worker started for one test, which would otherwise outlive it
+    private static void stopWorker(AnalyticsMessages messages) {
+        messages.hardKill();
+        LooperTestUtils.idleAllLoopers();
+    }
+
+    private FlagsRequest takeRequestContaining(String endpointPart) throws InterruptedException {
+        for (int i = 0; i < 50; i++) {
+            LooperTestUtils.idleAllLoopers();
+            FlagsRequest request = mFlagsRequests.poll(100, TimeUnit.MILLISECONDS);
+            if (request != null && request.endpointUrl.contains(endpointPart)) {
+                return request;
+            }
+        }
+        throw new AssertionError("No request to " + endpointPart);
+    }
+
+    @Test
+    public void testMovedUpdatesDontDeleteUnsentGroupUpdates() throws Exception {
+        Bundle metaData = new Bundle();
+        metaData.putInt("com.mixpanel.android.MPConfig.FlushBatchSize", 2);
+        MPDbAdapter adapter = new MPDbAdapter(mContext, "HierarchicalGroups-" + UUID.randomUUID(),
+                new MPConfig(metaData, mContext, null));
+        try {
+            adapter.addJSON(new JSONObject().put("$set", new JSONObject().put("plan", "pro")), "TOKEN",
+                    MPDbAdapter.Table.ANONYMOUS_PEOPLE);
+            Thread.sleep(5);
+            adapter.addJSON(new JSONObject().put("$set", new JSONObject().put("seats", 3)), "TOKEN",
+                    MPDbAdapter.Table.ANONYMOUS_PEOPLE);
+            Thread.sleep(5);
+            // A company profile update queued after the user's updates but before identify moves them
+            adapter.addJSON(new JSONObject()
+                            .put("$set", new JSONObject().put("tier", "gold"))
+                            .put("$group_key", "$company_id")
+                            .put("$group_id", "acme"),
+                    "TOKEN", MPDbAdapter.Table.GROUPS);
+            Thread.sleep(5);
+            adapter.pushAnonymousUpdatesToUserProfileDb("TOKEN", "user_123", "acme");
+
+            // Send in batches of two, deleting what each batch sent as the worker does
+            List<JSONObject> sent = new ArrayList<>();
+            String[] batch;
+            while ((batch = adapter.generateDataString(MPDbAdapter.Table.GROUPS, "TOKEN")) != null) {
+                JSONArray messages = new JSONArray(batch[1]);
+                for (int i = 0; i < messages.length(); i++) {
+                    sent.add(messages.getJSONObject(i));
+                }
+                adapter.cleanupEvents(batch[0], MPDbAdapter.Table.GROUPS, "TOKEN");
+            }
+
+            assertEquals(3, sent.size());
+            assertEquals("$company_id", sent.get(0).getString("$group_key"));
+            assertEquals("gold", sent.get(0).getJSONObject("$set").getString("tier"));
+            // The moved updates keep the order they were queued in
+            assertEquals("$user_id", sent.get(1).getString("$group_key"));
+            assertEquals("pro", sent.get(1).getJSONObject("$set").getString("plan"));
+            assertEquals("$user_id", sent.get(2).getString("$group_key"));
+            assertEquals(3, sent.get(2).getJSONObject("$set").getInt("seats"));
+        } finally {
+            adapter.deleteDB();
+        }
+    }
+
+    // An identify that runs while an update before it is being queued must queue its move after
+    // that update, or the update would wait in the anonymous queue for the next identify.
+    @Test
+    public void testUpdateRacingIdentifyIsQueuedBeforeTheMove() throws Exception {
+        final List<String> queued = Collections.synchronizedList(new ArrayList<String>());
+        final MixpanelAPI[] api = new MixpanelAPI[1];
+        final Thread[] identifier = new Thread[1];
+        final AnalyticsMessages messages = new AnalyticsMessages(mContext, MPConfig.getInstance(mContext, null)) {
+            @Override
+            public void peopleMessage(PeopleDescription description) {
+                if (identifier[0] == null) {
+                    // The update has chosen the anonymous queue. Identify on another thread now,
+                    // giving it time to finish before the update is queued if nothing stops it.
+                    identifier[0] = new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            api[0].identify(new MixpanelIdentity("user_123", "acme"));
+                        }
+                    });
+                    identifier[0].start();
+                    try {
+                        identifier[0].join(500);
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                queued.add(description.isAnonymous() ? "anonymous update" : "people update");
+            }
+
+            @Override
+            public void groupMessage(GroupDescription description) {
+                queued.add("user profile update");
+            }
+
+            @Override
+            public void pushAnonymousPeopleMessage(PushAnonymousPeopleDescription description) {
+                queued.add("move");
+            }
+
+            @Override
+            public void eventsMessage(EventDescription description) {}
+        };
+        MixpanelOptions options = new MixpanelOptions.Builder().hierarchicalGroups(true).build();
+        api[0] = new TestUtils.CleanMixpanelAPI(
+                mContext, new TestUtils.EmptyPreferences(mContext), UUID.randomUUID().toString(), options) {
+            @Override
+            protected AnalyticsMessages getAnalyticsMessages() {
+                return messages;
+            }
+        };
+
+        api[0].getPeople().set("plan", "pro");
+        identifier[0].join(10000);
+        assertFalse(identifier[0].isAlive());
+        api[0].getPeople().set("seen", true);
+
+        List<String> expected = new ArrayList<>();
+        expected.add("anonymous update");
+        expected.add("move");
+        expected.add("user profile update");
+        assertEquals(expected, queued);
+        stopWorker(messages);
     }
 
     // Feature flags: requests send $user_id and $company_id once a company is identified

@@ -3166,18 +3166,19 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         }
 
         private void identify_people(String distinctId) {
-            String companyId = null;
+            if (mHierarchicalGroups) {
+                // Queues the move under the lock that profile updates hold while they choose where
+                // to queue, so no update lands in the anonymous queue after this move
+                synchronized (mPersistentIdentity) {
+                    mPersistentIdentity.setPeopleDistinctId(distinctId);
+                    pushWaitingUserProfileRecord(distinctId, mPersistentIdentity.getEventsCompanyId());
+                }
+                return;
+            }
             synchronized (mPersistentIdentity) {
                 mPersistentIdentity.setPeopleDistinctId(distinctId);
-                if (mHierarchicalGroups) {
-                    companyId = mPersistentIdentity.getEventsCompanyId();
-                }
             }
-            if (mHierarchicalGroups) {
-                pushWaitingUserProfileRecord(distinctId, companyId);
-            } else {
-                pushWaitingPeopleRecord(distinctId);
-            }
+            pushWaitingPeopleRecord(distinctId);
         }
 
         @Override
@@ -3440,21 +3441,24 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                                 + "hierarchical groups equivalent. The update was dropped.");
                 return;
             }
-            final String userId;
-            final String companyId;
-            // One snapshot, so a concurrent identify can't update one user's profile in another company
+            // Read the identity and queue the update under the lock identify holds while it changes
+            // the identity and queues the move of updates waiting for it. The worker handles messages
+            // in order, so an update is either queued anonymously before the move and moved with the
+            // others, or sent to the identified user's profile after it, and none waits for a later
+            // identify. One snapshot also keeps a concurrent identify from updating one user's
+            // profile in another company.
             synchronized (mPersistentIdentity) {
-                userId = getDistinctId();
-                companyId = mPersistentIdentity.getEventsCompanyId();
+                final String userId = getDistinctId();
+                final String companyId = mPersistentIdentity.getEventsCompanyId();
+                if (userId == null || companyId == null) {
+                    // Queued like an anonymous people update, and sent to the $user_id profile at
+                    // identify(MixpanelIdentity)
+                    recordPeopleMessage(anonymousUserProfileMessage(actionType, properties));
+                    return;
+                }
+                recordGroupMessage(
+                        stdGroupMessage(USER_ID_GROUP_KEY, userId, companyId, actionType, properties));
             }
-            if (userId == null || companyId == null) {
-                // Queued like an anonymous people update, and sent to the $user_id profile at
-                // identify(MixpanelIdentity)
-                recordPeopleMessage(anonymousUserProfileMessage(actionType, properties));
-                return;
-            }
-            recordGroupMessage(
-                    stdGroupMessage(USER_ID_GROUP_KEY, userId, companyId, actionType, properties));
         }
 
         // A user profile update with no profile yet. Without $distinct_id it is queued with the
