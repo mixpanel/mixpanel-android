@@ -3,6 +3,7 @@ package com.mixpanel.android.mpmetrics;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import androidx.annotation.Nullable;
@@ -386,6 +387,30 @@ import com.mixpanel.android.util.MPLog;
      * on failure
      */
     /* package */ int pushAnonymousUpdatesToPeopleDb(String token, String distinctId) {
+        final Map<String, Object> identity = new HashMap<>();
+        identity.put("$distinct_id", distinctId);
+        return pushAnonymousUpdates(token, Table.PEOPLE, identity);
+    }
+
+    /**
+     * Copies anonymous people updates to groups db after a hierarchical groups user has been
+     * identified, as updates to the user's $user_id group profile in their company
+     * @param token project token
+     * @param userId the user id, which is the $user_id group profile's group id
+     * @param companyId the user's company
+     * @return the number of rows copied (anonymous updates), or DB_OUT_OF_MEMORY_ERROR/DB_UPDATE_ERROR
+     * on failure
+     */
+    /* package */ int pushAnonymousUpdatesToUserProfileDb(String token, String userId, String companyId) {
+        final Map<String, Object> identity = new LinkedHashMap<>();
+        identity.put("$group_key", "$user_id");
+        identity.put("$group_id", userId);
+        identity.put("$company_id", companyId);
+        return pushAnonymousUpdates(token, Table.GROUPS, identity);
+    }
+
+    // Moves each anonymous people update for token to the table, with the identity keys added
+    private int pushAnonymousUpdates(String token, Table table, Map<String, Object> identity) {
         if (this.aboveMemThreshold()) {
             MPLog.e(LOGTAG, "There is not enough space left on the device or " +
                     "the data was over the maximum size limit so it was discarded");
@@ -412,9 +437,11 @@ import com.mixpanel.android.util.MPLog;
                         values.put(KEY_TOKEN, selectCursor.getString(tokenColumnIndex));
                         final int dataColumnIndex = selectCursor.getColumnIndex(KEY_DATA) >= 0 ? selectCursor.getColumnIndex(KEY_DATA) : DATA_COLUMN_INDEX;
                         JSONObject updatedData = new JSONObject(selectCursor.getString(dataColumnIndex));
-                        updatedData.put("$distinct_id", distinctId);
+                        for (Map.Entry<String, Object> key : identity.entrySet()) {
+                            updatedData.put(key.getKey(), key.getValue());
+                        }
                         values.put(KEY_DATA, updatedData.toString());
-                        db.insert(Table.PEOPLE.getName(), null, values);
+                        db.insert(table.getName(), null, values);
                         final int idColumnIndex = selectCursor.getColumnIndex("_id") >= 0 ? selectCursor.getColumnIndex("_id") : ID_COLUMN_INDEX;
                         int rowId = selectCursor.getInt(idColumnIndex);
                         db.delete(Table.ANONYMOUS_PEOPLE.getName(), "_id = " + rowId, null);

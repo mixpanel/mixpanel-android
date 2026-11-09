@@ -771,13 +771,15 @@ public class HierarchicalGroupsScenariosTest {
         assertFalse(mMixpanel.getSuperProperties().has("team_id"));
     }
 
-    // Set User Property Before Identify (Unsupported)
+    // Set User Property Before Identify (Queued)
 
     @Test
-    public void testSetUserPropertyBeforeIdentifyIsUnsupported() {
+    public void testSetUserPropertyBeforeIdentifyIsQueued() {
         mMixpanel.getPeople().set("plan", "enterprise");
 
-        assertNothingSent();
+        // Held in the anonymous people queue, which identify sends to the $user_id profile
+        Sent sent = onlySent(ENGAGE);
+        assertTrue(new AnalyticsMessages.PeopleDescription(sent.body, mMixpanel.getToken()).isAnonymous());
     }
 
     // Set Company Property Before Identify (Unsupported)

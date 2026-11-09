@@ -35,6 +35,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
+import org.robolectric.shadows.ShadowLog;
 import org.robolectric.shadows.ShadowLooper;
 
 /**
@@ -48,6 +49,8 @@ public class HierarchicalGroupsTest {
     private List<AnalyticsMessages.EventDescription> mEvents;
     private List<AnalyticsMessages.PeopleDescription> mPeople;
     private List<AnalyticsMessages.GroupDescription> mGroups;
+    private List<AnalyticsMessages.PushAnonymousPeopleDescription> mPushes;
+    private List<String> mClears;
     private AnalyticsMessages mCapturing;
 
     @Before
@@ -56,6 +59,8 @@ public class HierarchicalGroupsTest {
         mEvents = Collections.synchronizedList(new ArrayList<AnalyticsMessages.EventDescription>());
         mPeople = Collections.synchronizedList(new ArrayList<AnalyticsMessages.PeopleDescription>());
         mGroups = Collections.synchronizedList(new ArrayList<AnalyticsMessages.GroupDescription>());
+        mPushes = Collections.synchronizedList(new ArrayList<AnalyticsMessages.PushAnonymousPeopleDescription>());
+        mClears = Collections.synchronizedList(new ArrayList<String>());
         mCapturing = new AnalyticsMessages(mContext, MPConfig.getInstance(mContext, null)) {
             @Override
             public void eventsMessage(EventDescription description) {
@@ -72,6 +77,16 @@ public class HierarchicalGroupsTest {
             @Override
             public void groupMessage(GroupDescription description) {
                 mGroups.add(description);
+            }
+
+            @Override
+            public void pushAnonymousPeopleMessage(PushAnonymousPeopleDescription description) {
+                mPushes.add(description);
+            }
+
+            @Override
+            public void clearAnonymousUpdatesMessage(MixpanelDescription description) {
+                mClears.add(description.getToken());
             }
         };
     }
@@ -612,22 +627,28 @@ public class HierarchicalGroupsTest {
     }
 
     @Test
-    public void testPeopleUpdatesBeforeIdentifyAreDropped() {
+    public void testPeopleUpdatesBeforeIdentifyAreQueued() throws JSONException {
         MixpanelAPI mixpanel = newApi(true);
         mixpanel.getPeople().set("plan", "pro");
 
-        assertEquals(0, mPeople.size());
+        // Queued with the anonymous people updates until identify names the profile
+        assertEquals(1, mPeople.size());
+        assertTrue(mPeople.get(0).isAnonymous());
+        assertEquals("pro", mPeople.get(0).getMessage().getJSONObject("$set").getString("plan"));
         assertEquals(0, mGroups.size());
+        assertEquals(0, mPushes.size());
     }
 
     @Test
-    public void testPeopleUpdatesWithoutCompanyAreDropped() {
+    public void testPeopleUpdatesWithoutCompanyAreQueued() {
         MixpanelAPI mixpanel = newApi(true);
         mixpanel.identify("user_123");
         mixpanel.getPeople().set("plan", "pro");
 
-        assertEquals(0, mPeople.size());
+        assertEquals(1, mPeople.size());
+        assertTrue(mPeople.get(0).isAnonymous());
         assertEquals(0, mGroups.size());
+        assertEquals(0, mPushes.size());
     }
 
     @Test
@@ -944,6 +965,554 @@ public class HierarchicalGroupsTest {
     public void testOptionDefaultsToDisabled() {
         assertFalse(new MixpanelOptions.Builder().build().isHierarchicalGroups());
         assertTrue(new MixpanelOptions.Builder().hierarchicalGroups(true).build().isHierarchicalGroups());
+    }
+
+    // Opt-in without a distinct id
+
+    @Test
+    public void testOptInTrackingWithNullDistinctIdOptsIn() throws JSONException {
+        MixpanelAPI mixpanel = newApi(true);
+        mixpanel.optOutTracking();
+        mixpanel.optInTracking(null, new JSONObject().put("source", "settings"));
+
+        assertFalse(mixpanel.hasOptedOutTracking());
+        JSONObject props = lastEventProperties("$opt_in");
+        assertEquals("settings", props.getString("source"));
+        assertFalse(props.has("$user_id"));
+
+        mixpanel.optOutTracking();
+        mixpanel.optInTracking((String) null);
+        assertFalse(mixpanel.hasOptedOutTracking());
+        assertEquals(2, countEvents("$opt_in"));
+    }
+
+    // Identity validation
+
+    @Test
+    public void testIdentityWithDeviceUserIdIsRefused() {
+        MixpanelAPI hierarchical = newApi(true);
+        hierarchical.identify(new MixpanelIdentity("$device:abc", "acme"));
+        assertNull(hierarchical.getIdentity().getUserId());
+        assertNull(hierarchical.getIdentity().getCompanyId());
+
+        hierarchical.optOutTracking();
+        hierarchical.optInTrackingWithIdentity(new MixpanelIdentity("$device:abc", "acme"));
+        assertTrue(hierarchical.hasOptedOutTracking());
+
+        MixpanelAPI legacy = newApi(false);
+        String anonymous = legacy.getDistinctId();
+        legacy.identify(new MixpanelIdentity("$device:abc"));
+        assertEquals(anonymous, legacy.getDistinctId());
+        assertEquals(0, countEvents("$identify"));
+
+        legacy.optOutTracking();
+        legacy.optInTrackingWithIdentity(new MixpanelIdentity("$device:abc"));
+        assertTrue(legacy.hasOptedOutTracking());
+        assertEquals(0, countEvents("$opt_in"));
+    }
+
+    @Test
+    public void testWhitespaceIdsAreRefused() {
+        MixpanelAPI hierarchical = newApi(true);
+        hierarchical.identify(new MixpanelIdentity("  ", "acme"));
+        hierarchical.identify(new MixpanelIdentity("user_123", " \t"));
+        assertNull(hierarchical.getIdentity().getUserId());
+        assertNull(hierarchical.getIdentity().getCompanyId());
+
+        hierarchical.optOutTracking();
+        hierarchical.optInTrackingWithIdentity(new MixpanelIdentity("user_123", " "));
+        assertTrue(hierarchical.hasOptedOutTracking());
+
+        MixpanelAPI legacy = newApi(false);
+        String anonymous = legacy.getDistinctId();
+        legacy.identify(new MixpanelIdentity(" "));
+        assertEquals(anonymous, legacy.getDistinctId());
+        assertEquals(0, countEvents("$identify"));
+    }
+
+    @Test
+    public void testIdsAreNotTrimmed() {
+        MixpanelAPI mixpanel = newApi(true);
+        mixpanel.identify(new MixpanelIdentity(" user_123 ", " acme "));
+
+        assertEquals(" user_123 ", mixpanel.getIdentity().getUserId());
+        assertEquals(" acme ", mixpanel.getIdentity().getCompanyId());
+    }
+
+    // $company_id is reserved for identify on a hierarchical groups project
+
+    // An instance whose stored preferences survive, so a second one on the token reloads them
+    private MixpanelAPI newPersistentApi(boolean hierarchicalGroups, String token) {
+        MixpanelOptions options = new MixpanelOptions.Builder()
+                .hierarchicalGroups(hierarchicalGroups)
+                .build();
+        return new MixpanelAPI(
+                mContext, new TestUtils.EmptyPreferences(mContext), token,
+                MPConfig.getInstance(mContext, null), options, false) {
+            @Override
+            protected AnalyticsMessages getAnalyticsMessages() {
+                return mCapturing;
+            }
+
+            @Override
+            boolean sendAppOpen() {
+                return false;
+            }
+        };
+    }
+
+    @Test
+    public void testCompanyIdSuperPropertiesAreRefused() throws JSONException {
+        MixpanelAPI mixpanel = newApi(true);
+        mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
+        mixpanel.registerSuperProperties(new JSONObject().put("$company_id", "globex").put("plan", "pro"));
+        mixpanel.registerSuperPropertiesOnce(new JSONObject().put("$company_id", "globex").put("plan", "pro"));
+        Map<String, Object> props = new HashMap<>();
+        props.put("$company_id", "globex");
+        props.put("plan", "pro");
+        mixpanel.registerSuperPropertiesMap(props);
+        mixpanel.registerSuperPropertiesOnceMap(props);
+
+        // The whole call is refused, not only $company_id
+        assertEquals(0, mixpanel.getSuperProperties().length());
+        mixpanel.track("Viewed Report");
+        JSONObject event = lastEventProperties("Viewed Report");
+        assertEquals("acme", event.getString("$company_id"));
+        assertFalse(event.has("plan"));
+
+        mixpanel.registerSuperProperties(new JSONObject().put("plan", "pro"));
+        assertEquals("pro", mixpanel.getSuperProperties().getString("plan"));
+    }
+
+    @Test
+    public void testUnregisterAndUpdateCannotChangeCompanyId() throws JSONException {
+        String token = UUID.randomUUID().toString();
+        // Stored before hierarchical groups was enabled
+        newPersistentApi(false, token)
+                .registerSuperProperties(new JSONObject().put("$company_id", "legacy").put("plan", "pro"));
+        MixpanelAPI mixpanel = newPersistentApi(true, token);
+        assertEquals("legacy", mixpanel.getSuperProperties().getString("$company_id"));
+
+        mixpanel.unregisterSuperProperty("$company_id");
+        assertEquals("legacy", mixpanel.getSuperProperties().getString("$company_id"));
+
+        mixpanel.updateSuperProperties(new SuperPropertyUpdate() {
+            public JSONObject update(JSONObject in) {
+                in.remove("$company_id");
+                in.remove("plan");
+                return in;
+            }
+        });
+        mixpanel.updateSuperProperties(new SuperPropertyUpdate() {
+            public JSONObject update(JSONObject in) {
+                try {
+                    in.put("$company_id", "globex");
+                    in.put("plan", "free");
+                } catch (JSONException e) {
+                    throw new RuntimeException(e);
+                }
+                return in;
+            }
+        });
+        JSONObject stored = mixpanel.getSuperProperties();
+        assertEquals("legacy", stored.getString("$company_id"));
+        assertEquals("pro", stored.getString("plan"));
+
+        // An update that leaves $company_id alone applies
+        mixpanel.updateSuperProperties(new SuperPropertyUpdate() {
+            public JSONObject update(JSONObject in) {
+                try {
+                    in.put("plan", "free");
+                } catch (JSONException e) {
+                    throw new RuntimeException(e);
+                }
+                return in;
+            }
+        });
+        assertEquals("free", mixpanel.getSuperProperties().getString("plan"));
+        mixpanel.unregisterSuperProperty("plan");
+        assertFalse(mixpanel.getSuperProperties().has("plan"));
+    }
+
+    @Test
+    public void testUpdateCannotAddCompanyId() throws JSONException {
+        MixpanelAPI mixpanel = newApi(true);
+        mixpanel.registerSuperProperties(new JSONObject().put("plan", "pro"));
+        mixpanel.updateSuperProperties(new SuperPropertyUpdate() {
+            public JSONObject update(JSONObject in) {
+                try {
+                    return new JSONObject().put("$company_id", "globex");
+                } catch (JSONException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        });
+
+        JSONObject stored = mixpanel.getSuperProperties();
+        assertFalse(stored.has("$company_id"));
+        assertEquals("pro", stored.getString("plan"));
+    }
+
+    @Test
+    public void testGroupCallsRefuseCompanyId() throws JSONException {
+        MixpanelAPI mixpanel = newApi(true);
+        mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
+        mixpanel.setGroup("$company_id", "globex");
+        mixpanel.setGroup("$company_id", (Object) null);
+        mixpanel.setGroup("$company_id", Collections.<Object>singletonList("globex"));
+        mixpanel.addGroup("$company_id", "globex");
+        mixpanel.removeGroup("$company_id", "acme");
+
+        assertEquals(0, mGroups.size());
+        assertEquals(0, mPeople.size());
+        assertFalse(mixpanel.getSuperProperties().has("$company_id"));
+        mixpanel.track("Viewed Report");
+        assertEquals("acme", lastEventProperties("Viewed Report").getString("$company_id"));
+    }
+
+    @Test
+    public void testCompanyIdIsOrdinaryWhenDisabled() throws JSONException {
+        MixpanelAPI mixpanel = newApi(false);
+        mixpanel.registerSuperProperties(new JSONObject().put("$company_id", "globex"));
+        assertEquals("globex", mixpanel.getSuperProperties().getString("$company_id"));
+        mixpanel.unregisterSuperProperty("$company_id");
+        assertFalse(mixpanel.getSuperProperties().has("$company_id"));
+
+        mixpanel.setGroup("$company_id", "globex");
+        mixpanel.track("Viewed Report");
+        JSONArray sent = lastEventProperties("Viewed Report").getJSONArray("$company_id");
+        assertEquals("globex", sent.getString(0));
+    }
+
+    // Events carry only the identified $company_id
+
+    @Test
+    public void testCallerCompanyIdIsReplacedByIdentifiedCompany() throws JSONException {
+        MixpanelAPI mixpanel = newApi(true);
+        mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
+        mixpanel.track("Viewed Report", new JSONObject().put("$company_id", "globex"));
+        assertEquals("acme", lastEventProperties("Viewed Report").getString("$company_id"));
+
+        Map<String, Object> groups = new HashMap<>();
+        groups.put("$company_id", "globex");
+        mixpanel.trackWithGroups("Grouped", new HashMap<String, Object>(), groups);
+        assertEquals("acme", lastEventProperties("Grouped").getString("$company_id"));
+        mixpanel.trackWithGroups("Grouped Only", null, groups);
+        assertEquals("acme", lastEventProperties("Grouped Only").getString("$company_id"));
+    }
+
+    @Test
+    public void testCallerCompanyIdIsRemovedBeforeIdentify() throws JSONException {
+        MixpanelAPI mixpanel = newApi(true);
+        mixpanel.track("Viewed Report", new JSONObject().put("$company_id", "globex").put("plan", "pro"));
+
+        JSONObject props = lastEventProperties("Viewed Report");
+        assertFalse(props.has("$company_id"));
+        assertEquals("pro", props.getString("plan"));
+
+        Map<String, Object> groups = new HashMap<>();
+        groups.put("$company_id", "globex");
+        mixpanel.trackWithGroups("Grouped", new HashMap<String, Object>(), groups);
+        assertFalse(lastEventProperties("Grouped").has("$company_id"));
+    }
+
+    @Test
+    public void testCallerCompanyIdIsSentWhenDisabled() throws JSONException {
+        MixpanelAPI mixpanel = newApi(false);
+        mixpanel.track("Viewed Report", new JSONObject().put("$company_id", "globex"));
+
+        assertEquals("globex", lastEventProperties("Viewed Report").getString("$company_id"));
+    }
+
+    @Test
+    public void testExcludingCompanyIdWarns() {
+        ShadowLog.reset();
+        newApi(true, Collections.singleton("$company_id"));
+        newApi(false, Collections.singleton("$company_id"));
+        newApi(true, Collections.singleton("plan"));
+
+        int warnings = 0;
+        for (ShadowLog.LogItem item : ShadowLog.getLogs()) {
+            if (item.msg != null && item.msg.contains("excludeProperties contains $company_id")) {
+                warnings++;
+            }
+        }
+        assertEquals(1, warnings);
+    }
+
+    // A null group
+
+    @Test
+    public void testSetGroupNullSetsNull() throws JSONException {
+        MixpanelAPI mixpanel = newApi(true);
+        mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
+        mixpanel.setGroup("team", (Object) null);
+
+        assertTrue(mixpanel.getSuperProperties().has("team"));
+        assertTrue(mixpanel.getSuperProperties().isNull("team"));
+        assertEquals(1, mGroups.size());
+        JSONObject message = mGroups.get(0).getMessage();
+        assertEquals("$user_id", message.getString("$group_key"));
+        assertEquals("user_123", message.getString("$group_id"));
+        assertSame(JSONObject.NULL, message.getJSONObject("$set").get("team"));
+
+        mixpanel.track("Viewed Report");
+        JSONObject props = lastEventProperties("Viewed Report");
+        assertTrue(props.has("team"));
+        assertTrue(props.isNull("team"));
+
+        mixpanel.removeGroup("team", null);
+        assertFalse(mixpanel.getSuperProperties().has("team"));
+        assertEquals(2, mGroups.size());
+        assertEquals("team", mGroups.get(1).getMessage().getJSONArray("$unset").getString(0));
+    }
+
+    @Test
+    public void testRemoveNullGroupKeepsASetGroup() throws JSONException {
+        MixpanelAPI mixpanel = newApi(true);
+        mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
+        mixpanel.setGroup("team", "finance");
+        mixpanel.removeGroup("team", null);
+        mixpanel.removeGroup("missing", null);
+
+        assertEquals("finance", mixpanel.getSuperProperties().getString("team"));
+        assertEquals(1, mGroups.size());
+    }
+
+    @Test
+    public void testDisabledSetGroupNullIsAnEmptyList() throws JSONException {
+        MixpanelAPI mixpanel = newApi(false);
+        mixpanel.setGroup("team", (Object) null);
+
+        assertEquals(0, mixpanel.getSuperProperties().getJSONArray("team").length());
+    }
+
+    // Removing a numeric group
+
+    @Test
+    public void testRemoveGroupMatchesDoubleAfterReload() throws JSONException {
+        String token = UUID.randomUUID().toString();
+        MixpanelAPI first = newPersistentApi(true, token);
+        first.identify(new MixpanelIdentity("user_123", "acme"));
+        first.setGroup("team", 5.0);
+
+        // The stored 5.0 reloads from JSON as an Integer
+        MixpanelAPI mixpanel = newPersistentApi(true, token);
+        Object reloaded = mixpanel.getSuperProperties().get("team");
+        assertTrue(reloaded instanceof Number);
+        mGroups.clear();
+        mixpanel.removeGroup("team", 5.0);
+
+        assertFalse(mixpanel.getSuperProperties().has("team"));
+        assertEquals(1, mGroups.size());
+        assertEquals("team", mGroups.get(0).getMessage().getJSONArray("$unset").getString(0));
+    }
+
+    @Test
+    public void testRemoveGroupMatchesNumbersByValue() throws JSONException {
+        MixpanelAPI mixpanel = newApi(true);
+        mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
+        mixpanel.setGroup("team", 5L);
+        mixpanel.removeGroup("team", 6);
+        mixpanel.removeGroup("team", 5.5);
+        assertTrue(mixpanel.getSuperProperties().has("team"));
+
+        mixpanel.removeGroup("team", 5);
+        assertFalse(mixpanel.getSuperProperties().has("team"));
+
+        mixpanel.setGroup("team", 7);
+        mixpanel.removeGroup("team", "7");
+        assertTrue(mixpanel.getSuperProperties().has("team"));
+        mixpanel.removeGroup("team", 7.0);
+        assertFalse(mixpanel.getSuperProperties().has("team"));
+    }
+
+    // Profile updates before identify are queued and sent to the $user_id profile at identify
+
+    @Test
+    public void testQueuedUpdatesArePushedToUserProfileAtIdentify() throws JSONException {
+        MixpanelAPI mixpanel = newApi(true);
+        mixpanel.getPeople().set("plan", "pro");
+        mixpanel.setGroup("team", "finance");
+        mixpanel.getPeople().increment("logins", 1);
+
+        // The unsupported increment is still dropped
+        assertEquals(2, mPeople.size());
+        assertTrue(mPeople.get(0).isAnonymous());
+        assertTrue(mPeople.get(1).isAnonymous());
+        assertEquals("finance", mPeople.get(1).getMessage().getJSONObject("$set").getString("team"));
+        assertEquals("finance", mixpanel.getSuperProperties().getString("team"));
+        assertEquals(0, mPushes.size());
+
+        mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
+        assertEquals(1, mPushes.size());
+        assertEquals("user_123", mPushes.get(0).getDistinctId());
+        assertEquals("acme", mPushes.get(0).getCompanyId());
+        assertEquals(0, mGroups.size());
+    }
+
+    @Test
+    public void testResetClearsQueuedUpdates() {
+        MixpanelAPI mixpanel = newApi(true);
+        mixpanel.getPeople().set("plan", "pro");
+        mixpanel.reset();
+
+        assertEquals(1, mClears.size());
+        assertEquals(mixpanel.getToken(), mClears.get(0));
+    }
+
+    @Test
+    public void testDisabledIdentifyPushesToPeople() {
+        MixpanelAPI mixpanel = newApi(false);
+        mixpanel.getPeople().set("plan", "pro");
+        mixpanel.identify("user_123");
+
+        assertTrue(mPeople.get(0).isAnonymous());
+        assertEquals(1, mPushes.size());
+        assertEquals("user_123", mPushes.get(0).getDistinctId());
+        assertNull(mPushes.get(0).getCompanyId());
+    }
+
+    @Test
+    public void testQueuedUpdatesMoveToUserProfileGroup() throws JSONException {
+        MPDbAdapter adapter = new MPDbAdapter(mContext, "HierarchicalGroupsQueue", MPConfig.getInstance(mContext, null));
+        try {
+            adapter.addJSON(new JSONObject().put("$set", new JSONObject().put("plan", "pro")), "TOKEN",
+                    MPDbAdapter.Table.ANONYMOUS_PEOPLE);
+            adapter.addJSON(new JSONObject().put("$unset", new JSONArray().put("team")), "TOKEN",
+                    MPDbAdapter.Table.ANONYMOUS_PEOPLE);
+            adapter.addJSON(new JSONObject().put("$set", new JSONObject().put("plan", "other")), "OTHER",
+                    MPDbAdapter.Table.ANONYMOUS_PEOPLE);
+
+            adapter.pushAnonymousUpdatesToUserProfileDb("TOKEN", "user_123", "acme");
+
+            assertNull(adapter.generateDataString(MPDbAdapter.Table.PEOPLE, "TOKEN"));
+            JSONArray sent = new JSONArray(adapter.generateDataString(MPDbAdapter.Table.GROUPS, "TOKEN")[1]);
+            assertEquals(2, sent.length());
+            assertEquals("pro", sent.getJSONObject(0).getJSONObject("$set").getString("plan"));
+            assertTrue(sent.getJSONObject(1).has("$unset"));
+            for (int i = 0; i < sent.length(); i++) {
+                JSONObject message = sent.getJSONObject(i);
+                assertEquals("$user_id", message.getString("$group_key"));
+                assertEquals("user_123", message.getString("$group_id"));
+                assertEquals("acme", message.getString("$company_id"));
+                assertFalse(message.has("$distinct_id"));
+            }
+            assertNull(adapter.generateDataString(MPDbAdapter.Table.GROUPS, "OTHER"));
+        } finally {
+            adapter.deleteDB();
+        }
+    }
+
+    // A real queue and database, so the updates are checked where /groups sends them from
+    private static class QueueDatabase extends MPDbAdapter {
+        final java.util.concurrent.Semaphore mWrites = new java.util.concurrent.Semaphore(0);
+
+        QueueDatabase(Context context) {
+            super(context, "HierarchicalGroups-" + UUID.randomUUID(), MPConfig.getInstance(context, null));
+        }
+
+        @Override
+        public int addJSON(JSONObject j, String token, Table table) {
+            int result = super.addJSON(j, token, table);
+            mWrites.release();
+            return result;
+        }
+
+        @Override
+        int pushAnonymousUpdatesToUserProfileDb(String token, String userId, String companyId) {
+            int result = super.pushAnonymousUpdatesToUserProfileDb(token, userId, companyId);
+            mWrites.release();
+            return result;
+        }
+
+        @Override
+        public void cleanupAllEvents(Table table, String token) {
+            super.cleanupAllEvents(table, token);
+            mWrites.release();
+        }
+
+        void awaitWrites(int count) throws InterruptedException {
+            assertTrue(mWrites.tryAcquire(count, 10, TimeUnit.SECONDS));
+        }
+    }
+
+    private MixpanelAPI newQueueApi(final QueueDatabase database) {
+        final AnalyticsMessages messages = new AnalyticsMessages(mContext, MPConfig.getInstance(mContext, null)) {
+            @Override
+            protected RemoteService getPoster() {
+                return mFlagsService;
+            }
+
+            @Override
+            protected MPDbAdapter makeDbAdapter(Context context) {
+                return database;
+            }
+        };
+        MixpanelOptions options = new MixpanelOptions.Builder().hierarchicalGroups(true).build();
+        return new TestUtils.CleanMixpanelAPI(
+                mContext, new TestUtils.EmptyPreferences(mContext), UUID.randomUUID().toString(), options) {
+            @Override
+            protected AnalyticsMessages getAnalyticsMessages() {
+                return messages;
+            }
+        };
+    }
+
+    @Test
+    public void testUpdatesBeforeIdentifyAreSentToUserProfileInOrder() throws Exception {
+        QueueDatabase database = new QueueDatabase(mContext);
+        try {
+            MixpanelAPI mixpanel = newQueueApi(database);
+            mixpanel.getPeople().set("plan", "pro");
+            database.awaitWrites(1);
+            Thread.sleep(5);
+            mixpanel.setGroup("team", "finance");
+            database.awaitWrites(1);
+            Thread.sleep(5); // distinct created_at, which orders the queue
+            mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
+            database.awaitWrites(1);
+            Thread.sleep(5);
+            mixpanel.getPeople().set("seen", true);
+            database.awaitWrites(1);
+
+            String token = mixpanel.getToken();
+            assertNull(database.generateDataString(MPDbAdapter.Table.ANONYMOUS_PEOPLE, token));
+            assertNull(database.generateDataString(MPDbAdapter.Table.PEOPLE, token));
+            JSONArray sent = new JSONArray(database.generateDataString(MPDbAdapter.Table.GROUPS, token)[1]);
+            assertEquals(3, sent.length());
+            assertEquals("pro", sent.getJSONObject(0).getJSONObject("$set").getString("plan"));
+            assertEquals("finance", sent.getJSONObject(1).getJSONObject("$set").getString("team"));
+            assertTrue(sent.getJSONObject(2).getJSONObject("$set").getBoolean("seen"));
+            for (int i = 0; i < sent.length(); i++) {
+                JSONObject message = sent.getJSONObject(i);
+                assertEquals("$user_id", message.getString("$group_key"));
+                assertEquals("user_123", message.getString("$group_id"));
+                assertEquals("acme", message.getString("$company_id"));
+            }
+        } finally {
+            database.deleteDB();
+        }
+    }
+
+    @Test
+    public void testResetDropsUpdatesQueuedBeforeIdentify() throws Exception {
+        QueueDatabase database = new QueueDatabase(mContext);
+        try {
+            MixpanelAPI mixpanel = newQueueApi(database);
+            mixpanel.getPeople().set("plan", "pro");
+            database.awaitWrites(1);
+            mixpanel.reset();
+            database.awaitWrites(1);
+            mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
+            database.awaitWrites(1);
+
+            String token = mixpanel.getToken();
+            assertNull(database.generateDataString(MPDbAdapter.Table.ANONYMOUS_PEOPLE, token));
+            assertNull(database.generateDataString(MPDbAdapter.Table.GROUPS, token));
+        } finally {
+            database.deleteDB();
+        }
     }
 
     // Feature flags: requests send $user_id and $company_id once a company is identified

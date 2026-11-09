@@ -39,6 +39,7 @@ import org.json.JSONObject;
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.math.BigDecimal;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -208,6 +209,9 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         mAutocapture = new Autocapture();
         mGroups = new HashMap<String, GroupImpl>();
         mConfig = config;
+        // Set before the stored preferences load, whose listener sends people updates queued
+        // before identify to the endpoint this flag picks
+        mHierarchicalGroups = options.isHierarchicalGroups();
 
         // Apply custom server URL before AnalyticsMessages is created so that early network
         // requests (e.g., ad-blocker checks) use the correct host. ProxyServerInteractor, if
@@ -244,7 +248,6 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         mEventTimings = mPersistentIdentity.getTimeEvents();
 
         mFeatureFlagOptions = options.getFeatureFlagOptions();
-        mHierarchicalGroups = options.isHierarchicalGroups();
         mExcludeProperties = mHierarchicalGroups
                 ? withoutCompanyId(options.getExcludeProperties())
                 : options.getExcludeProperties();
@@ -962,12 +965,12 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         final String userId = identity.getUserId();
         final String companyId = identity.getCompanyId();
         if (mHierarchicalGroups) {
-            if (userId == null || userId.isEmpty() || companyId == null || companyId.isEmpty()) {
+            if (isBlankId(userId) || isBlankId(companyId)) {
                 return "Can't identify " + identity + ": hierarchical groups projects identify a user by "
                         + "company and user id, so both are required.";
             }
         } else {
-            if (userId == null || userId.isEmpty()) {
+            if (isBlankId(userId)) {
                 return "Can't identify " + identity + " without a user id.";
             }
             if (companyId != null) {
@@ -975,7 +978,15 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                         + "MixpanelOptions. Mixpanel ignores $company_id on other projects.";
             }
         }
+        if (userId.startsWith("$device:")) {
+            return "Can't identify " + identity + ": a user id can't start with '$device:'.";
+        }
         return null;
+    }
+
+    // A whitespace-only id is as missing as an empty one
+    private static boolean isBlankId(@Nullable String id) {
+        return id == null || id.trim().isEmpty();
     }
 
     private void identify(String distinctId, String companyId, boolean usePeople) {
@@ -1402,6 +1413,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      */
     public void registerSuperProperties(JSONObject superProperties) {
         if (hasOptedOutTracking()) return;
+        if (refuseCompanyIdKey("registerSuperProperties", superProperties)) return;
         mPersistentIdentity.registerSuperProperties(superProperties);
     }
 
@@ -1418,6 +1430,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      */
     public void unregisterSuperProperty(String superPropertyName) {
         if (hasOptedOutTracking()) return;
+        if (refuseCompanyIdKey("unregisterSuperProperty", superPropertyName)) return;
         mPersistentIdentity.unregisterSuperProperty(superPropertyName);
     }
 
@@ -1455,6 +1468,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      */
     public void registerSuperPropertiesOnce(JSONObject superProperties) {
         if (hasOptedOutTracking()) return;
+        if (refuseCompanyIdKey("registerSuperPropertiesOnce", superProperties)) return;
         mPersistentIdentity.registerSuperPropertiesOnce(superProperties);
     }
 
@@ -1483,7 +1497,67 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      */
     public void updateSuperProperties(SuperPropertyUpdate update) {
         if (hasOptedOutTracking()) return;
+        if (mHierarchicalGroups && update != null) {
+            update = keepingCompanyId(update);
+        }
         mPersistentIdentity.updateSuperProperties(update);
+    }
+
+    // On a hierarchical groups project $company_id is the identified company, set only with
+    // identify(MixpanelIdentity), so a public call that names it is refused whole.
+    private boolean refuseCompanyIdKey(String operation, @Nullable JSONObject properties) {
+        return properties != null && refuseCompanyIdKey(operation, properties.has(COMPANY_ID_GROUP_KEY));
+    }
+
+    private boolean refuseCompanyIdKey(String operation, @Nullable String key) {
+        return refuseCompanyIdKey(operation, COMPANY_ID_GROUP_KEY.equals(key));
+    }
+
+    private boolean refuseCompanyIdKey(String operation, boolean namesCompanyId) {
+        if (!mHierarchicalGroups || !namesCompanyId) {
+            return false;
+        }
+        logCompanyIdReserved(operation);
+        return true;
+    }
+
+    private void logCompanyIdReserved(String operation) {
+        MPLog.e(
+                LOGTAG,
+                operation + " can't set $company_id on a hierarchical groups project, where it is the "
+                        + "identified company. Use identify(new MixpanelIdentity(userId, companyId)). "
+                        + "Nothing was changed.");
+    }
+
+    // Applies the update unless it adds, changes or removes $company_id, which leaves every super
+    // property as it was.
+    private SuperPropertyUpdate keepingCompanyId(final SuperPropertyUpdate update) {
+        return new SuperPropertyUpdate() {
+            public JSONObject update(JSONObject in) {
+                final Object companyBefore = in.opt(COMPANY_ID_GROUP_KEY);
+                final JSONObject original = new JSONObject();
+                try {
+                    final Iterator<String> keys = in.keys();
+                    while (keys.hasNext()) {
+                        final String key = keys.next();
+                        original.put(key, in.get(key));
+                    }
+                } catch (JSONException e) {
+                    MPLog.e(LOGTAG, "Can't copy super properties", e);
+                    return null;
+                }
+                final JSONObject updated = update.update(in);
+                if (updated == null) {
+                    return null;
+                }
+                final Object companyAfter = updated.opt(COMPANY_ID_GROUP_KEY);
+                if (companyBefore == null ? companyAfter != null : !companyBefore.equals(companyAfter)) {
+                    logCompanyIdReserved("updateSuperProperties");
+                    return original;
+                }
+                return updated;
+            }
+        };
     }
 
     /**
@@ -1491,7 +1565,8 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      *
      * <p>On a hierarchical groups project a user belongs to one group per group key, so the group is
      * stored as a single value rather than a list, and a list or array {@code groupID} is dropped
-     * with an error log.
+     * with an error log. A null {@code groupID} sets the group to null. {@code $company_id} is the
+     * identified company there, so setting it is dropped with an error log.
      *
      * @param groupKey The property name associated with this group type (must already have been set
      *     up).
@@ -1501,6 +1576,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         if (hasOptedOutTracking()) return;
 
         if (mHierarchicalGroups) {
+            if (refuseCompanyIdKey("setGroup", groupKey)) return;
             setHierarchicalGroup(groupKey, groupID);
             return;
         }
@@ -1524,6 +1600,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         if (hasOptedOutTracking()) return;
 
         if (mHierarchicalGroups) {
+            if (refuseCompanyIdKey("setGroup", groupKey)) return;
             logSingleGroupOnly("setGroup with a list", groupKey);
             return;
         }
@@ -1585,7 +1662,9 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      * Remove a group from this user's membership for a particular group key
      *
      * <p>On a hierarchical groups project this clears the group key when the user belongs to
-     * {@code groupID}, and does nothing otherwise.
+     * {@code groupID}, and does nothing otherwise. Numeric groups match by value, so 5 matches 5.0,
+     * and a null {@code groupID} matches a group set to null. {@code $company_id} can't be removed
+     * there.
      *
      * @param groupKey The property name associated with this group type (must already have been set
      *     up).
@@ -1595,6 +1674,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         if (hasOptedOutTracking()) return;
 
         if (mHierarchicalGroups) {
+            if (refuseCompanyIdKey("removeGroup", groupKey)) return;
             removeHierarchicalGroup(groupKey, groupID);
             return;
         }
@@ -1638,8 +1718,8 @@ public class MixpanelAPI implements FeatureFlagDelegate {
     }
 
     private void setHierarchicalGroup(String groupKey, Object groupID) {
-        if (groupKey == null || groupID == null) {
-            MPLog.w(LOGTAG, "groupKey and groupID must be non-null");
+        if (groupKey == null) {
+            MPLog.w(LOGTAG, "groupKey must be non-null");
             return;
         }
         // Hierarchical groups read a list as the name of one group, not as membership in each
@@ -1647,9 +1727,12 @@ public class MixpanelAPI implements FeatureFlagDelegate {
             logSingleGroupOnly("setGroup with a list", groupKey);
             return;
         }
+        // A null group is set as null, the single value of the one-item list setGroup sends without
+        // hierarchical groups
+        final Object value = groupID == null ? JSONObject.NULL : groupID;
         try {
-            registerSuperProperties((new JSONObject()).put(groupKey, groupID));
-            mPeople.set(groupKey, groupID);
+            registerSuperProperties((new JSONObject()).put(groupKey, value));
+            mPeople.set(groupKey, value);
         } catch (JSONException e) {
             MPLog.w(LOGTAG, "groupKey must be non-null");
         }
@@ -1668,15 +1751,15 @@ public class MixpanelAPI implements FeatureFlagDelegate {
     }
 
     private void removeHierarchicalGroup(final String groupKey, final Object groupID) {
-        if (groupKey == null || groupID == null) {
-            MPLog.w(LOGTAG, "groupKey and groupID must be non-null");
+        if (groupKey == null) {
+            MPLog.w(LOGTAG, "groupKey must be non-null");
             return;
         }
         final boolean[] removed = {false};
         updateSuperProperties(
                 new SuperPropertyUpdate() {
                     public JSONObject update(JSONObject in) {
-                        if (groupID.equals(singleGroup(in.opt(groupKey)))) {
+                        if (in.has(groupKey) && isSameGroup(singleGroup(in.opt(groupKey)), groupID)) {
                             in.remove(groupKey);
                             removed[0] = true;
                         }
@@ -1686,6 +1769,23 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         if (removed[0]) {
             mPeople.unset(groupKey);
         }
+    }
+
+    // Whether a stored group is groupID. Numbers match by value, since a stored group reloads from
+    // JSON as whichever number type parses (5 and 5.0 and 5L are one group), and null matches a
+    // group set to null.
+    private static boolean isSameGroup(Object stored, Object groupID) {
+        if (groupID == null || groupID == JSONObject.NULL) {
+            return stored == null || stored == JSONObject.NULL;
+        }
+        if (stored instanceof Number && groupID instanceof Number) {
+            try {
+                return new BigDecimal(stored.toString()).compareTo(new BigDecimal(groupID.toString())) == 0;
+            } catch (NumberFormatException e) {
+                // NaN or infinity, which only equal themselves
+            }
+        }
+        return groupID.equals(stored);
     }
 
     // A group key's value as one group. A one-item list, stored by an earlier version or before
@@ -1882,8 +1982,10 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      *     #identify(String)}.
      *     <p>See also {@link #optInTracking(String)}, {@link #optInTracking(String, JSONObject)} and
      *     {@link #optOutTracking()}.
-     *     <p>Not supported on a hierarchical groups project, where it is logged and ignored and the
-     *     user stays opted out. Use {@link #optInTrackingWithIdentity(MixpanelIdentity)} instead.
+     *     <p>Not supported with a distinct id on a hierarchical groups project, where it is logged
+     *     and ignored and the user stays opted out. Use {@link
+     *     #optInTrackingWithIdentity(MixpanelIdentity)} instead. A null distinct id opts in without
+     *     identifying, as {@link #optInTracking()} does.
      */
     public void optInTracking(String distinctId) {
         optInTracking(distinctId, null);
@@ -1899,12 +2001,13 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      * @param properties Optional JSONObject that could be passed to add properties to the opt-in
      *     event that is sent to Mixpanel.
      *     <p>See also {@link #optInTracking()} and {@link #optOutTracking()}.
-     *     <p>Not supported on a hierarchical groups project, where it is logged and ignored and the
-     *     user stays opted out. Use {@link #optInTrackingWithIdentity(MixpanelIdentity, JSONObject)}
-     *     instead.
+     *     <p>Not supported with a distinct id on a hierarchical groups project, where it is logged
+     *     and ignored and the user stays opted out. Use {@link
+     *     #optInTrackingWithIdentity(MixpanelIdentity, JSONObject)} instead. A null distinct id opts
+     *     in without identifying, and tracks the opt-in event with the given properties.
      */
     public void optInTracking(String distinctId, JSONObject properties) {
-        if (mHierarchicalGroups) {
+        if (mHierarchicalGroups && distinctId != null) {
             MPLog.e(
                     LOGTAG,
                     "optInTracking(String) is not supported for hierarchical groups projects, which identify "
@@ -2978,7 +3081,10 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                     @Override
                     public void onPrefsLoaded(SharedPreferences preferences) {
                         final String distinctId = PersistentIdentity.getPeopleDistinctId(preferences);
-                        if (null != distinctId) {
+                        if (mHierarchicalGroups) {
+                            pushWaitingUserProfileRecord(
+                                    distinctId, PersistentIdentity.getEventsCompanyId(preferences));
+                        } else if (null != distinctId) {
                             pushWaitingPeopleRecord(distinctId);
                         }
                     }
@@ -3011,6 +3117,10 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         if (!excludeProperties.contains(COMPANY_ID_GROUP_KEY)) {
             return excludeProperties;
         }
+        MPLog.w(
+                LOGTAG,
+                "MixpanelOptions.excludeProperties contains $company_id, which hierarchical groups "
+                        + "projects require on every event, so it is kept.");
         Set<String> kept = new LinkedHashSet<>(excludeProperties);
         kept.remove(COMPANY_ID_GROUP_KEY);
         return Collections.unmodifiableSet(kept);
@@ -3056,10 +3166,18 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         }
 
         private void identify_people(String distinctId) {
+            String companyId = null;
             synchronized (mPersistentIdentity) {
                 mPersistentIdentity.setPeopleDistinctId(distinctId);
+                if (mHierarchicalGroups) {
+                    companyId = mPersistentIdentity.getEventsCompanyId();
+                }
             }
-            pushWaitingPeopleRecord(distinctId);
+            if (mHierarchicalGroups) {
+                pushWaitingUserProfileRecord(distinctId, companyId);
+            } else {
+                pushWaitingPeopleRecord(distinctId);
+            }
         }
 
         @Override
@@ -3330,15 +3448,25 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                 companyId = mPersistentIdentity.getEventsCompanyId();
             }
             if (userId == null || companyId == null) {
-                MPLog.e(
-                        LOGTAG,
-                        "User profile updates for hierarchical groups projects need a user and a company. "
-                                + "Call identify(new MixpanelIdentity(userId, companyId)) first. The " + actionType
-                                + " update was dropped.");
+                // Queued like an anonymous people update, and sent to the $user_id profile at
+                // identify(MixpanelIdentity)
+                recordPeopleMessage(anonymousUserProfileMessage(actionType, properties));
                 return;
             }
             recordGroupMessage(
                     stdGroupMessage(USER_ID_GROUP_KEY, userId, companyId, actionType, properties));
+        }
+
+        // A user profile update with no profile yet. Without $distinct_id it is queued with the
+        // anonymous people updates, and identify adds the $user_id profile's group keys.
+        private JSONObject anonymousUserProfileMessage(String actionType, Object properties)
+                throws JSONException {
+            final JSONObject dataObj = new JSONObject();
+            dataObj.put(actionType, properties);
+            dataObj.put("$token", mToken);
+            dataObj.put("$time", System.currentTimeMillis());
+            dataObj.put("$mp_metadata", mSessionMetadata.getMetadataForPeople());
+            return dataObj;
         }
 
         private JSONObject stdPeopleMessage(String actionType, Object properties) throws JSONException {
@@ -3626,6 +3754,27 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                 final String key = (String) propIter.next();
                 messageProps.put(key, properties.opt(key));
             }
+            // On a hierarchical groups project $company_id is the identified company
+            if (mHierarchicalGroups && properties.has(COMPANY_ID_GROUP_KEY)) {
+                final Object callerCompanyId = properties.opt(COMPANY_ID_GROUP_KEY);
+                if (companyId != null) {
+                    messageProps.put(COMPANY_ID_GROUP_KEY, companyId);
+                    if (!companyId.equals(callerCompanyId)) {
+                        MPLog.w(
+                                LOGTAG,
+                                "Replaced $company_id " + callerCompanyId + " on " + eventName + " with the "
+                                        + "identified company " + companyId + ". Set the company with "
+                                        + "identify(new MixpanelIdentity(userId, companyId)).");
+                    }
+                } else {
+                    messageProps.remove(COMPANY_ID_GROUP_KEY);
+                    MPLog.w(
+                            LOGTAG,
+                            "Removed $company_id " + callerCompanyId + " from " + eventName + ": no company "
+                                    + "is identified. Set the company with identify(new "
+                                    + "MixpanelIdentity(userId, companyId)).");
+                }
+            }
         }
 
         return new AnalyticsMessages.EventDescription(
@@ -3683,6 +3832,16 @@ public class MixpanelAPI implements FeatureFlagDelegate {
     private void pushWaitingPeopleRecord(String distinctId) {
         mMessages.pushAnonymousPeopleMessage(
                 new AnalyticsMessages.PushAnonymousPeopleDescription(distinctId, mToken));
+    }
+
+    // On a hierarchical groups project, sends the user profile updates queued before identify to
+    // the user's $user_id group profile in their company. They wait until both are known.
+    private void pushWaitingUserProfileRecord(@Nullable String userId, @Nullable String companyId) {
+        if (userId == null || companyId == null) {
+            return;
+        }
+        mMessages.pushAnonymousPeopleMessage(
+                new AnalyticsMessages.PushAnonymousPeopleDescription(userId, companyId, mToken));
     }
 
     private static void registerAppLinksListeners(Context context, final MixpanelAPI mixpanel) {

@@ -25,6 +25,11 @@ import com.mixpanel.android.util.MPLog;
         return storedPreferences.getString("people_distinct_id", null);
     }
 
+    // Should ONLY be called from an OnPrefsLoadedListener (since it should NEVER be called concurrently)
+    public static String getEventsCompanyId(SharedPreferences storedPreferences) {
+        return storedPreferences.getString("events_company_id", null);
+    }
+
     public static void writeReferrerPrefs(Context context, String preferencesName, Map<String, String> properties) {
         synchronized (sReferrerPrefsLock) {
             final SharedPreferences referralInfo = context.getSharedPreferences(preferencesName, Context.MODE_PRIVATE);
