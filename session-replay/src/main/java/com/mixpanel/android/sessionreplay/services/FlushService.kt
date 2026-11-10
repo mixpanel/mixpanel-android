@@ -72,10 +72,6 @@ class FlushService internal constructor(
 
     internal fun getIdentifiers(): ReplayIdentifiers = flushRequest.currentIdentifiers
 
-    internal fun updateDistinctId(newDistinctId: String) {
-        flushRequest.updateDistinctId(newDistinctId)
-    }
-
     internal fun updateIdentifiers(identifiers: ReplayIdentifiers) {
         flushRequest.updateIdentifiers(identifiers)
     }

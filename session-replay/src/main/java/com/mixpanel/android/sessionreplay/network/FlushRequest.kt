@@ -46,10 +46,6 @@ open class FlushRequest internal constructor(
     private val headers = mutableMapOf<String, String>()
     private val endPointUrl: String = EndPoints.record(serverUrl)
 
-    internal fun updateDistinctId(newDistinctId: String) {
-        identifiers = ReplayIdentifiers.DistinctId(newDistinctId)
-    }
-
     internal fun updateIdentifiers(newIdentifiers: ReplayIdentifiers) {
         identifiers = newIdentifiers
     }

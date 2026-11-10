@@ -220,8 +220,8 @@ class MPSessionReplayInstanceTest {
         var currentDistinctId = "originalDistinctId"
 
         // Mock the methods
-        every { mockFlushService.updateDistinctId(any()) } answers {
-            currentDistinctId = firstArg<String>()
+        every { mockFlushService.updateIdentifiers(any()) } answers {
+            currentDistinctId = firstArg<ReplayIdentifiers>().distinctId
         }
         every { mockFlushService.getDistinctId() } answers { currentDistinctId }
         every { mockFlushService.replayId } returns "test-replay-id"
@@ -240,8 +240,12 @@ class MPSessionReplayInstanceTest {
         // Test the identify method
         instance.identify("newDistinctId")
 
-        // Verify that updateDistinctId was called
-        verify { mockFlushService.updateDistinctId("newDistinctId") }
+        // Verify that the distinct id was passed on, with no identity
+        verify {
+            mockFlushService.updateIdentifiers(
+                match { it is ReplayIdentifiers.DistinctId && it.distinctId == "newDistinctId" }
+            )
+        }
 
         // Verify that the distinctId was updated
         assertEquals("newDistinctId", instance.getDistinctId())

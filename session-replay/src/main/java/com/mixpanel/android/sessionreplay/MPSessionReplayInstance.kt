@@ -311,7 +311,7 @@ class MPSessionReplayInstance internal constructor(
     fun isRecording(): Boolean = hasStartedRecording
 
     fun identify(distinctId: String) {
-        flushService.updateDistinctId(distinctId)
+        flushService.updateIdentifiers(ReplayIdentifiers.DistinctId(distinctId))
     }
 
     /**

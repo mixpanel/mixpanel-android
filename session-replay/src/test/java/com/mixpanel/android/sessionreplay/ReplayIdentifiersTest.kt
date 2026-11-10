@@ -122,7 +122,7 @@ class ReplayIdentifiersTest {
         val identity = MixpanelIdentity("user_123", "acme", "device_abc")
         val sent = sentQueryItems {
             it.updateIdentifiers(ReplayIdentifiers.Identity.of(identity)!!)
-            it.updateDistinctId("someone_else")
+            it.updateIdentifiers(ReplayIdentifiers.DistinctId("someone_else"))
         }
 
         assertEquals("someone_else", sent["distinct_id"])
