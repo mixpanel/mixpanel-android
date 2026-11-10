@@ -4,6 +4,7 @@ import com.mixpanel.android.identity.MixpanelIdentity
 import com.mixpanel.android.sessionreplay.logging.Logger
 import com.mixpanel.android.sessionreplay.network.FlushRequest
 import com.mixpanel.android.sessionreplay.network.NetworkMonitoring
+import com.mixpanel.android.sessionreplay.utils.ReplayIdentifiers
 import com.mixpanel.android.sessionreplay.utils.EndPoints
 import com.mixpanel.android.sessionreplay.utils.PayloadInfo
 import com.mixpanel.android.sessionreplay.utils.ReplaySettings
@@ -20,18 +21,42 @@ import kotlinx.coroutines.withContext
 import java.util.Date
 import java.util.UUID
 
-class FlushService(
+class FlushService internal constructor(
     token: String,
-    distinctId: String,
+    identifiers: ReplayIdentifiers,
     var wifiOnly: Boolean,
     private val networkMonitor: NetworkMonitoring,
     private val lifecycleScope: CoroutineScope,
     private val eventService: EventService = EventService(),
     private val serverUrl: String = EndPoints.DEFAULT_BASE_URL,
-    private val flushRequest: FlushRequest = FlushRequest(token, distinctId, serverUrl),
+    private val flushRequest: FlushRequest = FlushRequest(token, identifiers, serverUrl),
     flushInterval: Long = ReplaySettings.FLUSH_INTERVAL, // Flush interval in seconds
     private val coroutineDispatcher: CoroutineDispatcher = Dispatchers.IO // Injecting dispatcher
 ) {
+    constructor(
+        token: String,
+        distinctId: String,
+        wifiOnly: Boolean,
+        networkMonitor: NetworkMonitoring,
+        lifecycleScope: CoroutineScope,
+        eventService: EventService = EventService(),
+        serverUrl: String = EndPoints.DEFAULT_BASE_URL,
+        flushRequest: FlushRequest = FlushRequest(token, distinctId, serverUrl),
+        flushInterval: Long = ReplaySettings.FLUSH_INTERVAL,
+        coroutineDispatcher: CoroutineDispatcher = Dispatchers.IO
+    ) : this(
+        token,
+        ReplayIdentifiers.DistinctId(distinctId),
+        wifiOnly,
+        networkMonitor,
+        lifecycleScope,
+        eventService,
+        serverUrl,
+        flushRequest,
+        flushInterval,
+        coroutineDispatcher
+    )
+
     // Pre-compute delay in milliseconds, capping to prevent overflow
     private val flushIntervalMs: Long = if (flushInterval >= Long.MAX_VALUE / 1000) Long.MAX_VALUE else flushInterval * 1000
 
@@ -52,8 +77,8 @@ class FlushService(
         flushRequest.updateDistinctId(newDistinctId)
     }
 
-    internal fun updateIdentity(identity: MixpanelIdentity, distinctId: String) {
-        flushRequest.updateIdentity(identity, distinctId)
+    internal fun updateIdentifiers(identifiers: ReplayIdentifiers) {
+        flushRequest.updateIdentifiers(identifiers)
     }
 
     fun start() {

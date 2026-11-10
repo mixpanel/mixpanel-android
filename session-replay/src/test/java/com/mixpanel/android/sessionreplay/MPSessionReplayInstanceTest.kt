@@ -261,10 +261,14 @@ class MPSessionReplayInstanceTest {
 
         val identity = MixpanelIdentity("user_123", "acme", "device_abc")
         instance.identify(identity)
-        verify { mockFlushService.updateIdentity(identity, "user_123") }
+        verify {
+            mockFlushService.updateIdentifiers(
+                match { it.identity === identity && it.distinctId == "user_123" }
+            )
+        }
 
         // Neither a user nor a device: nothing to attribute recordings to
         instance.identify(MixpanelIdentity(null, "acme"))
-        verify(exactly = 1) { mockFlushService.updateIdentity(any(), any()) }
+        verify(exactly = 1) { mockFlushService.updateIdentifiers(any()) }
     }
 }

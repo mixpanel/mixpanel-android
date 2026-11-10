@@ -1,6 +1,7 @@
 package com.mixpanel.android.sessionreplay
 
 import com.mixpanel.android.identity.MixpanelIdentity
+import com.mixpanel.android.sessionreplay.utils.ReplayIdentifiers
 import com.mixpanel.android.sessionreplay.utils.ReplayIdentity
 import android.content.Context
 import android.content.Intent
@@ -42,25 +43,63 @@ import java.util.Random
 import java.util.Timer
 import kotlin.concurrent.timer
 
-class MPSessionReplayInstance(
+class MPSessionReplayInstance internal constructor(
     private val appContext: Context,
     var token: String,
-    distinctId: String,
+    identifiers: ReplayIdentifiers,
     var config: MPSessionReplayConfig,
     val sessionReplaySender: SessionReplaySender = SessionReplaySender,
     private val lifecycleScope: CoroutineScope = ProcessLifecycleOwner.get().lifecycleScope,
     private val eventService: EventService = EventService(),
-    val flushService: FlushService = FlushService(
-        token,
-        distinctId,
-        config.wifiOnly,
-        networkMonitor = NetworkMonitor(appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager),
-        lifecycleScope = lifecycleScope,
-        flushInterval = config.flushInterval,
-        eventService = eventService,
-        serverUrl = config.serverUrl
-    )
+    val flushService: FlushService = defaultFlushService(appContext, token, identifiers, config, lifecycleScope, eventService)
 ) : TouchEventListener {
+    constructor(
+        appContext: Context,
+        token: String,
+        distinctId: String,
+        config: MPSessionReplayConfig,
+        sessionReplaySender: SessionReplaySender = SessionReplaySender,
+        lifecycleScope: CoroutineScope = ProcessLifecycleOwner.get().lifecycleScope,
+        eventService: EventService = EventService(),
+        flushService: FlushService = defaultFlushService(
+            appContext,
+            token,
+            ReplayIdentifiers.DistinctId(distinctId),
+            config,
+            lifecycleScope,
+            eventService
+        )
+    ) : this(
+        appContext,
+        token,
+        ReplayIdentifiers.DistinctId(distinctId),
+        config,
+        sessionReplaySender,
+        lifecycleScope,
+        eventService,
+        flushService
+    )
+
+    private companion object {
+        fun defaultFlushService(
+            appContext: Context,
+            token: String,
+            identifiers: ReplayIdentifiers,
+            config: MPSessionReplayConfig,
+            lifecycleScope: CoroutineScope,
+            eventService: EventService
+        ) = FlushService(
+            token,
+            identifiers,
+            config.wifiOnly,
+            networkMonitor = NetworkMonitor(appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager),
+            lifecycleScope = lifecycleScope,
+            flushInterval = config.flushInterval,
+            eventService = eventService,
+            serverUrl = config.serverUrl
+        )
+    }
+
     private val minIntervalBetweenScreenshots = 500L // 500ms = 2 times per second max
     private val minimalScreenshotDelayMs = 10L // Minimal delay when screenshot can be captured immediately
     private var lastScreenshotTime = 0L
@@ -157,7 +196,7 @@ class MPSessionReplayInstance(
         }
 
     init {
-        Logger.info("Initializing Session Replay with token: $token, distinctId: $distinctId")
+        Logger.info("Initializing Session Replay with token: $token, distinctId: ${identifiers.distinctId}")
         Logger.info("Session Replay Config: $config")
 
         SensitiveViewManager.autoMaskedViews = config.autoMaskedViews
@@ -295,12 +334,12 @@ class MPSessionReplayInstance(
      * An identity with neither a user id nor a device id is logged and ignored.
      */
     fun identify(identity: MixpanelIdentity) {
-        val distinctId = ReplayIdentity.distinctId(identity)
-        if (distinctId == null) {
+        val identifiers = ReplayIdentifiers.Identity.of(identity)
+        if (identifiers == null) {
             Logger.warn("Can't identify Session Replay with $identity: it needs a user id or a device id")
             return
         }
-        flushService.updateIdentity(identity, distinctId)
+        flushService.updateIdentifiers(identifiers)
     }
 
     fun addSensitiveView(view: View) {

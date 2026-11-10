@@ -6,6 +6,7 @@ import com.mixpanel.android.sessionreplay.network.FlushRequest
 import com.mixpanel.android.sessionreplay.network.Network
 import com.mixpanel.android.sessionreplay.utils.EndPoints
 import com.mixpanel.android.sessionreplay.utils.PayloadInfo
+import com.mixpanel.android.sessionreplay.utils.ReplayIdentifiers
 import com.mixpanel.android.sessionreplay.utils.ReplayIdentity
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -56,7 +57,7 @@ class ReplayIdentityTest {
     @Test
     fun flushSendsUserAndCompanyInsteadOfDistinctId() {
         val identity = MixpanelIdentity("user_123", "acme", "device_abc")
-        val sent = sentQueryItems { it.updateIdentity(identity, ReplayIdentity.distinctId(identity)!!) }
+        val sent = sentQueryItems { it.updateIdentifiers(ReplayIdentifiers.Identity.of(identity)!!) }
 
         assertFalse(sent.containsKey("distinct_id"))
         assertEquals("user_123", sent["\$user_id"])
@@ -67,7 +68,7 @@ class ReplayIdentityTest {
     @Test
     fun flushSendsDistinctIdWithoutACompany() {
         val identity = MixpanelIdentity("user_123", null, "device_abc")
-        val sent = sentQueryItems { it.updateIdentity(identity, ReplayIdentity.distinctId(identity)!!) }
+        val sent = sentQueryItems { it.updateIdentifiers(ReplayIdentifiers.Identity.of(identity)!!) }
 
         assertEquals("user_123", sent["distinct_id"])
         assertEquals("user_123", sent["\$user_id"])
@@ -78,7 +79,7 @@ class ReplayIdentityTest {
     @Test
     fun flushSendsDistinctIdWithoutAUser() {
         val identity = MixpanelIdentity(null, "acme", "device_abc")
-        val sent = sentQueryItems { it.updateIdentity(identity, ReplayIdentity.distinctId(identity)!!) }
+        val sent = sentQueryItems { it.updateIdentifiers(ReplayIdentifiers.Identity.of(identity)!!) }
 
         assertEquals("\$device:device_abc", sent["distinct_id"])
     }
@@ -86,7 +87,7 @@ class ReplayIdentityTest {
     @Test
     fun flushOmitsUnsetAndEmptyKeys() {
         val identity = MixpanelIdentity(null, "", "device_abc")
-        val sent = sentQueryItems { it.updateIdentity(identity, ReplayIdentity.distinctId(identity)!!) }
+        val sent = sentQueryItems { it.updateIdentifiers(ReplayIdentifiers.Identity.of(identity)!!) }
 
         assertEquals("\$device:device_abc", sent["distinct_id"])
         assertEquals("device_abc", sent["\$device_id"])
@@ -103,10 +104,25 @@ class ReplayIdentityTest {
     }
 
     @Test
+    fun anIdentityPassedAtConstructionIsSentWithTheFirstFlush() = runBlocking {
+        val network = CapturingNetwork()
+        val identity = MixpanelIdentity("user_123", null, "device_abc")
+        val flushRequest = FlushRequest(
+            "token", ReplayIdentifiers.Identity.of(identity)!!, EndPoints.DEFAULT_BASE_URL, network
+        )
+        flushRequest.sendRequest(PayloadInfo(emptyList(), 1.0, 1, "replay", 1, 1.0))
+        val sent = network.lastRequest!!.queryItems!!.toMap()
+
+        assertEquals("user_123", sent["distinct_id"])
+        assertEquals("user_123", sent["\$user_id"])
+        assertEquals("device_abc", sent["\$device_id"])
+    }
+
+    @Test
     fun identifyingByDistinctIdClearsTheIdentity() {
         val identity = MixpanelIdentity("user_123", "acme", "device_abc")
         val sent = sentQueryItems {
-            it.updateIdentity(identity, "user_123")
+            it.updateIdentifiers(ReplayIdentifiers.Identity.of(identity)!!)
             it.updateDistinctId("someone_else")
         }
 

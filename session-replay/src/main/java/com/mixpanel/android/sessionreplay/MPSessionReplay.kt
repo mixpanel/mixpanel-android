@@ -18,7 +18,7 @@ import com.mixpanel.android.sessionreplay.utils.APIConstants
 import com.mixpanel.android.sessionreplay.utils.LogMessages.AUTO_START_RECORDING_DEPRECATED
 import com.mixpanel.android.sessionreplay.utils.LogMessages.WIREFRAMES_BETA_NOTICE
 import com.mixpanel.android.sessionreplay.utils.RecordingEventTriggerEvaluator
-import com.mixpanel.android.sessionreplay.utils.ReplayIdentity
+import com.mixpanel.android.sessionreplay.utils.ReplayIdentifiers
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -141,7 +141,7 @@ object SessionReplayManager {
         distinctId: String,
         config: MPSessionReplayConfig,
         completion: (Result<MPSessionReplayInstance?>) -> Unit = {}
-    ) = initialize(appContext, token, distinctId, null, config, completion)
+    ) = initialize(appContext, token, ReplayIdentifiers.DistinctId(distinctId), config, completion)
 
     @Synchronized
     fun initialize(
@@ -151,21 +151,20 @@ object SessionReplayManager {
         config: MPSessionReplayConfig,
         completion: (Result<MPSessionReplayInstance?>) -> Unit = {}
     ) {
-        val distinctId = ReplayIdentity.distinctId(identity)
-        if (distinctId == null) {
+        val identifiers = ReplayIdentifiers.Identity.of(identity)
+        if (identifiers == null) {
             val error = "Can't initialize Session Replay with $identity: it needs a user id or a device id"
             Logger.warn(error)
             completion(Result.failure(MPSessionReplayError.InitializationError(IllegalArgumentException(error))))
             return
         }
-        initialize(appContext, token, distinctId, identity, config, completion)
+        initialize(appContext, token, identifiers, config, completion)
     }
 
     private fun initialize(
         appContext: Context,
         token: String,
-        distinctId: String,
-        identity: MixpanelIdentity?,
+        identifiers: ReplayIdentifiers,
         config: MPSessionReplayConfig,
         completion: (Result<MPSessionReplayInstance?>) -> Unit
     ) {
@@ -239,8 +238,7 @@ object SessionReplayManager {
                             completion(Result.failure(MPSessionReplayError.Disabled(error)))
                         }
                         else -> {
-                            instance = MPSessionReplayInstance(appContext, token, distinctId, resolvedSettings.config)
-                                .also { created -> identity?.let { created.identify(it) } }
+                            instance = MPSessionReplayInstance(appContext, token, identifiers, resolvedSettings.config)
                             setupEventTriggers(resolvedSettings.recordingEventTriggers)
                             completion(Result.success(instance))
                         }

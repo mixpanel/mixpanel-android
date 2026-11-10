@@ -6,6 +6,7 @@ import com.mixpanel.android.sessionreplay.logging.Logger
 import com.mixpanel.android.sessionreplay.utils.APIConstants
 import com.mixpanel.android.sessionreplay.utils.EndPoints
 import com.mixpanel.android.sessionreplay.utils.PayloadInfo
+import com.mixpanel.android.sessionreplay.utils.ReplayIdentifiers
 import com.mixpanel.android.sessionreplay.utils.ReplayIdentity
 import com.mixpanel.android.sessionreplay.utils.SessionReplayEncoder
 import kotlinx.coroutines.Dispatchers
@@ -19,17 +20,22 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
 
-open class FlushRequest(
+open class FlushRequest internal constructor(
     private val token: String,
-    distinctId: String,
+    identifiers: ReplayIdentifiers,
     private val serverUrl: String = EndPoints.DEFAULT_BASE_URL,
     private val network: Network = Network()
 ) {
-    // One reference, so a flush never pairs a new distinct id with the previous identity
-    private class Identifiers(val distinctId: String, val identity: MixpanelIdentity?)
+    constructor(
+        token: String,
+        distinctId: String,
+        serverUrl: String = EndPoints.DEFAULT_BASE_URL,
+        network: Network = Network()
+    ) : this(token, ReplayIdentifiers.DistinctId(distinctId), serverUrl, network)
 
+    // One reference, so a flush never pairs a new distinct id with the previous identity
     @Volatile
-    private var identifiers = Identifiers(distinctId, null)
+    private var identifiers: ReplayIdentifiers = identifiers
 
     internal val distinctId: String
         get() = identifiers.distinctId
@@ -43,11 +49,11 @@ open class FlushRequest(
     private val endPointUrl: String = EndPoints.record(serverUrl)
 
     internal fun updateDistinctId(newDistinctId: String) {
-        identifiers = Identifiers(newDistinctId, null)
+        identifiers = ReplayIdentifiers.DistinctId(newDistinctId)
     }
 
-    internal fun updateIdentity(newIdentity: MixpanelIdentity, newDistinctId: String) {
-        identifiers = Identifiers(newDistinctId, newIdentity)
+    internal fun updateIdentifiers(newIdentifiers: ReplayIdentifiers) {
+        identifiers = newIdentifiers
     }
 
     init {
