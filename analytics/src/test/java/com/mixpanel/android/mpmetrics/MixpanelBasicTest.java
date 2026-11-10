@@ -50,12 +50,7 @@ public class MixpanelBasicTest {
   public void setUp() throws Exception {
     mMockPreferences =
         new TestUtils.EmptyPreferences(ApplicationProvider.getApplicationContext());
-    AnalyticsMessages messages =
-        AnalyticsMessages.getInstance(
-            ApplicationProvider.getApplicationContext(),
-            MPConfig.getInstance(ApplicationProvider.getApplicationContext(), null),
-            null);
-    messages.hardKill();
+    AnalyticsMessages.hardKillAllInstancesForTesting(ApplicationProvider.getApplicationContext());
     Thread.sleep(2000);
   } // end of setUp() method definition
 

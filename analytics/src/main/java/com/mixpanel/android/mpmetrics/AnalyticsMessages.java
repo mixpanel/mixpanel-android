@@ -202,6 +202,35 @@ import org.json.JSONObject;
     /////////////////////////////////////////////////////////
     // For testing, to allow for Mocking.
 
+    /**
+     * Hard-kills every registered instance, waits briefly for each worker to stop, removes them
+     * from the registry so the next {@link #getInstance} call creates a fresh worker, and then
+     * deletes the default (unnamed) database.
+     *
+     * <p>Instances are keyed per token (or instance name), so tests can't reach the workers
+     * their {@code MixpanelAPI} instances created by looking one up with a {@code null} token.
+     * The database wipe keeps the clean-slate guarantee tests used to get as a side effect of
+     * killing the shared worker, even when no worker is registered (for example, when a test
+     * injects its own {@code AnalyticsMessages} subclass).
+     */
+    /* package */ static void hardKillAllInstancesForTesting(final Context context)
+            throws InterruptedException {
+        final AnalyticsMessages[] instances;
+        synchronized (sInstances) {
+            instances = sInstances.values().toArray(new AnalyticsMessages[0]);
+            sInstances.clear();
+        }
+        for (final AnalyticsMessages messages : instances) {
+            messages.hardKill();
+        }
+        for (final AnalyticsMessages messages : instances) {
+            for (int i = 0; i < 40 && !messages.isDead(); i++) {
+                Thread.sleep(50);
+            }
+        }
+        MPDbAdapter.getInstance(context, MPConfig.getInstance(context, null)).deleteDB();
+    }
+
     /* package */ boolean isDead() {
         return mWorker.isDead();
     }

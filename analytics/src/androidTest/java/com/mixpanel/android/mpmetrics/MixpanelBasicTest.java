@@ -53,12 +53,7 @@ public class MixpanelBasicTest {
   public void setUp() throws Exception {
     mMockPreferences =
         new TestUtils.EmptyPreferences(InstrumentationRegistry.getInstrumentation().getContext());
-    AnalyticsMessages messages =
-        AnalyticsMessages.getInstance(
-            InstrumentationRegistry.getInstrumentation().getContext(),
-            MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), null),
-            null);
-    messages.hardKill();
+    AnalyticsMessages.hardKillAllInstancesForTesting(InstrumentationRegistry.getInstrumentation().getContext());
     Thread.sleep(2000);
 
     try {

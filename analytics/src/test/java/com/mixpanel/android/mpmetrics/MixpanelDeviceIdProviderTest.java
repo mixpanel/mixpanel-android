@@ -38,18 +38,14 @@ public class MixpanelDeviceIdProviderTest {
         mMockPreferences = new TestUtils.EmptyPreferences(mContext);
 
         // Kill any existing AnalyticsMessages to ensure clean state
-        AnalyticsMessages messages = AnalyticsMessages.getInstance(
-                mContext, MPConfig.getInstance(mContext, null), null);
-        messages.hardKill();
+        AnalyticsMessages.hardKillAllInstancesForTesting(mContext);
         Thread.sleep(500);
     }
 
     @After
     public void tearDown() throws Exception {
         // Clean up any singleton instances
-        AnalyticsMessages messages = AnalyticsMessages.getInstance(
-                mContext, MPConfig.getInstance(mContext, null), null);
-        messages.hardKill();
+        AnalyticsMessages.hardKillAllInstancesForTesting(mContext);
         Thread.sleep(200);
     }
 
