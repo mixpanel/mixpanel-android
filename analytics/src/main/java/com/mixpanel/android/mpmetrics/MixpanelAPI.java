@@ -267,7 +267,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                 null);
         mFeatureFlagManager =
                 new FeatureFlagManager(
-                        this,
+                        mFlagsDelegate,
                         getHttpService(),
                         new FlagsConfig(
                                 mFeatureFlagOptions.isEnabled(),
@@ -1267,18 +1267,25 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      * Returns the distinct id Mixpanel resolves the current user to. Before any calls to
      * {@link #identify(String)}, this is {@code $device:} followed by the device id.
      *
-     * <p>On a hierarchical groups project Mixpanel builds the distinct id from the company and
-     * the user, so once both are known this returns {@code $company:{companyId}|$user:{userId}}.
-     * Until a company is known, Mixpanel ignores the user id and keeps the user under the device,
-     * so this returns the device form. The combined form is Mixpanel's own format, and it cannot
-     * be parsed back when either id contains {@code |}, so don't use this on a hierarchical groups
-     * project: prefer {@link #getIdentity()}, whose user, company and device ids every Mixpanel
-     * SDK accepts directly.
+     * <p>This should not be used on a hierarchical groups project, where a user is identified by
+     * their company and user id: use {@link #getIdentity()} instead. It logs a warning there, and
+     * returns Mixpanel's best match for the current user.
      *
      * @return The distinct id that uniquely identifies the current user.
      * @see #identify(String)
      */
     public String getDistinctId() {
+        if (mHierarchicalGroups) {
+            MPLog.w(
+                    LOGTAG,
+                    "getDistinctId() should not be used on a hierarchical groups project, which "
+                            + "identifies a user by company and user id. Use getIdentity() instead.");
+        }
+        return resolveDistinctId();
+    }
+
+    // getDistinctId() without the hierarchical groups warning, for the SDK's own use
+    private String resolveDistinctId() {
         final String eventsDistinctId = mPersistentIdentity.getEventsDistinctId();
         if (!mHierarchicalGroups) {
             return eventsDistinctId;
@@ -3833,6 +3840,40 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         }
     }
 
+    // What feature flags read from this instance. It reads the distinct id without the warning
+    // getDistinctId() logs on a hierarchical groups project, since the app didn't ask for it.
+    private class FlagsDelegate implements FeatureFlagDelegate {
+        @Override
+        public MPConfig getMPConfig() {
+            return MixpanelAPI.this.getMPConfig();
+        }
+
+        @Override
+        public String getDistinctId() {
+            return resolveDistinctId();
+        }
+
+        @Override
+        public String getAnonymousId() {
+            return MixpanelAPI.this.getAnonymousId();
+        }
+
+        @Override
+        public MixpanelIdentity getIdentity() {
+            return MixpanelAPI.this.getIdentity();
+        }
+
+        @Override
+        public void track(String eventName, JSONObject properties) {
+            MixpanelAPI.this.track(eventName, properties);
+        }
+
+        @Override
+        public String getToken() {
+            return MixpanelAPI.this.getToken();
+        }
+    }
+
     private void pushWaitingPeopleRecord(String distinctId) {
         mMessages.pushAnonymousPeopleMessage(
                 new AnalyticsMessages.PushAnonymousPeopleDescription(distinctId, mToken));
@@ -3970,6 +4011,8 @@ public class MixpanelAPI implements FeatureFlagDelegate {
     private final FeatureFlagOptions mFeatureFlagOptions;
     private final Set<String> mExcludeProperties;
     private final boolean mHierarchicalGroups;
+    // Held here because FeatureFlagManager keeps only a weak reference to its delegate
+    private final FeatureFlagDelegate mFlagsDelegate = new FlagsDelegate();
     private FeatureFlagManager mFeatureFlagManager;
     private AutocaptureManager mAutocaptureManager;
     private AutocaptureOptions mAutocaptureOptions;

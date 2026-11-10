@@ -339,6 +339,27 @@ public class HierarchicalGroupsTest {
         assertEquals("user_123", mixpanel.getDistinctId());
     }
 
+    private static int distinctIdWarnings() {
+        int warnings = 0;
+        for (ShadowLog.LogItem item : ShadowLog.getLogs()) {
+            if (item.msg != null && item.msg.contains("getDistinctId() should not be used")) {
+                warnings++;
+            }
+        }
+        return warnings;
+    }
+
+    @Test
+    public void testGetDistinctIdWarnsOnlyWhenEnabled() {
+        MixpanelAPI hierarchical = newApi(true);
+        MixpanelAPI legacy = newApi(false);
+        ShadowLog.reset();
+
+        hierarchical.getDistinctId();
+        legacy.getDistinctId();
+        assertEquals(1, distinctIdWarnings());
+    }
+
     @Test
     public void testResetReturnsToDeviceDistinctId() {
         MixpanelAPI mixpanel = newApi(true);
@@ -1839,6 +1860,17 @@ public class HierarchicalGroupsTest {
         assertEquals("enterprise", context.getString("plan"));
         assertEquals("user_123", context.getString("$user_id"));
         assertEquals("company_123", context.getString("$company_id"));
+    }
+
+    @Test
+    public void testFlagsRequestsDontWarnAboutGetDistinctId() throws Exception {
+        MixpanelAPI mixpanel = newFlagsApi(true);
+        ShadowLog.reset();
+
+        fetchFlagsContext(mixpanel);
+        mixpanel.identify(new MixpanelIdentity("user_123", "company_123"));
+        fetchFlagsContext(mixpanel);
+        assertEquals(0, distinctIdWarnings());
     }
 
     @Test
