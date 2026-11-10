@@ -90,7 +90,12 @@ open class MPSessionReplay {
          *
          * The identity needs a user id or a device id; otherwise [completion] receives an
          * [MPSessionReplayError.InitializationError]. See [MPSessionReplayInstance.identify].
+         *
+         * From Java this is a static method, with overloads that leave out `completion`, or both
+         * `config` and `completion`.
          */
+        @JvmStatic
+        @JvmOverloads
         fun initialize(
             appContext: Context,
             token: String,
