@@ -1260,13 +1260,14 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
     // Build request body
     final MixpanelIdentity hierarchicalIdentity = getHierarchicalIdentity(delegate);
     JSONObject body = new JSONObject();
-    // On a hierarchical groups project the user is $user_id and $company_id, so no distinct_id
-    if (hierarchicalIdentity == null) {
+    if (hierarchicalIdentity != null) {
+      // On a hierarchical groups project the user is $user_id and $company_id, so no distinct_id
+      putHierarchicalIdentity(body, hierarchicalIdentity);
+    } else {
       body.put("distinct_id", delegate.getDistinctId());
     }
     body.put("project_id", def.projectId);
     body.put("first_time_event_hash", def.firstTimeEventHash);
-    putHierarchicalIdentity(body, hierarchicalIdentity);
 
     byte[] requestBodyBytes = body.toString().getBytes(StandardCharsets.UTF_8);
 
