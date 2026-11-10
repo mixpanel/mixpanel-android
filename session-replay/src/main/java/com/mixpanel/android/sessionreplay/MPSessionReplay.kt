@@ -99,29 +99,6 @@ open class MPSessionReplay {
             completion: (Result<MPSessionReplayInstance?>) -> Unit = {}
         ) = SessionReplayManager.initialize(appContext, token, identity, config, completion)
 
-        @JvmStatic
-        fun initialize(
-            appContext: Context,
-            token: String,
-            identity: MixpanelIdentity,
-            completion: (Result<MPSessionReplayInstance?>) -> Unit
-        ) = initialize(appContext, token, identity, MPSessionReplayConfig(), completion)
-
-        @JvmStatic
-        fun initialize(
-            appContext: Context,
-            token: String,
-            identity: MixpanelIdentity,
-            config: MPSessionReplayConfig
-        ) = initialize(appContext, token, identity, config, {})
-
-        @JvmStatic
-        fun initialize(
-            appContext: Context,
-            token: String,
-            identity: MixpanelIdentity
-        ) = initialize(appContext, token, identity, MPSessionReplayConfig(), {})
-
         fun getInstance(): MPSessionReplayInstance? = SessionReplayManager.getInstance()
     }
 }
