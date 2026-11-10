@@ -15,7 +15,15 @@ internal object ReplayIdentity {
     fun distinctId(identity: MixpanelIdentity): String? = identity.userId.orNullIfEmpty()
         ?: identity.deviceId.orNullIfEmpty()?.let { "\$device:$it" }
 
-    /** The identity keys Mixpanel resolves a replay's user from, alongside `distinct_id`. */
+    /**
+     * Whether a request names its user with `distinct_id`. Not when the identity has both a user
+     * and a company: Mixpanel builds the user from `$user_id` and `$company_id`, as it does for
+     * events, which carry no `distinct_id` either.
+     */
+    fun sendsDistinctId(identity: MixpanelIdentity?): Boolean =
+        identity?.userId.orNullIfEmpty() == null || identity?.companyId.orNullIfEmpty() == null
+
+    /** The identity keys Mixpanel resolves a replay's user from. */
     fun queryItems(identity: MixpanelIdentity?): List<Pair<String, String>> {
         if (identity == null) return emptyList()
         return listOfNotNull(

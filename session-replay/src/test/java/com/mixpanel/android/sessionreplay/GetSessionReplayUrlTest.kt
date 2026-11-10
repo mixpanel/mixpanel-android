@@ -128,10 +128,10 @@ class GetSessionReplayUrlTest {
     }
 
     @Test
-    fun `getSessionReplayUrl adds the user and company for a hierarchical groups identity`() {
+    fun `getSessionReplayUrl sends the user and company instead of distinct_id for a hierarchical groups identity`() {
         val url = recordingUrl(MixpanelIdentity("user_123", "acme", "device_abc"))
         assertEquals(
-            "https://mixpanel.com/projects/replay-redirect?replay_id=test-replay-id&distinct_id=user_123" +
+            "https://mixpanel.com/projects/replay-redirect?replay_id=test-replay-id" +
                 "&token=test-token&%24user_id=user_123&%24company_id=acme",
             url
         )

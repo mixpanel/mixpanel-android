@@ -262,12 +262,14 @@ class MPSessionReplayInstance(
     fun getSessionReplayUrl(): String? {
         if (!hasStartedRecording) return null
 
+        val identity = flushService.getIdentity()
         val builder = EndPoints.SESSION_REPLAY_REDIRECT.toUri().buildUpon()
             .appendQueryParameter("replay_id", getReplayId())
-            .appendQueryParameter("distinct_id", getDistinctId())
-            .appendQueryParameter("token", token)
+        if (ReplayIdentity.sendsDistinctId(identity)) {
+            builder.appendQueryParameter("distinct_id", getDistinctId())
+        }
+        builder.appendQueryParameter("token", token)
         // On a hierarchical groups project the redirect builds the profile's distinct id from these
-        val identity = flushService.getIdentity()
         val userId = identity?.userId?.takeIf { it.isNotEmpty() }
         val companyId = identity?.companyId?.takeIf { it.isNotEmpty() }
         if (userId != null && companyId != null) {
@@ -287,7 +289,8 @@ class MPSessionReplayInstance(
      * Attributes recordings to the given identity, typically the one analytics reports through
      * `MixpanelAPI.getIdentity()`. Replays then carry `$user_id`, `$company_id` and `$device_id`
      * alongside `distinct_id`, so they resolve to the same user as the app's events, including on
-     * a project that uses hierarchical groups. Call it again whenever analytics identifies.
+     * a project that uses hierarchical groups. An identity with both a user and a company sends no
+     * `distinct_id`, as its events don't. Call it again whenever analytics identifies.
      *
      * An identity with neither a user id nor a device id is logged and ignored.
      */

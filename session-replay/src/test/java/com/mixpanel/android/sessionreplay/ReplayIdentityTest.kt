@@ -54,14 +54,33 @@ class ReplayIdentityTest {
     // What reaches the record endpoint
 
     @Test
-    fun flushSendsEveryIdentityKey() {
+    fun flushSendsUserAndCompanyInsteadOfDistinctId() {
         val identity = MixpanelIdentity("user_123", "acme", "device_abc")
+        val sent = sentQueryItems { it.updateIdentity(identity, ReplayIdentity.distinctId(identity)!!) }
+
+        assertFalse(sent.containsKey("distinct_id"))
+        assertEquals("user_123", sent["\$user_id"])
+        assertEquals("acme", sent["\$company_id"])
+        assertEquals("device_abc", sent["\$device_id"])
+    }
+
+    @Test
+    fun flushSendsDistinctIdWithoutACompany() {
+        val identity = MixpanelIdentity("user_123", null, "device_abc")
         val sent = sentQueryItems { it.updateIdentity(identity, ReplayIdentity.distinctId(identity)!!) }
 
         assertEquals("user_123", sent["distinct_id"])
         assertEquals("user_123", sent["\$user_id"])
-        assertEquals("acme", sent["\$company_id"])
         assertEquals("device_abc", sent["\$device_id"])
+        assertFalse(sent.containsKey("\$company_id"))
+    }
+
+    @Test
+    fun flushSendsDistinctIdWithoutAUser() {
+        val identity = MixpanelIdentity(null, "acme", "device_abc")
+        val sent = sentQueryItems { it.updateIdentity(identity, ReplayIdentity.distinctId(identity)!!) }
+
+        assertEquals("\$device:device_abc", sent["distinct_id"])
     }
 
     @Test

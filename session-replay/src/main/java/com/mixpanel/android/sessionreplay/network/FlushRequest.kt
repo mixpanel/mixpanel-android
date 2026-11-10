@@ -118,9 +118,9 @@ open class FlushRequest(
 
     private fun buildQueryItems(payloadInfo: PayloadInfo): List<Pair<String, String>> {
         val current = identifiers
-        return listOf(
+        return listOfNotNull(
             "format" to "gzip",
-            "distinct_id" to current.distinctId,
+            ("distinct_id" to current.distinctId).takeIf { ReplayIdentity.sendsDistinctId(current.identity) },
             "seq" to payloadInfo.seq.toString(),
             "batch_start_time" to payloadInfo.batchStartTime.toString(),
             "replay_id" to payloadInfo.replayId,
