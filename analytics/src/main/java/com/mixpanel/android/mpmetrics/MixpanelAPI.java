@@ -3838,8 +3838,8 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                 new AnalyticsMessages.PushAnonymousPeopleDescription(distinctId, mToken));
     }
 
-    // On a hierarchical groups project, sends the user profile updates queued before identify to
-    // the user's $user_id group profile in their company. They wait until both are known.
+    // Like pushWaitingPeopleRecord, sends the profile updates queued before identify, here to the
+    // user's $user_id group profile in their company on a hierarchical groups project.
     private void pushWaitingUserProfileRecord(@Nullable String userId, @Nullable String companyId) {
         if (userId == null || companyId == null) {
             return;
