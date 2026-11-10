@@ -1,6 +1,5 @@
 package com.mixpanel.android.sessionreplay.services
 
-import com.mixpanel.android.identity.MixpanelIdentity
 import com.mixpanel.android.sessionreplay.logging.Logger
 import com.mixpanel.android.sessionreplay.network.FlushRequest
 import com.mixpanel.android.sessionreplay.network.NetworkMonitoring
@@ -71,7 +70,7 @@ class FlushService internal constructor(
 
     internal fun getDistinctId(): String = flushRequest.distinctId
 
-    internal fun getIdentity(): MixpanelIdentity? = flushRequest.identity
+    internal fun getIdentifiers(): ReplayIdentifiers = flushRequest.currentIdentifiers
 
     internal fun updateDistinctId(newDistinctId: String) {
         flushRequest.updateDistinctId(newDistinctId)

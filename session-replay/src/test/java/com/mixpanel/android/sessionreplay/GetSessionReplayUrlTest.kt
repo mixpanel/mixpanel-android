@@ -18,6 +18,7 @@ import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 import com.mixpanel.android.identity.MixpanelIdentity
+import com.mixpanel.android.sessionreplay.utils.ReplayIdentifiers
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
@@ -53,7 +54,7 @@ class GetSessionReplayUrlTest {
         val mockFlushService = mockk<FlushService>()
         every { mockFlushService.replayId } returns "test-replay-id"
         every { mockFlushService.getDistinctId() } returns "test-distinct-id"
-        every { mockFlushService.getIdentity() } returns null
+        every { mockFlushService.getIdentifiers() } returns ReplayIdentifiers.DistinctId("test-distinct-id")
 
         val instance = MPSessionReplayInstance(
             context,
@@ -73,7 +74,7 @@ class GetSessionReplayUrlTest {
         every { mockFlushService.start() } just Runs
         every { mockFlushService.replayId } returns "test-replay-id"
         every { mockFlushService.getDistinctId() } returns "test-distinct-id"
-        every { mockFlushService.getIdentity() } returns null
+        every { mockFlushService.getIdentifiers() } returns ReplayIdentifiers.DistinctId("test-distinct-id")
 
         val mockSessionReplaySender = mockk<SessionReplaySender>(relaxed = true)
 
@@ -102,7 +103,7 @@ class GetSessionReplayUrlTest {
         every { mockFlushService.start() } just Runs
         every { mockFlushService.replayId } returns "550e8400-e29b-41d4-a716-446655440000"
         every { mockFlushService.getDistinctId() } returns "user@example.com"
-        every { mockFlushService.getIdentity() } returns null
+        every { mockFlushService.getIdentifiers() } returns ReplayIdentifiers.DistinctId("user@example.com")
 
         val mockSessionReplaySender = mockk<SessionReplaySender>(relaxed = true)
 
@@ -132,7 +133,7 @@ class GetSessionReplayUrlTest {
         val url = recordingUrl(MixpanelIdentity("user_123", "acme", "device_abc"))
         assertEquals(
             "https://mixpanel.com/projects/replay-redirect?replay_id=test-replay-id" +
-                "&token=test-token&%24user_id=user_123&%24company_id=acme",
+                "&%24user_id=user_123&%24company_id=acme&token=test-token",
             url
         )
     }
@@ -152,7 +153,7 @@ class GetSessionReplayUrlTest {
         every { mockFlushService.start() } just Runs
         every { mockFlushService.replayId } returns "test-replay-id"
         every { mockFlushService.getDistinctId() } returns "user_123"
-        every { mockFlushService.getIdentity() } returns identity
+        every { mockFlushService.getIdentifiers() } returns ReplayIdentifiers.Identity.of(identity)!!
 
         val instance = MPSessionReplayInstance(
             context,

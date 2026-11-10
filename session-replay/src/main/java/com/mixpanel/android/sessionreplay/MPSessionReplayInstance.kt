@@ -2,7 +2,6 @@ package com.mixpanel.android.sessionreplay
 
 import com.mixpanel.android.identity.MixpanelIdentity
 import com.mixpanel.android.sessionreplay.utils.ReplayIdentifiers
-import com.mixpanel.android.sessionreplay.utils.ReplayIdentity
 import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
@@ -301,21 +300,12 @@ class MPSessionReplayInstance internal constructor(
     fun getSessionReplayUrl(): String? {
         if (!hasStartedRecording) return null
 
-        val identity = flushService.getIdentity()
         val builder = EndPoints.SESSION_REPLAY_REDIRECT.toUri().buildUpon()
             .appendQueryParameter("replay_id", getReplayId())
-        if (ReplayIdentity.sendsDistinctId(identity)) {
-            builder.appendQueryParameter("distinct_id", getDistinctId())
+        flushService.getIdentifiers().redirectParams().forEach { (key, value) ->
+            builder.appendQueryParameter(key, value)
         }
-        builder.appendQueryParameter("token", token)
-        // On a hierarchical groups project the redirect builds the profile's distinct id from these
-        val userId = identity?.userId?.takeIf { it.isNotEmpty() }
-        val companyId = identity?.companyId?.takeIf { it.isNotEmpty() }
-        if (userId != null && companyId != null) {
-            builder.appendQueryParameter("\$user_id", userId)
-                .appendQueryParameter("\$company_id", companyId)
-        }
-        return builder.build().toString()
+        return builder.appendQueryParameter("token", token).build().toString()
     }
 
     fun isRecording(): Boolean = hasStartedRecording

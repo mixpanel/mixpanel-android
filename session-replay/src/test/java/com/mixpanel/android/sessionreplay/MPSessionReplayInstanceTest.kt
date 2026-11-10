@@ -15,6 +15,7 @@ import com.mixpanel.android.sessionreplay.tracking.ScreenRecorder
 import com.mixpanel.android.sessionreplay.wireframe.WireframeEmitter
 import io.mockk.Runs
 import com.mixpanel.android.identity.MixpanelIdentity
+import com.mixpanel.android.sessionreplay.utils.ReplayIdentifiers
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
@@ -263,7 +264,7 @@ class MPSessionReplayInstanceTest {
         instance.identify(identity)
         verify {
             mockFlushService.updateIdentifiers(
-                match { it.identity === identity && it.distinctId == "user_123" }
+                match { (it as? ReplayIdentifiers.Identity)?.identity === identity && it.distinctId == "user_123" }
             )
         }
 

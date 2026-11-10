@@ -1,13 +1,11 @@
 package com.mixpanel.android.sessionreplay.network
 
 import android.content.Context
-import com.mixpanel.android.identity.MixpanelIdentity
 import com.mixpanel.android.sessionreplay.logging.Logger
 import com.mixpanel.android.sessionreplay.utils.APIConstants
 import com.mixpanel.android.sessionreplay.utils.EndPoints
 import com.mixpanel.android.sessionreplay.utils.PayloadInfo
 import com.mixpanel.android.sessionreplay.utils.ReplayIdentifiers
-import com.mixpanel.android.sessionreplay.utils.ReplayIdentity
 import com.mixpanel.android.sessionreplay.utils.SessionReplayEncoder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -40,8 +38,8 @@ open class FlushRequest internal constructor(
     internal val distinctId: String
         get() = identifiers.distinctId
 
-    internal val identity: MixpanelIdentity?
-        get() = identifiers.identity
+    internal val currentIdentifiers: ReplayIdentifiers
+        get() = identifiers
 
     open var networkRequestsAllowedAfterTime = 0.0
     open var networkConsecutiveFailures = 0
@@ -123,10 +121,7 @@ open class FlushRequest internal constructor(
     }
 
     private fun buildQueryItems(payloadInfo: PayloadInfo): List<Pair<String, String>> {
-        val current = identifiers
-        return listOfNotNull(
-            "format" to "gzip",
-            ("distinct_id" to current.distinctId).takeIf { ReplayIdentity.sendsDistinctId(current.identity) },
+        return listOf("format" to "gzip") + identifiers.recordParams() + listOf(
             "seq" to payloadInfo.seq.toString(),
             "batch_start_time" to payloadInfo.batchStartTime.toString(),
             "replay_id" to payloadInfo.replayId,
@@ -134,7 +129,7 @@ open class FlushRequest internal constructor(
             "replay_start_time" to payloadInfo.replayStartTime.toString(),
             "\$lib_version" to APIConstants.currentLibVersion,
             "mp_lib" to APIConstants.currentMpLib
-        ) + ReplayIdentity.queryItems(current.identity)
+        )
     }
 
     private fun updateRetryDelay() {

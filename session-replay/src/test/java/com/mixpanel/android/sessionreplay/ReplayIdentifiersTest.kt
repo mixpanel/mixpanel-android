@@ -7,7 +7,6 @@ import com.mixpanel.android.sessionreplay.network.Network
 import com.mixpanel.android.sessionreplay.utils.EndPoints
 import com.mixpanel.android.sessionreplay.utils.PayloadInfo
 import com.mixpanel.android.sessionreplay.utils.ReplayIdentifiers
-import com.mixpanel.android.sessionreplay.utils.ReplayIdentity
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -15,7 +14,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class ReplayIdentityTest {
+class ReplayIdentifiersTest {
 
     private class CapturingNetwork : Network() {
         var lastRequest: APIRequest? = null
@@ -38,18 +37,18 @@ class ReplayIdentityTest {
 
     @Test
     fun distinctIdIsTheUserOnceIdentified() {
-        assertEquals("user_123", ReplayIdentity.distinctId(MixpanelIdentity("user_123", "acme", "device_abc")))
+        assertEquals("user_123", ReplayIdentifiers.Identity.of(MixpanelIdentity("user_123", "acme", "device_abc"))?.distinctId)
     }
 
     @Test
     fun distinctIdIsTheDeviceBeforeIdentify() {
-        assertEquals("\$device:device_abc", ReplayIdentity.distinctId(MixpanelIdentity(null, null, "device_abc")))
+        assertEquals("\$device:device_abc", ReplayIdentifiers.Identity.of(MixpanelIdentity(null, null, "device_abc"))?.distinctId)
     }
 
     @Test
     fun distinctIdNeedsUserOrDevice() {
-        assertNull(ReplayIdentity.distinctId(MixpanelIdentity(null, "acme")))
-        assertNull(ReplayIdentity.distinctId(MixpanelIdentity("", null, "")))
+        assertNull(ReplayIdentifiers.Identity.of(MixpanelIdentity(null, "acme"))?.distinctId)
+        assertNull(ReplayIdentifiers.Identity.of(MixpanelIdentity("", null, ""))?.distinctId)
     }
 
     // What reaches the record endpoint
