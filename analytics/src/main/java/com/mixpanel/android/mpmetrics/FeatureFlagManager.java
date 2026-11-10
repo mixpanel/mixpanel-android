@@ -811,8 +811,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
 
     final MPConfig config = delegate.getMPConfig();
     final MixpanelIdentity hierarchicalIdentity = getHierarchicalIdentity(delegate);
-    final String distinctId =
-        hierarchicalIdentity != null ? hierarchicalIdentity.getUserId() : delegate.getDistinctId();
+    final String distinctId = delegate.getDistinctId();
     final String deviceId = delegate.getAnonymousId();
 
     if (distinctId == null) {
@@ -826,11 +825,16 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
       // 1. Build Query Parameters
       // Defensive copy: we mutate contextJson below (adding distinct_id, device_id)
       JSONObject contextJson = new JSONObject(mCustomContext.toString());
-      contextJson.put("distinct_id", distinctId);
+      if (hierarchicalIdentity != null) {
+        // On a hierarchical groups project the user is $user_id and $company_id, so no distinct_id
+        contextJson.remove("distinct_id");
+        putHierarchicalIdentity(contextJson, hierarchicalIdentity);
+      } else {
+        contextJson.put("distinct_id", distinctId);
+      }
       if (deviceId != null) {
         contextJson.put("device_id", deviceId);
       }
-      putHierarchicalIdentity(contextJson, hierarchicalIdentity);
 
       Map<String, Object> params = new HashMap<>();
       params.put("context", contextJson.toString());
@@ -1299,9 +1303,8 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
 
   /**
    * Returns the identity to send on a hierarchical groups project once a company is identified, or
-   * null otherwise. The flags service builds the combined id from $user_id and $company_id, so the
-   * flags request sends the user id as distinct_id rather than
-   * {@link FeatureFlagDelegate#getDistinctId()}, and first-time events send no distinct_id.
+   * null otherwise. The flags service builds the user from $user_id and $company_id, so flags
+   * requests and first-time events send those instead of distinct_id.
    */
   @Nullable
   private MixpanelIdentity getHierarchicalIdentity(@NonNull FeatureFlagDelegate delegate) {
@@ -1316,10 +1319,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
   }
 
   private static void putHierarchicalIdentity(
-      @NonNull JSONObject json, @Nullable MixpanelIdentity hierarchicalIdentity) throws JSONException {
-    if (hierarchicalIdentity == null) {
-      return;
-    }
+      @NonNull JSONObject json, @NonNull MixpanelIdentity hierarchicalIdentity) throws JSONException {
     json.put("$user_id", hierarchicalIdentity.getUserId());
     json.put("$company_id", hierarchicalIdentity.getCompanyId());
   }

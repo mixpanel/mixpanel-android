@@ -1756,9 +1756,14 @@ public class HierarchicalGroupsTest {
     };
 
     private MixpanelAPI newFlagsApi(boolean hierarchicalGroups) {
+        return newFlagsApi(hierarchicalGroups, null);
+    }
+
+    private MixpanelAPI newFlagsApi(boolean hierarchicalGroups, @Nullable JSONObject flagsContext) {
         MixpanelOptions options = new MixpanelOptions.Builder()
                 .hierarchicalGroups(hierarchicalGroups)
-                .featureFlagOptions(new FeatureFlagOptions.Builder().enabled(true).build())
+                .featureFlagOptions(
+                        new FeatureFlagOptions.Builder().enabled(true).context(flagsContext).build())
                 .build();
         return new TestUtils.CleanMixpanelAPI(
                 mContext, new TestUtils.EmptyPreferences(mContext), UUID.randomUUID().toString(), options) {
@@ -1814,11 +1819,26 @@ public class HierarchicalGroupsTest {
         mixpanel.identify(new MixpanelIdentity("user_123", "company_123"));
 
         JSONObject context = fetchFlagsContext(mixpanel);
-        assertEquals("user_123", context.getString("distinct_id"));
+        assertFalse(context.has("distinct_id"));
         assertEquals(mixpanel.getAnonymousId(), context.getString("device_id"));
         assertEquals("user_123", context.getString("$user_id"));
         assertEquals("company_123", context.getString("$company_id"));
-        assertEquals(4, context.length());
+        assertEquals(3, context.length());
+    }
+
+    @Test
+    public void testFlagsContextDropsACustomDistinctIdAfterIdentify() throws Exception {
+        JSONObject custom = new JSONObject();
+        custom.put("distinct_id", "custom_id");
+        custom.put("plan", "enterprise");
+        MixpanelAPI mixpanel = newFlagsApi(true, custom);
+        mixpanel.identify(new MixpanelIdentity("user_123", "company_123"));
+
+        JSONObject context = fetchFlagsContext(mixpanel);
+        assertFalse(context.has("distinct_id"));
+        assertEquals("enterprise", context.getString("plan"));
+        assertEquals("user_123", context.getString("$user_id"));
+        assertEquals("company_123", context.getString("$company_id"));
     }
 
     @Test
