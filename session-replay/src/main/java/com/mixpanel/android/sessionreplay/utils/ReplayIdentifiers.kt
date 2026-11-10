@@ -11,6 +11,13 @@ internal sealed class ReplayIdentifiers {
     /** The distinct id the replay is attributed to. */
     abstract val distinctId: String
 
+    /**
+     * Whether Mixpanel names this user by `$user_id` and `$company_id`, as on a hierarchical groups
+     * project, rather than by [distinctId].
+     */
+    open val namedByUserAndCompany: Boolean
+        get() = false
+
     /** The parameters that tell the record endpoint who the replay belongs to. */
     abstract fun recordParams(): List<Pair<String, String>>
 
@@ -39,7 +46,7 @@ internal sealed class ReplayIdentifiers {
 
         // With both a user and a company, Mixpanel builds the user from $user_id and $company_id,
         // as it does for events, so no distinct id is sent
-        private val namedByUserAndCompany = userId != null && companyId != null
+        override val namedByUserAndCompany = userId != null && companyId != null
 
         override fun recordParams() = listOfNotNull(
             ("distinct_id" to distinctId).takeUnless { namedByUserAndCompany },

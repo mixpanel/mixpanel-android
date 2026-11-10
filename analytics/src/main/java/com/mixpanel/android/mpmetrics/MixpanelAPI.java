@@ -1265,7 +1265,8 @@ public class MixpanelAPI implements FeatureFlagDelegate {
 
     /**
      * Returns the distinct id Mixpanel resolves the current user to. Before any calls to
-     * {@link #identify(String)}, this is {@code $device:} followed by the device id.
+     * {@link #identify(String)} or {@link #identify(MixpanelIdentity)}, this is {@code $device:}
+     * followed by the device id.
      *
      * <p>This should not be used on a hierarchical groups project, where a user is identified by
      * their company and user id: use {@link #getIdentity()} instead. It logs a warning there, and
@@ -1335,8 +1336,9 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      * MPSessionReplay.getInstance().identify(mixpanel.getIdentity());
      * }</pre>
      *
-     * <p>Before {@link #identify(String)} the user id is null and only the device id is set. The
-     * returned identity is a snapshot and does not change after a later identify or {@link #reset()}.
+     * <p>Before {@link #identify(MixpanelIdentity)} the user id is null and only the device id is
+     * set. The returned identity is a snapshot and does not change after a later identify or {@link
+     * #reset()}.
      *
      * @return the current identity
      */
@@ -1420,7 +1422,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      */
     public void registerSuperProperties(JSONObject superProperties) {
         if (hasOptedOutTracking()) return;
-        if (refuseCompanyIdKey("registerSuperProperties", superProperties)) return;
+        if (refuseCompanyIdKey("registerSuperProperties", namesCompanyId(superProperties))) return;
         mPersistentIdentity.registerSuperProperties(superProperties);
     }
 
@@ -1437,7 +1439,9 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      */
     public void unregisterSuperProperty(String superPropertyName) {
         if (hasOptedOutTracking()) return;
-        if (refuseCompanyIdKey("unregisterSuperProperty", superPropertyName)) return;
+        if (refuseCompanyIdKey("unregisterSuperProperty", COMPANY_ID_GROUP_KEY.equals(superPropertyName))) {
+            return;
+        }
         mPersistentIdentity.unregisterSuperProperty(superPropertyName);
     }
 
@@ -1475,7 +1479,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      */
     public void registerSuperPropertiesOnce(JSONObject superProperties) {
         if (hasOptedOutTracking()) return;
-        if (refuseCompanyIdKey("registerSuperPropertiesOnce", superProperties)) return;
+        if (refuseCompanyIdKey("registerSuperPropertiesOnce", namesCompanyId(superProperties))) return;
         mPersistentIdentity.registerSuperPropertiesOnce(superProperties);
     }
 
@@ -1512,12 +1516,8 @@ public class MixpanelAPI implements FeatureFlagDelegate {
 
     // On a hierarchical groups project $company_id is the identified company, set only with
     // identify(MixpanelIdentity), so a public call that names it is refused whole.
-    private boolean refuseCompanyIdKey(String operation, @Nullable JSONObject properties) {
-        return properties != null && refuseCompanyIdKey(operation, properties.has(COMPANY_ID_GROUP_KEY));
-    }
-
-    private boolean refuseCompanyIdKey(String operation, @Nullable String key) {
-        return refuseCompanyIdKey(operation, COMPANY_ID_GROUP_KEY.equals(key));
+    private static boolean namesCompanyId(@Nullable JSONObject properties) {
+        return properties != null && properties.has(COMPANY_ID_GROUP_KEY);
     }
 
     private boolean refuseCompanyIdKey(String operation, boolean namesCompanyId) {
@@ -1583,7 +1583,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         if (hasOptedOutTracking()) return;
 
         if (mHierarchicalGroups) {
-            if (refuseCompanyIdKey("setGroup", groupKey)) return;
+            if (refuseCompanyIdKey("setGroup", COMPANY_ID_GROUP_KEY.equals(groupKey))) return;
             setHierarchicalGroup(groupKey, groupID);
             return;
         }
@@ -1607,7 +1607,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         if (hasOptedOutTracking()) return;
 
         if (mHierarchicalGroups) {
-            if (refuseCompanyIdKey("setGroup", groupKey)) return;
+            if (refuseCompanyIdKey("setGroup", COMPANY_ID_GROUP_KEY.equals(groupKey))) return;
             logSingleGroupOnly("setGroup with a list", groupKey);
             return;
         }
@@ -1681,7 +1681,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         if (hasOptedOutTracking()) return;
 
         if (mHierarchicalGroups) {
-            if (refuseCompanyIdKey("removeGroup", groupKey)) return;
+            if (refuseCompanyIdKey("removeGroup", COMPANY_ID_GROUP_KEY.equals(groupKey))) return;
             removeHierarchicalGroup(groupKey, groupID);
             return;
         }

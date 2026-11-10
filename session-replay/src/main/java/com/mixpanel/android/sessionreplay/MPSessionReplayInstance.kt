@@ -290,7 +290,23 @@ class MPSessionReplayInstance internal constructor(
 
     fun getReplayId(): String = flushService.replayId
 
-    fun getDistinctId(): String = flushService.getDistinctId()
+    /**
+     * Returns the distinct id recordings are attributed to.
+     *
+     * This should not be used for an identity with both a user and a company, as on a hierarchical
+     * groups project, where Mixpanel identifies the user by company and user id: use the identity
+     * passed to [identify] instead. It logs a warning there.
+     */
+    fun getDistinctId(): String {
+        val identifiers = flushService.getIdentifiers()
+        if (identifiers.namedByUserAndCompany) {
+            Logger.warn(
+                "getDistinctId() should not be used for an identity with a user and a company, which " +
+                    "Mixpanel identifies by company and user id. Use the identity passed to identify instead."
+            )
+        }
+        return identifiers.distinctId
+    }
 
     /**
      * Returns the URL to view the current session replay in the Mixpanel dashboard.

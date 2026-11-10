@@ -107,7 +107,10 @@ class ReplayIdentifiersTest {
         val network = CapturingNetwork()
         val identity = MixpanelIdentity("user_123", null, "device_abc")
         val flushRequest = FlushRequest(
-            "token", ReplayIdentifiers.Identity.of(identity)!!, EndPoints.DEFAULT_BASE_URL, network
+            "token",
+            ReplayIdentifiers.Identity.of(identity)!!,
+            EndPoints.DEFAULT_BASE_URL,
+            network
         )
         flushRequest.sendRequest(PayloadInfo(emptyList(), 1.0, 1, "replay", 1, 1.0))
         val sent = network.lastRequest!!.queryItems!!.toMap()
