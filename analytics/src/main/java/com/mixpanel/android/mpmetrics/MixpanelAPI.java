@@ -2255,6 +2255,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                 final Application app = (Application) mContext.getApplicationContext();
                 mMixpanelActivityLifecycleCallbacks = new MixpanelActivityLifecycleCallbacks(this, mConfig);
                 app.registerActivityLifecycleCallbacks(mMixpanelActivityLifecycleCallbacks);
+                registerProcessLifecycleObserver(mMixpanelActivityLifecycleCallbacks);
             } else {
                 MPLog.i(
                         LOGTAG,
@@ -2262,6 +2263,26 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                                 + " background.");
             }
         }
+    }
+
+    /**
+     * Activities that resumed before the lifecycle callbacks were registered are not replayed,
+     * so the process lifecycle tells the callbacks the app is already in the foreground.
+     */
+    private void registerProcessLifecycleObserver(final MixpanelActivityLifecycleCallbacks callbacks) {
+        new Handler(Looper.getMainLooper()).post(() -> {
+            Lifecycle lifecycle = getProcessLifecycle();
+            if (lifecycle.getCurrentState().isAtLeast(Lifecycle.State.RESUMED)) {
+                callbacks.onProcessResumed();
+                lifecycle.addObserver(new DefaultLifecycleObserver() {
+                    @Override
+                    public void onPause(@NonNull LifecycleOwner owner) {
+                        lifecycle.removeObserver(this);
+                        callbacks.onProcessPaused();
+                    }
+                });
+            }
+        });
     }
 
     /**
@@ -2486,6 +2507,10 @@ public class MixpanelAPI implements FeatureFlagDelegate {
             MPLog.e(LOGTAG, "Your build version is below 14. This method will always return false.");
         }
         return false;
+    }
+
+    /* package */ Lifecycle getProcessLifecycle() {
+        return ProcessLifecycleOwner.get().getLifecycle();
     }
 
     /* package */ void onBackground() {
