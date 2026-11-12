@@ -50,13 +50,7 @@ public class AutocaptureXmlInstrumentedTest {
         mContext = InstrumentationRegistry.getInstrumentation().getContext();
 
         // Hard-kill existing AnalyticsMessages instance for clean state
-        AnalyticsMessages messages = AnalyticsMessages.getInstance(
-                mContext,
-                MPConfig.getInstance(mContext, null));
-        messages.hardKill();
-        for (int i = 0; i < 40 && !messages.isDead(); i++) {
-            Thread.sleep(50);
-        }
+        AnalyticsMessages.hardKillAllInstancesForTesting(mContext);
 
         // Clear events queue
         mEvents.clear();

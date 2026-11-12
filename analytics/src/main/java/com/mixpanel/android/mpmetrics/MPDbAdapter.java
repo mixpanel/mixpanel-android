@@ -302,6 +302,12 @@ import com.mixpanel.android.util.MPLog;
         return (instanceName == null || instanceName.trim().isEmpty()) ? DATABASE_NAME : (DATABASE_NAME + "_" + instanceName);
     }
 
+    // Serializes every open/use/close cycle on mDb. One adapter is shared by all
+    // AnalyticsMessages workers that resolve to the same database file, and each
+    // operation closes the helper when done, so unsynchronized access lets one
+    // worker close the handle while another is still using it.
+    private final Object mLock = new Object();
+
     public MPDbAdapter(Context context, String dbName, MPConfig config) {
         mDb = new MPDatabaseHelper(context, dbName, config);
     }
@@ -331,51 +337,53 @@ import com.mixpanel.android.util.MPLog;
      * on failure
      */
     public int addJSON(JSONObject j, String token, Table table) {
-        // we are aware of the race condition here, but what can we do..?
-        if (this.aboveMemThreshold()) {
-            MPLog.e(LOGTAG, "There is not enough space left on the device or " +
-                    "the data was over the maximum size limit so it was discarded");
-            return DB_OUT_OF_MEMORY_ERROR;
-        }
-
-        final String tableName = table.getName();
-
-        Cursor c = null;
-        int count = DB_UPDATE_ERROR;
-
-        try {
-            final SQLiteDatabase db = mDb.getWritableDatabase();
-
-            final ContentValues cv = new ContentValues();
-            cv.put(KEY_DATA, j.toString());
-            cv.put(KEY_CREATED_AT, System.currentTimeMillis());
-            cv.put(KEY_TOKEN, token);
-            db.insert(tableName, null, cv);
-
-            c = db.rawQuery("SELECT COUNT(*) FROM " + tableName + " WHERE token='" + token + "'", null);
-            c.moveToFirst();
-            count = c.getInt(0);
-        } catch (final SQLiteException e) {
-            MPLog.e(LOGTAG, "Could not add Mixpanel data to table");
-
-            // We assume that in general, the results of a SQL exception are
-            // unrecoverable, and could be associated with an oversized or
-            // otherwise unusable DB. Better to bomb it and get back on track
-            // than to leave it junked up (and maybe filling up the disk.)
-            if (c != null) {
-                c.close();
-                c = null;
+        synchronized (mLock) {
+            // we are aware of the race condition here, but what can we do..?
+            if (this.aboveMemThreshold()) {
+                MPLog.e(LOGTAG, "There is not enough space left on the device or " +
+                        "the data was over the maximum size limit so it was discarded");
+                return DB_OUT_OF_MEMORY_ERROR;
             }
-            mDb.deleteDatabase();
-        } catch (final OutOfMemoryError e) {
-            MPLog.e(LOGTAG, "Out of memory when adding Mixpanel data to table");
-        } finally {
-            if (c != null) {
-                c.close();
+
+            final String tableName = table.getName();
+
+            Cursor c = null;
+            int count = DB_UPDATE_ERROR;
+
+            try {
+                final SQLiteDatabase db = mDb.getWritableDatabase();
+
+                final ContentValues cv = new ContentValues();
+                cv.put(KEY_DATA, j.toString());
+                cv.put(KEY_CREATED_AT, System.currentTimeMillis());
+                cv.put(KEY_TOKEN, token);
+                db.insert(tableName, null, cv);
+
+                c = db.rawQuery("SELECT COUNT(*) FROM " + tableName + " WHERE token='" + token + "'", null);
+                c.moveToFirst();
+                count = c.getInt(0);
+            } catch (final SQLiteException e) {
+                MPLog.e(LOGTAG, "Could not add Mixpanel data to table");
+
+                // We assume that in general, the results of a SQL exception are
+                // unrecoverable, and could be associated with an oversized or
+                // otherwise unusable DB. Better to bomb it and get back on track
+                // than to leave it junked up (and maybe filling up the disk.)
+                if (c != null) {
+                    c.close();
+                    c = null;
+                }
+                mDb.deleteDatabase();
+            } catch (final OutOfMemoryError e) {
+                MPLog.e(LOGTAG, "Out of memory when adding Mixpanel data to table");
+            } finally {
+                if (c != null) {
+                    c.close();
+                }
+                mDb.close();
             }
-            mDb.close();
+            return count;
         }
-        return count;
     }
 
     /**
@@ -386,67 +394,69 @@ import com.mixpanel.android.util.MPLog;
      * on failure
      */
     /* package */ int pushAnonymousUpdatesToPeopleDb(String token, String distinctId) {
-        if (this.aboveMemThreshold()) {
-            MPLog.e(LOGTAG, "There is not enough space left on the device or " +
-                    "the data was over the maximum size limit so it was discarded");
-            return DB_OUT_OF_MEMORY_ERROR;
-        }
-        Cursor selectCursor = null;
-        int count = DB_UPDATE_ERROR;
+        synchronized (mLock) {
+            if (this.aboveMemThreshold()) {
+                MPLog.e(LOGTAG, "There is not enough space left on the device or " +
+                        "the data was over the maximum size limit so it was discarded");
+                return DB_OUT_OF_MEMORY_ERROR;
+            }
+            Cursor selectCursor = null;
+            int count = DB_UPDATE_ERROR;
 
-        try {
-            final SQLiteDatabase db = mDb.getWritableDatabase();
-            StringBuffer allAnonymousQuery = new StringBuffer("SELECT * FROM " + Table.ANONYMOUS_PEOPLE.getName() + " WHERE " + KEY_TOKEN + " = '" + token + "'");
-
-            selectCursor = db.rawQuery(allAnonymousQuery.toString(), null);
-            db.beginTransaction();
             try {
-                while (selectCursor.moveToNext()) {
-                    try {
-                        ContentValues values = new ContentValues();
-                        final int createdAtColumnIndex = selectCursor.getColumnIndex(KEY_CREATED_AT) >= 0 ? selectCursor.getColumnIndex(KEY_CREATED_AT) : CREATED_AT_COLUMN_INDEX;
-                        values.put(KEY_CREATED_AT, selectCursor.getLong(createdAtColumnIndex));
-                        final int automaticDataColumnIndex = selectCursor.getColumnIndex(KEY_AUTOMATIC_DATA) >= 0 ? selectCursor.getColumnIndex(KEY_AUTOMATIC_DATA) : AUTOMATIC_DATA_COLUMN_INDEX;
-                        values.put(KEY_AUTOMATIC_DATA, selectCursor.getInt(automaticDataColumnIndex));
-                        final int tokenColumnIndex = selectCursor.getColumnIndex(KEY_TOKEN) >= 0 ? selectCursor.getColumnIndex(KEY_TOKEN) : TOKEN_COLUMN_INDEX;
-                        values.put(KEY_TOKEN, selectCursor.getString(tokenColumnIndex));
-                        final int dataColumnIndex = selectCursor.getColumnIndex(KEY_DATA) >= 0 ? selectCursor.getColumnIndex(KEY_DATA) : DATA_COLUMN_INDEX;
-                        JSONObject updatedData = new JSONObject(selectCursor.getString(dataColumnIndex));
-                        updatedData.put("$distinct_id", distinctId);
-                        values.put(KEY_DATA, updatedData.toString());
-                        db.insert(Table.PEOPLE.getName(), null, values);
-                        final int idColumnIndex = selectCursor.getColumnIndex("_id") >= 0 ? selectCursor.getColumnIndex("_id") : ID_COLUMN_INDEX;
-                        int rowId = selectCursor.getInt(idColumnIndex);
-                        db.delete(Table.ANONYMOUS_PEOPLE.getName(), "_id = " + rowId, null);
-                        count++;
-                    } catch (final JSONException e) {
-                        // Ignore this object
+                final SQLiteDatabase db = mDb.getWritableDatabase();
+                StringBuffer allAnonymousQuery = new StringBuffer("SELECT * FROM " + Table.ANONYMOUS_PEOPLE.getName() + " WHERE " + KEY_TOKEN + " = '" + token + "'");
+
+                selectCursor = db.rawQuery(allAnonymousQuery.toString(), null);
+                db.beginTransaction();
+                try {
+                    while (selectCursor.moveToNext()) {
+                        try {
+                            ContentValues values = new ContentValues();
+                            final int createdAtColumnIndex = selectCursor.getColumnIndex(KEY_CREATED_AT) >= 0 ? selectCursor.getColumnIndex(KEY_CREATED_AT) : CREATED_AT_COLUMN_INDEX;
+                            values.put(KEY_CREATED_AT, selectCursor.getLong(createdAtColumnIndex));
+                            final int automaticDataColumnIndex = selectCursor.getColumnIndex(KEY_AUTOMATIC_DATA) >= 0 ? selectCursor.getColumnIndex(KEY_AUTOMATIC_DATA) : AUTOMATIC_DATA_COLUMN_INDEX;
+                            values.put(KEY_AUTOMATIC_DATA, selectCursor.getInt(automaticDataColumnIndex));
+                            final int tokenColumnIndex = selectCursor.getColumnIndex(KEY_TOKEN) >= 0 ? selectCursor.getColumnIndex(KEY_TOKEN) : TOKEN_COLUMN_INDEX;
+                            values.put(KEY_TOKEN, selectCursor.getString(tokenColumnIndex));
+                            final int dataColumnIndex = selectCursor.getColumnIndex(KEY_DATA) >= 0 ? selectCursor.getColumnIndex(KEY_DATA) : DATA_COLUMN_INDEX;
+                            JSONObject updatedData = new JSONObject(selectCursor.getString(dataColumnIndex));
+                            updatedData.put("$distinct_id", distinctId);
+                            values.put(KEY_DATA, updatedData.toString());
+                            db.insert(Table.PEOPLE.getName(), null, values);
+                            final int idColumnIndex = selectCursor.getColumnIndex("_id") >= 0 ? selectCursor.getColumnIndex("_id") : ID_COLUMN_INDEX;
+                            int rowId = selectCursor.getInt(idColumnIndex);
+                            db.delete(Table.ANONYMOUS_PEOPLE.getName(), "_id = " + rowId, null);
+                            count++;
+                        } catch (final JSONException e) {
+                            // Ignore this object
+                        }
                     }
+                    db.setTransactionSuccessful();
+                } finally {
+                    db.endTransaction();
                 }
-                db.setTransactionSuccessful();
+            } catch (final SQLiteException e) {
+                MPLog.e(LOGTAG, "Could not push anonymous updates records from " + Table.ANONYMOUS_PEOPLE.getName() + ". Re-initializing database.", e);
+
+                if (selectCursor != null) {
+                    selectCursor.close();
+                    selectCursor = null;
+                }
+                // We assume that in general, the results of a SQL exception are
+                // unrecoverable, and could be associated with an oversized or
+                // otherwise unusable DB. Better to bomb it and get back on track
+                // than to leave it junked up (and maybe filling up the disk.)
+                mDb.deleteDatabase();
             } finally {
-                db.endTransaction();
+                if (selectCursor != null) {
+                    selectCursor.close();
+                }
+                mDb.close();
             }
-        } catch (final SQLiteException e) {
-            MPLog.e(LOGTAG, "Could not push anonymous updates records from " + Table.ANONYMOUS_PEOPLE.getName() + ". Re-initializing database.", e);
 
-            if (selectCursor != null) {
-                selectCursor.close();
-                selectCursor = null;
-            }
-            // We assume that in general, the results of a SQL exception are
-            // unrecoverable, and could be associated with an oversized or
-            // otherwise unusable DB. Better to bomb it and get back on track
-            // than to leave it junked up (and maybe filling up the disk.)
-            mDb.deleteDatabase();
-        } finally {
-            if (selectCursor != null) {
-                selectCursor.close();
-            }
-            mDb.close();
+            return count;
         }
-
-        return count;
     }
 
     /**
@@ -457,66 +467,68 @@ import com.mixpanel.android.util.MPLog;
      * on failure
      */
     /* package */ int rewriteEventDataWithProperties(Map<String, String> properties, String token) {
-        if (this.aboveMemThreshold()) {
-            MPLog.e(LOGTAG, "There is not enough space left on the device or " +
-                    "the data was over the maximum size limit so it was discarded");
-            return DB_OUT_OF_MEMORY_ERROR;
-        }
-        Cursor selectCursor = null;
-        int count = 0;
+        synchronized (mLock) {
+            if (this.aboveMemThreshold()) {
+                MPLog.e(LOGTAG, "There is not enough space left on the device or " +
+                        "the data was over the maximum size limit so it was discarded");
+                return DB_OUT_OF_MEMORY_ERROR;
+            }
+            Cursor selectCursor = null;
+            int count = 0;
 
-        try {
-            final SQLiteDatabase db = mDb.getWritableDatabase();
-            StringBuffer allAnonymousQuery = new StringBuffer("SELECT * FROM " + Table.EVENTS.getName() + " WHERE " + KEY_TOKEN + " = '" + token + "'");
-
-            selectCursor = db.rawQuery(allAnonymousQuery.toString(), null);
-            db.beginTransaction();
             try {
-                while (selectCursor.moveToNext()) {
-                    try {
-                        ContentValues values = new ContentValues();
-                        final int dataColumnIndex = selectCursor.getColumnIndex(KEY_DATA) >= 0 ? selectCursor.getColumnIndex(KEY_DATA) : DATA_COLUMN_INDEX;
-                        JSONObject updatedData = new JSONObject(selectCursor.getString(dataColumnIndex));
-                        JSONObject existingProps = updatedData.getJSONObject("properties");
-                        for (final Map.Entry<String, String> entry : properties.entrySet()) {
-                            final String key = entry.getKey();
-                            final String value = entry.getValue();
-                            existingProps.put(key, value);
+                final SQLiteDatabase db = mDb.getWritableDatabase();
+                StringBuffer allAnonymousQuery = new StringBuffer("SELECT * FROM " + Table.EVENTS.getName() + " WHERE " + KEY_TOKEN + " = '" + token + "'");
+
+                selectCursor = db.rawQuery(allAnonymousQuery.toString(), null);
+                db.beginTransaction();
+                try {
+                    while (selectCursor.moveToNext()) {
+                        try {
+                            ContentValues values = new ContentValues();
+                            final int dataColumnIndex = selectCursor.getColumnIndex(KEY_DATA) >= 0 ? selectCursor.getColumnIndex(KEY_DATA) : DATA_COLUMN_INDEX;
+                            JSONObject updatedData = new JSONObject(selectCursor.getString(dataColumnIndex));
+                            JSONObject existingProps = updatedData.getJSONObject("properties");
+                            for (final Map.Entry<String, String> entry : properties.entrySet()) {
+                                final String key = entry.getKey();
+                                final String value = entry.getValue();
+                                existingProps.put(key, value);
+                            }
+                            updatedData.put("properties", existingProps);
+                            values.put(KEY_DATA, updatedData.toString());
+                            final int idColumnIndex = selectCursor.getColumnIndex("_id") >= 0 ? selectCursor.getColumnIndex("_id") : ID_COLUMN_INDEX;
+                            int rowId = selectCursor.getInt(idColumnIndex);
+                            db.update(Table.EVENTS.getName(), values, "_id = " + rowId, null);
+                            count++;
+                        } catch (final JSONException e) {
+                            // Ignore this object
                         }
-                        updatedData.put("properties", existingProps);
-                        values.put(KEY_DATA, updatedData.toString());
-                        final int idColumnIndex = selectCursor.getColumnIndex("_id") >= 0 ? selectCursor.getColumnIndex("_id") : ID_COLUMN_INDEX;
-                        int rowId = selectCursor.getInt(idColumnIndex);
-                        db.update(Table.EVENTS.getName(), values, "_id = " + rowId, null);
-                        count++;
-                    } catch (final JSONException e) {
-                        // Ignore this object
                     }
+                    db.setTransactionSuccessful();
+                } finally {
+                    db.endTransaction();
                 }
-                db.setTransactionSuccessful();
+            } catch (final SQLiteException e) {
+                MPLog.e(LOGTAG, "Could not re-write events history. Re-initializing database.", e);
+
+                if (selectCursor != null) {
+                    selectCursor.close();
+                    selectCursor = null;
+                }
+                // We assume that in general, the results of a SQL exception are
+                // unrecoverable, and could be associated with an oversized or
+                // otherwise unusable DB. Better to bomb it and get back on track
+                // than to leave it junked up (and maybe filling up the disk.)
+                mDb.deleteDatabase();
             } finally {
-                db.endTransaction();
+                if (selectCursor != null) {
+                    selectCursor.close();
+                }
+                mDb.close();
             }
-        } catch (final SQLiteException e) {
-            MPLog.e(LOGTAG, "Could not re-write events history. Re-initializing database.", e);
 
-            if (selectCursor != null) {
-                selectCursor.close();
-                selectCursor = null;
-            }
-            // We assume that in general, the results of a SQL exception are
-            // unrecoverable, and could be associated with an oversized or
-            // otherwise unusable DB. Better to bomb it and get back on track
-            // than to leave it junked up (and maybe filling up the disk.)
-            mDb.deleteDatabase();
-        } finally {
-            if (selectCursor != null) {
-                selectCursor.close();
-            }
-            mDb.close();
+            return count;
         }
-
-        return count;
     }
 
     /**
@@ -525,26 +537,28 @@ import com.mixpanel.android.util.MPLog;
      * @param table the table to remove events from, one of "events", "people", "groups" or "anonymous_people"
      */
     public void cleanupEvents(String last_id, Table table, String token) {
-        final String tableName = table.getName();
+        synchronized (mLock) {
+            final String tableName = table.getName();
 
-        try {
-            final SQLiteDatabase db = mDb.getWritableDatabase();
-            StringBuffer deleteQuery = new StringBuffer("_id <= " + last_id + " AND " + KEY_TOKEN + " = '" + token + "'");
+            try {
+                final SQLiteDatabase db = mDb.getWritableDatabase();
+                StringBuffer deleteQuery = new StringBuffer("_id <= " + last_id + " AND " + KEY_TOKEN + " = '" + token + "'");
 
-            db.delete(tableName, deleteQuery.toString(), null);
-        } catch (final SQLiteException e) {
-            MPLog.e(LOGTAG, "Could not clean sent Mixpanel records from " + tableName + ". Re-initializing database.", e);
+                db.delete(tableName, deleteQuery.toString(), null);
+            } catch (final SQLiteException e) {
+                MPLog.e(LOGTAG, "Could not clean sent Mixpanel records from " + tableName + ". Re-initializing database.", e);
 
-            // We assume that in general, the results of a SQL exception are
-            // unrecoverable, and could be associated with an oversized or
-            // otherwise unusable DB. Better to bomb it and get back on track
-            // than to leave it junked up (and maybe filling up the disk.)
-            mDb.deleteDatabase();
-        } catch (final Exception e) {
-            MPLog.e(LOGTAG, "Unknown exception. Could not clean sent Mixpanel records from " + tableName + ".Re-initializing database.", e);
-            mDb.deleteDatabase();
-        } finally {
-            mDb.close();
+                // We assume that in general, the results of a SQL exception are
+                // unrecoverable, and could be associated with an oversized or
+                // otherwise unusable DB. Better to bomb it and get back on track
+                // than to leave it junked up (and maybe filling up the disk.)
+                mDb.deleteDatabase();
+            } catch (final Exception e) {
+                MPLog.e(LOGTAG, "Unknown exception. Could not clean sent Mixpanel records from " + tableName + ".Re-initializing database.", e);
+                mDb.deleteDatabase();
+            } finally {
+                mDb.close();
+            }
         }
     }
 
@@ -554,21 +568,23 @@ import com.mixpanel.android.util.MPLog;
      * @param table the table to remove events from, one of "events", "people", "groups" or "anonymous_people"
      */
     public void cleanupEvents(long time, Table table) {
-        final String tableName = table.getName();
+        synchronized (mLock) {
+            final String tableName = table.getName();
 
-        try {
-            final SQLiteDatabase db = mDb.getWritableDatabase();
-            db.delete(tableName, KEY_CREATED_AT + " <= " + time, null);
-        } catch (final SQLiteException e) {
-            MPLog.e(LOGTAG, "Could not clean timed-out Mixpanel records from " + tableName + ". Re-initializing database.", e);
+            try {
+                final SQLiteDatabase db = mDb.getWritableDatabase();
+                db.delete(tableName, KEY_CREATED_AT + " <= " + time, null);
+            } catch (final SQLiteException e) {
+                MPLog.e(LOGTAG, "Could not clean timed-out Mixpanel records from " + tableName + ". Re-initializing database.", e);
 
-            // We assume that in general, the results of a SQL exception are
-            // unrecoverable, and could be associated with an oversized or
-            // otherwise unusable DB. Better to bomb it and get back on track
-            // than to leave it junked up (and maybe filling up the disk.)
-            mDb.deleteDatabase();
-        } finally {
-            mDb.close();
+                // We assume that in general, the results of a SQL exception are
+                // unrecoverable, and could be associated with an oversized or
+                // otherwise unusable DB. Better to bomb it and get back on track
+                // than to leave it junked up (and maybe filling up the disk.)
+                mDb.deleteDatabase();
+            } finally {
+                mDb.close();
+            }
         }
     }
 
@@ -578,26 +594,30 @@ import com.mixpanel.android.util.MPLog;
      * @param token token of the project to remove events from
      */
     public void cleanupAllEvents(Table table, String token) {
-        final String tableName = table.getName();
+        synchronized (mLock) {
+            final String tableName = table.getName();
 
-        try {
-            final SQLiteDatabase db = mDb.getWritableDatabase();
-            db.delete(tableName, KEY_TOKEN + " = '" + token + "'", null);
-        } catch (final SQLiteException e) {
-            MPLog.e(LOGTAG, "Could not clean timed-out Mixpanel records from " + tableName + ". Re-initializing database.", e);
+            try {
+                final SQLiteDatabase db = mDb.getWritableDatabase();
+                db.delete(tableName, KEY_TOKEN + " = '" + token + "'", null);
+            } catch (final SQLiteException e) {
+                MPLog.e(LOGTAG, "Could not clean timed-out Mixpanel records from " + tableName + ". Re-initializing database.", e);
 
-            // We assume that in general, the results of a SQL exception are
-            // unrecoverable, and could be associated with an oversized or
-            // otherwise unusable DB. Better to bomb it and get back on track
-            // than to leave it junked up (and maybe filling up the disk.)
-            mDb.deleteDatabase();
-        } finally {
-            mDb.close();
+                // We assume that in general, the results of a SQL exception are
+                // unrecoverable, and could be associated with an oversized or
+                // otherwise unusable DB. Better to bomb it and get back on track
+                // than to leave it junked up (and maybe filling up the disk.)
+                mDb.deleteDatabase();
+            } finally {
+                mDb.close();
+            }
         }
     }
 
     public void deleteDB() {
-        mDb.deleteDatabase();
+        synchronized (mLock) {
+            mDb.deleteDatabase();
+        }
     }
 
     /**
@@ -611,69 +631,71 @@ import com.mixpanel.android.util.MPLog;
      * current number of events in the queue.
      */
     public String[] generateDataString(Table table, String token) {
-        Cursor c = null;
-        Cursor queueCountCursor = null;
-        String data = null;
-        String last_id = null;
-        String queueCount = null;
-        final String tableName = table.getName();
-        final SQLiteDatabase db = mDb.getReadableDatabase();
+        synchronized (mLock) {
+            Cursor c = null;
+            Cursor queueCountCursor = null;
+            String data = null;
+            String last_id = null;
+            String queueCount = null;
+            final String tableName = table.getName();
+            final SQLiteDatabase db = mDb.getReadableDatabase();
 
-        try {
-            StringBuffer rawDataQuery = new StringBuffer("SELECT * FROM " + tableName + " WHERE " + KEY_TOKEN + " = '" + token + "' ");
-            StringBuffer queueCountQuery = new StringBuffer("SELECT COUNT(*) FROM " + tableName + " WHERE " + KEY_TOKEN + " = '" + token + "' ");
+            try {
+                StringBuffer rawDataQuery = new StringBuffer("SELECT * FROM " + tableName + " WHERE " + KEY_TOKEN + " = '" + token + "' ");
+                StringBuffer queueCountQuery = new StringBuffer("SELECT COUNT(*) FROM " + tableName + " WHERE " + KEY_TOKEN + " = '" + token + "' ");
 
 
-            rawDataQuery.append("ORDER BY " + KEY_CREATED_AT + " ASC LIMIT " + Integer.toString(mDb.mConfig.getFlushBatchSize()));
-            c = db.rawQuery(rawDataQuery.toString(), null);
+                rawDataQuery.append("ORDER BY " + KEY_CREATED_AT + " ASC LIMIT " + Integer.toString(mDb.mConfig.getFlushBatchSize()));
+                c = db.rawQuery(rawDataQuery.toString(), null);
 
-            queueCountCursor = db.rawQuery(queueCountQuery.toString(), null);
-            queueCountCursor.moveToFirst();
-            queueCount = String.valueOf(queueCountCursor.getInt(0));
+                queueCountCursor = db.rawQuery(queueCountQuery.toString(), null);
+                queueCountCursor.moveToFirst();
+                queueCount = String.valueOf(queueCountCursor.getInt(0));
 
-            final JSONArray arr = new JSONArray();
+                final JSONArray arr = new JSONArray();
 
-            while (c.moveToNext()) {
-                if (c.isLast()) {
-                    final int idColumnIndex = c.getColumnIndex("_id") >= 0 ? c.getColumnIndex("_id") : ID_COLUMN_INDEX;
-                    last_id = c.getString(idColumnIndex);
+                while (c.moveToNext()) {
+                    if (c.isLast()) {
+                        final int idColumnIndex = c.getColumnIndex("_id") >= 0 ? c.getColumnIndex("_id") : ID_COLUMN_INDEX;
+                        last_id = c.getString(idColumnIndex);
+                    }
+                    try {
+                        final int dataColumnIndex = c.getColumnIndex(KEY_DATA) >= 0 ? c.getColumnIndex(KEY_DATA) : DATA_COLUMN_INDEX;
+                        final JSONObject j = new JSONObject(c.getString(dataColumnIndex));
+                        arr.put(j);
+                    } catch (final JSONException e) {
+                        // Ignore this object
+                    }
                 }
-                try {
-                    final int dataColumnIndex = c.getColumnIndex(KEY_DATA) >= 0 ? c.getColumnIndex(KEY_DATA) : DATA_COLUMN_INDEX;
-                    final JSONObject j = new JSONObject(c.getString(dataColumnIndex));
-                    arr.put(j);
-                } catch (final JSONException e) {
-                    // Ignore this object
+
+                if (arr.length() > 0) {
+                    data = arr.toString();
+                }
+            } catch (final SQLiteException e) {
+                MPLog.e(LOGTAG, "Could not pull records for Mixpanel out of database " + tableName + ". Waiting to send.", e);
+
+                // We'll dump the DB on write failures, but with reads we can
+                // let things ride in hopes the issue clears up.
+                // (A bit more likely, since we're opening the DB for read and not write.)
+                // A corrupted or disk-full DB will be cleaned up on the next write or clear call.
+                last_id = null;
+                data = null;
+            } finally {
+                mDb.close();
+                if (c != null) {
+                    c.close();
+                }
+                if (queueCountCursor != null) {
+                    queueCountCursor.close();
                 }
             }
 
-            if (arr.length() > 0) {
-                data = arr.toString();
+            if (last_id != null && data != null) {
+                final String[] ret = {last_id, data, queueCount};
+                return ret;
             }
-        } catch (final SQLiteException e) {
-            MPLog.e(LOGTAG, "Could not pull records for Mixpanel out of database " + tableName + ". Waiting to send.", e);
-
-            // We'll dump the DB on write failures, but with reads we can
-            // let things ride in hopes the issue clears up.
-            // (A bit more likely, since we're opening the DB for read and not write.)
-            // A corrupted or disk-full DB will be cleaned up on the next write or clear call.
-            last_id = null;
-            data = null;
-        } finally {
-            mDb.close();
-            if (c != null) {
-                c.close();
-            }
-            if (queueCountCursor != null) {
-                queueCountCursor.close();
-            }
+            return null;
         }
-
-        if (last_id != null && data != null) {
-            final String[] ret = {last_id, data, queueCount};
-            return ret;
-        }
-        return null;
     }
 
     /**
