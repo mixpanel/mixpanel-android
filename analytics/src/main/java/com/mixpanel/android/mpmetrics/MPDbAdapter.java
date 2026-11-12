@@ -3,6 +3,7 @@ package com.mixpanel.android.mpmetrics;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import androidx.annotation.Nullable;
@@ -386,17 +387,52 @@ import com.mixpanel.android.util.MPLog;
      * on failure
      */
     /* package */ int pushAnonymousUpdatesToPeopleDb(String token, String distinctId) {
+        final Map<String, Object> identity = new HashMap<>();
+        identity.put("$distinct_id", distinctId);
+        return pushAnonymousUpdates(token, Table.PEOPLE, identity, false);
+    }
+
+    /**
+     * Copies anonymous people updates to groups db after a hierarchical groups user has been
+     * identified, as updates to the user's $user_id group profile in their company
+     * @param token project token
+     * @param userId the user id, which is the $user_id group profile's group id
+     * @param companyId the user's company
+     * @return the number of rows moved, which is 0 when none were waiting, or
+     * DB_OUT_OF_MEMORY_ERROR/DB_UPDATE_ERROR on failure
+     */
+    /* package */ int pushAnonymousUpdatesToUserProfileDb(String token, String userId, String companyId) {
+        final Map<String, Object> identity = new LinkedHashMap<>();
+        identity.put("$group_key", "$user_id");
+        identity.put("$group_id", userId);
+        identity.put("$company_id", companyId);
+        return pushAnonymousUpdates(token, Table.GROUPS, identity, true);
+    }
+
+    // Moves each anonymous people update for token to the table, with the identity keys added.
+    //
+    // When asMovedNow, the updates move in the order they were queued and are stamped with the
+    // time of the move, so the table's created_at order (the order batches are sent in) agrees
+    // with its id order (cleanupEvents deletes every id up to the last one sent), and a row
+    // queued there before the move can't be deleted unsent after a batch of moved rows. The
+    // count is then the number of rows moved, so moving one schedules a flush.
+    private int pushAnonymousUpdates(
+            String token, Table table, Map<String, Object> identity, boolean asMovedNow) {
         if (this.aboveMemThreshold()) {
             MPLog.e(LOGTAG, "There is not enough space left on the device or " +
                     "the data was over the maximum size limit so it was discarded");
             return DB_OUT_OF_MEMORY_ERROR;
         }
         Cursor selectCursor = null;
-        int count = DB_UPDATE_ERROR;
+        int count = asMovedNow ? 0 : DB_UPDATE_ERROR;
+        final long movedAt = System.currentTimeMillis();
 
         try {
             final SQLiteDatabase db = mDb.getWritableDatabase();
             StringBuffer allAnonymousQuery = new StringBuffer("SELECT * FROM " + Table.ANONYMOUS_PEOPLE.getName() + " WHERE " + KEY_TOKEN + " = '" + token + "'");
+            if (asMovedNow) {
+                allAnonymousQuery.append(" ORDER BY _id ASC");
+            }
 
             selectCursor = db.rawQuery(allAnonymousQuery.toString(), null);
             db.beginTransaction();
@@ -405,16 +441,18 @@ import com.mixpanel.android.util.MPLog;
                     try {
                         ContentValues values = new ContentValues();
                         final int createdAtColumnIndex = selectCursor.getColumnIndex(KEY_CREATED_AT) >= 0 ? selectCursor.getColumnIndex(KEY_CREATED_AT) : CREATED_AT_COLUMN_INDEX;
-                        values.put(KEY_CREATED_AT, selectCursor.getLong(createdAtColumnIndex));
+                        values.put(KEY_CREATED_AT, asMovedNow ? movedAt : selectCursor.getLong(createdAtColumnIndex));
                         final int automaticDataColumnIndex = selectCursor.getColumnIndex(KEY_AUTOMATIC_DATA) >= 0 ? selectCursor.getColumnIndex(KEY_AUTOMATIC_DATA) : AUTOMATIC_DATA_COLUMN_INDEX;
                         values.put(KEY_AUTOMATIC_DATA, selectCursor.getInt(automaticDataColumnIndex));
                         final int tokenColumnIndex = selectCursor.getColumnIndex(KEY_TOKEN) >= 0 ? selectCursor.getColumnIndex(KEY_TOKEN) : TOKEN_COLUMN_INDEX;
                         values.put(KEY_TOKEN, selectCursor.getString(tokenColumnIndex));
                         final int dataColumnIndex = selectCursor.getColumnIndex(KEY_DATA) >= 0 ? selectCursor.getColumnIndex(KEY_DATA) : DATA_COLUMN_INDEX;
                         JSONObject updatedData = new JSONObject(selectCursor.getString(dataColumnIndex));
-                        updatedData.put("$distinct_id", distinctId);
+                        for (Map.Entry<String, Object> key : identity.entrySet()) {
+                            updatedData.put(key.getKey(), key.getValue());
+                        }
                         values.put(KEY_DATA, updatedData.toString());
-                        db.insert(Table.PEOPLE.getName(), null, values);
+                        db.insert(table.getName(), null, values);
                         final int idColumnIndex = selectCursor.getColumnIndex("_id") >= 0 ? selectCursor.getColumnIndex("_id") : ID_COLUMN_INDEX;
                         int rowId = selectCursor.getInt(idColumnIndex);
                         db.delete(Table.ANONYMOUS_PEOPLE.getName(), "_id = " + rowId, null);
@@ -429,6 +467,10 @@ import com.mixpanel.android.util.MPLog;
             }
         } catch (final SQLiteException e) {
             MPLog.e(LOGTAG, "Could not push anonymous updates records from " + Table.ANONYMOUS_PEOPLE.getName() + ". Re-initializing database.", e);
+            if (asMovedNow) {
+                // The move was rolled back
+                count = DB_UPDATE_ERROR;
+            }
 
             if (selectCursor != null) {
                 selectCursor.close();

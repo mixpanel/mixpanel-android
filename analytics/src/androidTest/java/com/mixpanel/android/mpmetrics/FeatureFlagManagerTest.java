@@ -8,6 +8,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
+import com.mixpanel.android.identity.MixpanelIdentity;
 import com.mixpanel.android.util.MPLog;
 import com.mixpanel.android.util.OfflineMode; // Assuming this exists
 import com.mixpanel.android.util.ProxyServerInteractor;
@@ -132,6 +133,11 @@ public class FeatureFlagManagerTest {
     @Override
     public String getAnonymousId() {
       return anonymousIdToReturn;
+    }
+
+    @Override
+    public MixpanelIdentity getIdentity() {
+      return null;
     }
 
     @Override

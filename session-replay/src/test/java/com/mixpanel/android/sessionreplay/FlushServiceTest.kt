@@ -1,5 +1,6 @@
 package com.mixpanel.android.sessionreplay
 
+import com.mixpanel.android.sessionreplay.utils.ReplayIdentifiers
 import com.mixpanel.android.sessionreplay.network.FlushRequest
 import com.mixpanel.android.sessionreplay.network.NetworkMonitoring
 import com.mixpanel.android.sessionreplay.services.EventService
@@ -80,8 +81,8 @@ class FlushServiceTests {
         every { mockFlushRequest.distinctId } answers { currentDistinctId }
 
         // Mock the update method to update our tracked value
-        every { mockFlushRequest.updateDistinctId(any()) } answers {
-            currentDistinctId = firstArg<String>()
+        every { mockFlushRequest.updateIdentifiers(any()) } answers {
+            currentDistinctId = firstArg<ReplayIdentifiers>().distinctId
         }
 
         flushService =
@@ -165,13 +166,13 @@ class FlushServiceTests {
         }
 
     @Test
-    fun testUpdateDistinctId() =
+    fun testUpdateIdentifiers() =
         testScope.runTest {
-            // Test the updateDistinctId method
-            flushService.updateDistinctId("newDistinctId")
+            val identifiers = ReplayIdentifiers.DistinctId("newDistinctId")
+            flushService.updateIdentifiers(identifiers)
 
-            // Verify that the FlushRequest's updateDistinctId method was called
-            verify { mockFlushRequest.updateDistinctId("newDistinctId") }
+            // Verify that the FlushRequest's updateIdentifiers method was called
+            verify { mockFlushRequest.updateIdentifiers(identifiers) }
 
             // Verify that the distinctId was updated in the FlushService
             assertEquals("newDistinctId", flushService.getDistinctId())

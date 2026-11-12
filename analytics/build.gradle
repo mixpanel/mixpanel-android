@@ -162,11 +162,12 @@ tasks.register("androidJavadocs", Javadoc) {
 }
 
 dependencies {
-    // official release
-    implementation 'com.mixpanel.android:mixpanel-android-common:1.1.0'
+    // api, not implementation: MixpanelIdentity in :common is part of MixpanelAPI's public signatures.
+    // official release (switch back once :common with MixpanelIdentity is published)
+    // api 'com.mixpanel.android:mixpanel-android-common:1.1.0'
     signature 'net.sf.androidscents.signature:android-api-level-21:5.0.1_r2@signature'
     // or use below for local testing
-    // implementation project(':common')
+    api project(':common')
     implementation "androidx.annotation:annotation:1.8.2"
     implementation 'androidx.core:core:1.13.1'
     implementation 'androidx.lifecycle:lifecycle-process:2.6.2'
@@ -191,6 +192,9 @@ dependencies {
     testImplementation 'org.robolectric:robolectric:4.11.1'
     testImplementation 'androidx.test:core:1.5.0'
     testImplementation 'org.json:json:20231013'
+    // The Compose compiler plugin runs on every Kotlin source set and needs the runtime on the
+    // classpath; compileOnly above does not reach unit tests. Matches the ui version above.
+    testImplementation 'androidx.compose.runtime:runtime:1.7.7'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
     // Compose dependencies for androidTest only (Compose autocapture tests)
     androidTestImplementation platform('androidx.compose:compose-bom:2024.12.01')

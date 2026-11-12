@@ -82,7 +82,10 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.9.4")
     implementation("androidx.navigation:navigation-fragment-ktx:2.8.9")
     implementation("androidx.navigation:navigation-ui-ktx:2.8.9")
-    implementation("com.mixpanel.android:mixpanel-android:8.6.0")
+    implementation("com.mixpanel.android:mixpanel-android:8.6.0") {
+        // :common comes from project(":common") through :session-replay until it is published
+        exclude(group = "com.mixpanel.android", module = "mixpanel-android-common")
+    }
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
     implementation(project(":session-replay"))
 

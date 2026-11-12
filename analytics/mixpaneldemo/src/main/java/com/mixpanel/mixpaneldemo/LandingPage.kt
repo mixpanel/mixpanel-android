@@ -75,6 +75,15 @@ fun LandingPage(navController: NavHostController) {
                 Text("Groups")
             }
             Button(
+                onClick = { navController.navigate("hierarchicalGroupsPage") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(red = 123, green = 128, blue = 255)),
+            ) {
+                Text("Hierarchical Groups")
+            }
+            Button(
                 onClick = { navController.navigate("autocaptureTestPage") },
                 modifier = Modifier
                     .fillMaxWidth()

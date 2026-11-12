@@ -318,8 +318,15 @@ import org.json.JSONObject;
 
     static class PushAnonymousPeopleDescription extends MixpanelDescription {
         public PushAnonymousPeopleDescription(String distinctId, String token) {
+            this(distinctId, null, token);
+        }
+
+        // On a hierarchical groups project the updates go to the user's $user_id group profile
+        // in companyId, so distinctId is the user id
+        public PushAnonymousPeopleDescription(String distinctId, String companyId, String token) {
             super(token);
             this.mDistinctId = distinctId;
+            this.mCompanyId = companyId;
         }
 
         @Override
@@ -331,7 +338,12 @@ import org.json.JSONObject;
             return this.mDistinctId;
         }
 
+        public String getCompanyId() {
+            return this.mCompanyId;
+        }
+
         private final String mDistinctId;
+        private final String mCompanyId;
     }
 
     static class MixpanelMessageDescription extends MixpanelDescription {
@@ -519,7 +531,10 @@ import org.json.JSONObject;
                                 (PushAnonymousPeopleDescription) msg.obj;
                         final String distinctId = pushAnonymousPeopleDescription.getDistinctId();
                         token = pushAnonymousPeopleDescription.getToken();
-                        returnCode = mDbAdapter.pushAnonymousUpdatesToPeopleDb(token, distinctId);
+                        final String companyId = pushAnonymousPeopleDescription.getCompanyId();
+                        returnCode = companyId == null
+                                ? mDbAdapter.pushAnonymousUpdatesToPeopleDb(token, distinctId)
+                                : mDbAdapter.pushAnonymousUpdatesToUserProfileDb(token, distinctId, companyId);
                     } else if (msg.what == CLEAR_ANONYMOUS_UPDATES) {
                         final MixpanelDescription mixpanelDescription = (MixpanelDescription) msg.obj;
                         token = mixpanelDescription.getToken();
