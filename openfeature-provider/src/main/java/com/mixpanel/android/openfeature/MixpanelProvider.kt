@@ -163,7 +163,7 @@ class MixpanelProvider(private val flags: MixpanelAPI.Flags) : FeatureProvider {
         defaultValue: Value,
         context: EvaluationContext?
     ): ProviderEvaluation<Value> {
-        return resolveFlag(key, defaultValue, fallbackVariant = MixpanelFlagVariant("", null)) { variant ->
+        return resolveFlag(key, defaultValue, fallbackVariant = MixpanelFlagVariant(OPENFEATURE_PROVIDER_FALLBACK_KEY, null)) { variant ->
             success(toValue(variant.value), variant.key)
         }
     }
@@ -178,7 +178,7 @@ class MixpanelProvider(private val flags: MixpanelAPI.Flags) : FeatureProvider {
     private fun <T> resolveFlag(
         key: String,
         defaultValue: T,
-        fallbackVariant: MixpanelFlagVariant = MixpanelFlagVariant(defaultValue as Any),
+        fallbackVariant: MixpanelFlagVariant = MixpanelFlagVariant(OPENFEATURE_PROVIDER_FALLBACK_KEY, defaultValue),
         coerce: (MixpanelFlagVariant) -> ProviderEvaluation<T>
     ): ProviderEvaluation<T> {
         if (!flags.areFlagsReady()) {
@@ -319,5 +319,15 @@ class MixpanelProvider(private val flags: MixpanelAPI.Flags) : FeatureProvider {
 
     private class MixpanelProviderMetadata : ProviderMetadata {
         override val name: String = "mixpanel-provider"
+    }
+
+    private companion object {
+        /**
+         * Key of every fallback variant this provider passes to `getVariantSync` (SDK-448).
+         * SDKs that recognize it add `"$openfeature_provider": true` to the resulting
+         * `$experiment_started` exposure; older SDKs ignore it. The provider never reads the
+         * key back: fallbacks are detected via `variant.source`, so it is never surfaced.
+         */
+        private const val OPENFEATURE_PROVIDER_FALLBACK_KEY = "\$openfeature_provider"
     }
 }
