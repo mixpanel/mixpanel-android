@@ -1817,6 +1817,90 @@ public class FeatureFlagManagerTest {
     assertTrue("IsQATester should be included", call.properties.getBoolean("$is_qa_tester"));
   }
 
+  // ---- SDK-448: OpenFeature provider marker on $experiment_started ----
+
+  @Test
+  public void testGetVariantSync_openFeatureProviderFallbackKey_tagsExposure() throws Exception {
+    Map<String, MixpanelFlagVariant> serverFlags = new HashMap<>();
+    serverFlags.put("of_flag", new MixpanelFlagVariant("variant_of", "of_value"));
+    mMockRemoteService.addResponse(createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
+    mFeatureFlagManager.loadFlags();
+    waitForFlagsReady();
+    assertTrue("Flags should be ready", mFeatureFlagManager.areFlagsReady());
+
+    mMockDelegate.resetTrackCalls();
+    mMockDelegate.trackCalledLatch = new CountDownLatch(1);
+
+    // The literal is spelled out on purpose: it is the cross-SDK contract with the provider.
+    MixpanelFlagVariant fallback = new MixpanelFlagVariant("$openfeature_provider", "default");
+    MixpanelFlagVariant result = mFeatureFlagManager.getVariantSync("of_flag", fallback);
+    assertEquals("variant_of", result.key);
+    assertEquals("of_value", result.value);
+
+    flushAllLoopers();
+
+    assertTrue("Track should be called", mMockDelegate.trackCalledLatch.await(5, TimeUnit.SECONDS));
+    assertEquals("Track should be called exactly once", 1, mMockDelegate.trackCalls.size());
+    MockFeatureFlagDelegate.TrackCall call = mMockDelegate.trackCalls.get(0);
+    assertEquals("$experiment_started", call.eventName);
+    assertEquals("variant_of", call.properties.getString("Variant name"));
+    assertTrue(
+        "$openfeature_provider should be true",
+        call.properties.getBoolean("$openfeature_provider"));
+  }
+
+  @Test
+  public void testGetVariantSync_regularFallbackKey_doesNotTagExposure() throws Exception {
+    Map<String, MixpanelFlagVariant> serverFlags = new HashMap<>();
+    serverFlags.put("direct_flag", new MixpanelFlagVariant("variant_direct", "direct_value"));
+    mMockRemoteService.addResponse(createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
+    mFeatureFlagManager.loadFlags();
+    waitForFlagsReady();
+    assertTrue("Flags should be ready", mFeatureFlagManager.areFlagsReady());
+
+    mMockDelegate.resetTrackCalls();
+    mMockDelegate.trackCalledLatch = new CountDownLatch(1);
+
+    MixpanelFlagVariant fallback = new MixpanelFlagVariant("fallback", "fallback_value");
+    mFeatureFlagManager.getVariantSync("direct_flag", fallback);
+
+    flushAllLoopers();
+
+    assertTrue("Track should be called", mMockDelegate.trackCalledLatch.await(5, TimeUnit.SECONDS));
+    assertEquals("Track should be called exactly once", 1, mMockDelegate.trackCalls.size());
+    MockFeatureFlagDelegate.TrackCall call = mMockDelegate.trackCalls.get(0);
+    assertEquals("$experiment_started", call.eventName);
+    assertFalse(
+        "$openfeature_provider should be absent for direct calls",
+        call.properties.has("$openfeature_provider"));
+  }
+
+  @Test
+  public void testGetVariantSync_openFeatureProviderFallbackKey_flagMissing_noExposure()
+      throws Exception {
+    Map<String, MixpanelFlagVariant> serverFlags = new HashMap<>();
+    serverFlags.put("other_flag", new MixpanelFlagVariant("variant_other", "other_value"));
+    mMockRemoteService.addResponse(createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
+    mFeatureFlagManager.loadFlags();
+    waitForFlagsReady();
+    assertTrue("Flags should be ready", mFeatureFlagManager.areFlagsReady());
+
+    mMockDelegate.resetTrackCalls();
+
+    MixpanelFlagVariant fallback = new MixpanelFlagVariant("$openfeature_provider", "default");
+    MixpanelFlagVariant result = mFeatureFlagManager.getVariantSync("missing_flag", fallback);
+
+    flushAllLoopers();
+
+    assertEquals("Should return fallback key", "$openfeature_provider", result.key);
+    assertEquals("Should return fallback value", "default", result.value);
+    assertEquals(
+        MixpanelFlagVariant.Source.fallback(
+            MixpanelFlagVariant.Source.Fallback.Reason.FLAG_NOT_FOUND),
+        result.source);
+    assertEquals("No exposure should be tracked", 0, mMockDelegate.trackCalls.size());
+  }
+
   // ---- Coverage Tests for performFetchRequest response parsing paths ----
 
   @Test
