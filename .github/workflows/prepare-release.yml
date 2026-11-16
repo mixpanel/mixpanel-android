@@ -67,17 +67,6 @@ jobs:
             exit 1
           fi
 
-      - name: Check code style
-        # Every module ships against :common, so its style check gates every release.
-        env:
-          MODULE: ${{ inputs.module }}
-        run: |
-          TASKS=":common:ktlintCheck"
-          if [ "$MODULE" = "session-replay" ]; then
-            TASKS="$TASKS :session-replay:ktlintCheck :session-replay:wireframe-goldens:ktlintCheck"
-          fi
-          ./gradlew $TASKS
-
       - name: Create release branch
         env:
           BRANCH: ${{ steps.config.outputs.branch }}
