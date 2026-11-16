@@ -1,5 +1,12 @@
 # Changelog
 
+## [session-replay-v1.6.1](https://github.com/mixpanel/mixpanel-android/tree/session-replay-v1.6.1) (2026-11-16)
+
+### Fixes
+- use ImageSettings.JPEG_COMPRESSION_RATE for screenshot quality (SDK-453) ([#1023](https://github.com/mixpanel/mixpanel-android/pull/1023))
+
+[Full Changelog](https://github.com/mixpanel/mixpanel-android/compare/session-replay-v1.6.0...session-replay-v1.6.1)
+
 ## [session-replay-v1.6.0](https://github.com/mixpanel/mixpanel-android/tree/session-replay-v1.6.0) (2026-10-02)
 
 ### Features
