@@ -10,6 +10,24 @@ permissions:
   contents: read
 
 jobs:
+  ktlint:
+    # Its own job so a style failure shows as a separate check within minutes,
+    # and still runs when the emulator tests in the build job fail.
+    name: ktlint
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout the code
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+    - name: Run Common ktlint check
+      timeout-minutes: 30
+      run: ./gradlew :common:ktlintCheck
+    - name: Upload Common ktlint report
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # v7.0.0
+      if: failure()
+      with:
+        name: Common ktlint Report
+        path: common/build/reports/ktlint/
+
   build:
     runs-on: ubuntu-latest
     steps:
@@ -40,9 +58,6 @@ jobs:
     - name: Run analytics JVM unit tests
       timeout-minutes: 60
       run: ./gradlew :analytics:test
-    - name: Run Common ktlint check
-      timeout-minutes: 60
-      run: ./gradlew :common:ktlintCheck
     - name: Lint
       timeout-minutes: 60
       run:  ./gradlew :analytics:lint
@@ -77,12 +92,6 @@ jobs:
       with:
         name: Common Unit Test Report
         path: common/build/reports/tests/
-    - name: Upload Common ktlint report
-      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # v7.0.0
-      if: always()
-      with:
-        name: Common ktlint Report
-        path: common/build/reports/ktlint/
     - name: Upload test coverage report
       uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # v7.0.0
       with:
