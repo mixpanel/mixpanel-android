@@ -1,5 +1,7 @@
 package com.mixpanel.android.identity
 
+import androidx.annotation.RestrictTo
+
 /**
  * Names who events, profile updates and replays belong to, shared by the Mixpanel Android SDKs.
  *
@@ -28,7 +30,7 @@ package com.mixpanel.android.identity
  * @constructor For internal use by the Mixpanel SDKs only, which own the device id. Apps create an
  *     identity with the constructor that takes only a user id and company id.
  */
-class MixpanelIdentity(
+class MixpanelIdentity @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP) constructor(
     val userId: String?,
     val companyId: String?,
     val deviceId: String?
