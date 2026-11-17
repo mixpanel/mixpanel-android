@@ -6,8 +6,6 @@ plugins {
     id("mixpanel.ktlint")
 }
 
-group = "com.mixpanel.android"
-
 android {
     namespace = "com.mixpanel.android.common"
     compileSdk = 34
