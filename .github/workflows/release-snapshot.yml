@@ -35,7 +35,7 @@ jobs:
       cancel-in-progress: true
     name: "Publish ${{ matrix.module }} snapshot"
     runs-on: ubuntu-latest
-    environment: release
+    environment: snapshot
 
     steps:
       - name: Validate secrets
