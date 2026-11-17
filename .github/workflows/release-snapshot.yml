@@ -1,9 +1,13 @@
 name: Publish Snapshots to Maven Central
 
 on:
-  push:
-    branches:
-      - master
+  workflow_dispatch:
+    inputs:
+      module:
+        description: 'Module to publish a snapshot for (must match a key in .github/modules.json). Leave empty for all modules.'
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -22,7 +26,17 @@ jobs:
 
       - name: List modules
         id: modules
-        run: echo "list=$(jq -c 'keys' .github/modules.json)" >> "$GITHUB_OUTPUT"
+        env:
+          MODULE: ${{ inputs.module }}
+        run: |
+          if [ -z "$MODULE" ]; then
+            echo "list=$(jq -c 'keys' .github/modules.json)" >> "$GITHUB_OUTPUT"
+          elif jq -e --arg m "$MODULE" 'has($m)' .github/modules.json > /dev/null; then
+            echo "list=$(jq -cn --arg m "$MODULE" '[$m]')" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::Unknown module '$MODULE'. Valid modules: $(jq -r 'keys | join(", ")' .github/modules.json)"
+            exit 1
+          fi
 
   publish-snapshot:
     needs: list-modules
@@ -35,7 +49,7 @@ jobs:
       cancel-in-progress: true
     name: "Publish ${{ matrix.module }} snapshot"
     runs-on: ubuntu-latest
-    environment: snapshot
+    environment: release
 
     steps:
       - name: Validate secrets
