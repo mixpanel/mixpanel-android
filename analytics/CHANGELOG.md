@@ -1,5 +1,12 @@
 # Changelog
 
+## [v8.12.1](https://github.com/mixpanel/mixpanel-android/tree/v8.12.1) (2026-11-17)
+
+### Fixes
+- flush on first background after deferred init ([#1022](https://github.com/mixpanel/mixpanel-android/pull/1022))
+
+[Full Changelog](https://github.com/mixpanel/mixpanel-android/compare/v8.12.0...v8.12.1)
+
 ## [v8.12.0](https://github.com/mixpanel/mixpanel-android/tree/v8.12.0) (2026-10-30)
 
 ### Features
