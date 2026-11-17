@@ -14,6 +14,7 @@ import androidx.annotation.VisibleForTesting
 import com.mixpanel.android.sessionreplay.logging.Logger
 import com.mixpanel.android.sessionreplay.models.CapturedFrame
 import com.mixpanel.android.sessionreplay.sensitive_views.SensitiveViewManager
+import com.mixpanel.android.sessionreplay.utils.ImageSettings
 import com.mixpanel.android.sessionreplay.wireframe.WireframeElement
 import com.mixpanel.android.sessionreplay.wireframe.WireframeEmitter
 import curtains.phoneWindow
@@ -533,7 +534,7 @@ internal class ScreenRecorder {
 
     private fun Bitmap.compressToByteArray(
         format: Bitmap.CompressFormat = Bitmap.CompressFormat.JPEG,
-        quality: Int = 80 // Adjust as needed
+        quality: Int = ImageSettings.JPEG_COMPRESSION_RATE
     ): ByteArray =
         try {
             val stream = ByteArrayOutputStream()

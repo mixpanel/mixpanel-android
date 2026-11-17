@@ -1196,9 +1196,6 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      * Return the Autocapture instance associated with this MixpanelAPI instance.
      * Use this to track autocapture events such as screen views and screen leaves.
      *
-     * <p><b>Experimental (beta).</b> Autocapture may contain issues, and its API and the
-     * properties it captures may change in a future release before general availability.
-     *
      * @return an instance of {@link Autocapture}
      */
     public Autocapture getAutocapture() {
@@ -2754,6 +2751,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                 final Application app = (Application) mContext.getApplicationContext();
                 mMixpanelActivityLifecycleCallbacks = new MixpanelActivityLifecycleCallbacks(this, mConfig);
                 app.registerActivityLifecycleCallbacks(mMixpanelActivityLifecycleCallbacks);
+                registerProcessLifecycleObserver(mMixpanelActivityLifecycleCallbacks);
             } else {
                 MPLog.i(
                         LOGTAG,
@@ -2764,14 +2762,31 @@ public class MixpanelAPI implements FeatureFlagDelegate {
     }
 
     /**
+     * Activities that resumed before the lifecycle callbacks were registered are not replayed,
+     * so the process lifecycle tells the callbacks the app is already in the foreground.
+     */
+    private void registerProcessLifecycleObserver(final MixpanelActivityLifecycleCallbacks callbacks) {
+        new Handler(Looper.getMainLooper()).post(() -> {
+            Lifecycle lifecycle = getProcessLifecycle();
+            if (lifecycle.getCurrentState().isAtLeast(Lifecycle.State.RESUMED)) {
+                callbacks.onProcessResumed();
+                lifecycle.addObserver(new DefaultLifecycleObserver() {
+                    @Override
+                    public void onPause(@NonNull LifecycleOwner owner) {
+                        lifecycle.removeObserver(this);
+                        callbacks.onProcessPaused();
+                    }
+                });
+            }
+        });
+    }
+
+    /**
      * Provides methods for tracking autocapture events. Events tracked through this class
      * are automatically tagged with the {@code $mp_autocapture} property, which causes them
      * to appear with an "[Auto]" prefix in the Mixpanel web app.
      *
      * <p>Access this via {@link MixpanelAPI#getAutocapture()}.
-     *
-     * <p><b>Experimental (beta).</b> Autocapture may contain issues, and its API and the
-     * properties it captures may change in a future release before general availability.
      */
     public class Autocapture {
 
@@ -2988,6 +3003,10 @@ public class MixpanelAPI implements FeatureFlagDelegate {
             MPLog.e(LOGTAG, "Your build version is below 14. This method will always return false.");
         }
         return false;
+    }
+
+    /* package */ Lifecycle getProcessLifecycle() {
+        return ProcessLifecycleOwner.get().getLifecycle();
     }
 
     /* package */ void onBackground() {

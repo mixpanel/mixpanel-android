@@ -136,7 +136,9 @@ object GzipSettings {
 }
 
 object ImageSettings {
-    const val JPEG_COMPRESSION_RATE = 0.4
+    // 40 rather than 0.4: Bitmap.compress takes an Int quality on a 0–100 scale, so the
+    // value is stored ready to pass through instead of being converted on every frame.
+    const val JPEG_COMPRESSION_RATE = 40
 }
 
 object NetworkError {

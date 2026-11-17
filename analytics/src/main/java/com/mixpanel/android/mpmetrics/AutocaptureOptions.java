@@ -35,10 +35,6 @@ import androidx.annotation.NonNull;
  * MixpanelAPI mixpanel = MixpanelAPI.getInstance(context, "YOUR_TOKEN", true, options);
  * }</pre>
  *
- * <p><b>Experimental (beta).</b> Autocapture may contain issues, and its API and the properties it
- * captures may change in a future release before general availability. Pin your SDK version if you
- * build reports on autocaptured events.
- *
  * @see MixpanelOptions.Builder#autocaptureOptions(AutocaptureOptions)
  * @see ClickOptions
  * @see RageClickOptions

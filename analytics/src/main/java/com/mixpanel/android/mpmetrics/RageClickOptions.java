@@ -16,10 +16,6 @@ package com.mixpanel.android.mpmetrics;
  *     .build();
  * }</pre>
  *
- * <p><b>Experimental (beta).</b> Autocapture may contain issues, and its API and the properties it
- * captures may change in a future release before general availability. Pin your SDK version if you
- * build reports on autocaptured events.
- *
  * @see AutocaptureOptions.Builder#rageClickOptions(RageClickOptions)
  */
 public class RageClickOptions {

@@ -14,10 +14,6 @@ import org.json.JSONObject;
  * Create a {@code ClickEvent} using the {@link Builder} and pass it to
  * {@code mixpanel.getAutocapture().trackClick()} to track click events with full element metadata.
  *
- * <p><b>Experimental (beta).</b> Autocapture may contain issues, and its API and the properties it
- * captures may change in a future release before general availability. Pin your SDK version if you
- * build reports on autocaptured events.
- *
  * @see ComposeClickEvent
  */
 public class ClickEvent {
