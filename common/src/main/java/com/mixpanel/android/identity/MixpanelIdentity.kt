@@ -30,7 +30,9 @@ import androidx.annotation.RestrictTo
  * @constructor For internal use by the Mixpanel SDKs only, which own the device id. Apps create an
  *     identity with the constructor that takes only a user id and company id.
  */
-class MixpanelIdentity @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP) constructor(
+class MixpanelIdentity
+@RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
+constructor(
     val userId: String?,
     val companyId: String?,
     val deviceId: String?
