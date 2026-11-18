@@ -1901,6 +1901,25 @@ public class FeatureFlagManagerTest {
     assertEquals("No exposure should be tracked", 0, mMockDelegate.trackCalls.size());
   }
 
+  @Test
+  public void testGetVariantSync_openFeatureProviderFallbackKey_flagsNotReady_noExposure() {
+    setupFlagsConfig(true, null); // Enabled, but no flags loaded yet
+    assertFalse(mFeatureFlagManager.areFlagsReady());
+    mMockDelegate.resetTrackCalls();
+
+    MixpanelFlagVariant fallback = new MixpanelFlagVariant("$openfeature_provider", "default");
+    MixpanelFlagVariant result = mFeatureFlagManager.getVariantSync("my_flag", fallback);
+
+    flushAllLoopers();
+
+    assertEquals("Should return fallback key", "$openfeature_provider", result.key);
+    assertEquals("Should return fallback value", "default", result.value);
+    assertEquals(
+        MixpanelFlagVariant.Source.fallback(MixpanelFlagVariant.Source.Fallback.Reason.NOT_READY),
+        result.source);
+    assertEquals("No exposure should be tracked", 0, mMockDelegate.trackCalls.size());
+  }
+
   // ---- Coverage Tests for performFetchRequest response parsing paths ----
 
   @Test
