@@ -60,7 +60,6 @@ import org.json.JSONObject;
     /* package */ AnalyticsMessages(final Context context, MPConfig config) {
         mContext = context;
         mConfig = config;
-        mInstanceName = config.getInstanceName();
         mWorker = createWorker();
         getPoster().checkIsServerBlocked();
     }
@@ -72,20 +71,27 @@ import org.json.JSONObject;
     /**
      * Use this to get an instance of AnalyticsMessages instead of creating one directly for yourself.
      *
+     * <p>Instances are keyed by {@code MPConfig.getInstanceName()} when set, otherwise by the
+     * project {@code token}. This mirrors {@code MixpanelAPI.getInstance} so that two
+     * {@code MixpanelAPI} instances configured with different tokens (and no explicit instance
+     * name) do not share a worker, config, or HTTP poster.
+     *
      * @param messageContext should be the Main Activity of the application associated with these
      *     messages.
      * @param config The MPConfig configuration settings for the AnalyticsMessages instance.
+     * @param token The Mixpanel project token, used as the map key when no instance name is set.
      */
-    public static AnalyticsMessages getInstance(final Context messageContext, MPConfig config) {
+    public static AnalyticsMessages getInstance(
+            final Context messageContext, MPConfig config, String token) {
         synchronized (sInstances) {
             final Context appContext = messageContext.getApplicationContext();
             AnalyticsMessages ret;
-            String instanceName = config.getInstanceName();
-            if (!sInstances.containsKey(instanceName)) {
+            String instanceKey = MPConfig.resolveInstanceKey(config.getInstanceName(), token);
+            if (!sInstances.containsKey(instanceKey)) {
                 ret = new AnalyticsMessages(appContext, config);
-                sInstances.put(instanceName, ret);
+                sInstances.put(instanceKey, ret);
             } else {
-                ret = sInstances.get(instanceName);
+                ret = sInstances.get(instanceKey);
             }
             return ret;
         }
@@ -196,6 +202,35 @@ import org.json.JSONObject;
     /////////////////////////////////////////////////////////
     // For testing, to allow for Mocking.
 
+    /**
+     * Hard-kills every registered instance, waits briefly for each worker to stop, removes them
+     * from the registry so the next {@link #getInstance} call creates a fresh worker, and then
+     * deletes the default (unnamed) database.
+     *
+     * <p>Instances are keyed per token (or instance name), so tests can't reach the workers
+     * their {@code MixpanelAPI} instances created by looking one up with a {@code null} token.
+     * The database wipe keeps the clean-slate guarantee tests used to get as a side effect of
+     * killing the shared worker, even when no worker is registered (for example, when a test
+     * injects its own {@code AnalyticsMessages} subclass).
+     */
+    /* package */ static void hardKillAllInstancesForTesting(final Context context)
+            throws InterruptedException {
+        final AnalyticsMessages[] instances;
+        synchronized (sInstances) {
+            instances = sInstances.values().toArray(new AnalyticsMessages[0]);
+            sInstances.clear();
+        }
+        for (final AnalyticsMessages messages : instances) {
+            messages.hardKill();
+        }
+        for (final AnalyticsMessages messages : instances) {
+            for (int i = 0; i < 40 && !messages.isDead(); i++) {
+                Thread.sleep(50);
+            }
+        }
+        MPDbAdapter.getInstance(context, MPConfig.getInstance(context, null)).deleteDB();
+    }
+
     /* package */ boolean isDead() {
         return mWorker.isDead();
     }
@@ -207,8 +242,8 @@ import org.json.JSONObject;
     private volatile HttpService mHttpService;
 
     protected RemoteService getPoster() {
+        String serverHost = extractHostFromUrl(mConfig.getEventsEndpoint());
         if (mHttpService == null) {
-            String serverHost = extractHostFromUrl(mConfig.getEventsEndpoint());
             mHttpService =
                     new HttpService(
                             mConfig.shouldGzipRequestPayload(),
@@ -216,7 +251,9 @@ import org.json.JSONObject;
                             mConfig.getBackupHost(),
                             serverHost);
         } else {
-            // Update backup host and listener in case they changed at runtime
+            // Re-sync mutable settings in case setServerURL/setBackupHost/etc. was called
+            // after the poster was first created.
+            mHttpService.setServerHost(serverHost);
             mHttpService.setBackupHost(mConfig.getBackupHost());
             mHttpService.setNetworkErrorListener(mNetworkErrorListener);
         }
@@ -860,7 +897,6 @@ import org.json.JSONObject;
 
     // Used across thread boundaries
     private final Worker mWorker;
-    private final String mInstanceName;
     protected final Context mContext;
     protected final MPConfig mConfig;
     protected MixpanelNetworkErrorListener mNetworkErrorListener;

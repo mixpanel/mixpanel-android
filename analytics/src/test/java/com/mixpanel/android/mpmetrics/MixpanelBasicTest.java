@@ -50,11 +50,7 @@ public class MixpanelBasicTest {
   public void setUp() throws Exception {
     mMockPreferences =
         new TestUtils.EmptyPreferences(ApplicationProvider.getApplicationContext());
-    AnalyticsMessages messages =
-        AnalyticsMessages.getInstance(
-            ApplicationProvider.getApplicationContext(),
-            MPConfig.getInstance(ApplicationProvider.getApplicationContext(), null));
-    messages.hardKill();
+    AnalyticsMessages.hardKillAllInstancesForTesting(ApplicationProvider.getApplicationContext());
     Thread.sleep(2000);
   } // end of setUp() method definition
 
@@ -1119,7 +1115,7 @@ public class MixpanelBasicTest {
           final String token,
           final String instanceName,
           final DeviceIdProvider deviceIdProvider) {
-        String instanceKey = instanceName != null ? instanceName : token;
+        String instanceKey = MPConfig.resolveInstanceKey(instanceName, token);
         final String mixpanelPrefsName = "com.mixpanel.android.mpmetrics.Mixpanel";
         final SharedPreferences mpSharedPrefs =
             context.getSharedPreferences(mixpanelPrefsName, Context.MODE_PRIVATE);
@@ -1554,7 +1550,7 @@ public class MixpanelBasicTest {
           final String token,
           final String instanceName,
           final DeviceIdProvider deviceIdProvider) {
-        String instanceKey = instanceName != null ? instanceName : token;
+        String instanceKey = MPConfig.resolveInstanceKey(instanceName, token);
         final String mixpanelPrefsName = "com.mixpanel.android.mpmetrics.Mixpanel";
         final SharedPreferences mpSharedPrefs =
             context.getSharedPreferences(mixpanelPrefsName, Context.MODE_PRIVATE);
