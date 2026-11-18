@@ -191,6 +191,49 @@ public class HierarchicalGroupsTest {
     }
 
     @Test
+    public void testIdentifiedEventsDropSuperPropertyDistinctId() throws JSONException {
+        MixpanelAPI mixpanel = newApi(true);
+        mixpanel.registerSuperProperties(new JSONObject().put("distinct_id", "stale"));
+        mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
+        mixpanel.track("Viewed Report");
+
+        JSONObject props = lastEventProperties("Viewed Report");
+        assertFalse(props.has("distinct_id"));
+        assertEquals("user_123", props.getString("$user_id"));
+        assertEquals("acme", props.getString("$company_id"));
+
+        mixpanel.identify(new MixpanelIdentity("user_123", "globex"));
+        mixpanel.track("Switched Company");
+
+        props = lastEventProperties("Switched Company");
+        assertFalse(props.has("distinct_id"));
+        assertEquals("user_123", props.getString("$user_id"));
+        assertEquals("globex", props.getString("$company_id"));
+    }
+
+    @Test
+    public void testIdentifiedEventsKeepCallerDistinctId() throws JSONException {
+        MixpanelAPI mixpanel = newApi(true);
+        mixpanel.registerSuperProperties(new JSONObject().put("distinct_id", "stale"));
+        mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
+        mixpanel.track("Viewed Report", new JSONObject().put("distinct_id", "caller_id"));
+
+        assertEquals("caller_id", lastEventProperties("Viewed Report").getString("distinct_id"));
+    }
+
+    @Test
+    public void testDisabledSuperPropertyDistinctIdIsOverwritten() throws JSONException {
+        MixpanelAPI mixpanel = newApi(false);
+        mixpanel.registerSuperProperties(new JSONObject().put("distinct_id", "stale"));
+        mixpanel.identify("user_123");
+        mixpanel.track("Viewed Report");
+        assertEquals("user_123", lastEventProperties("Viewed Report").getString("distinct_id"));
+
+        mixpanel.track("Searched", new JSONObject().put("distinct_id", "caller_id"));
+        assertEquals("caller_id", lastEventProperties("Searched").getString("distinct_id"));
+    }
+
+    @Test
     public void testCompanyChangeIsAnIdentityChange() throws JSONException {
         MixpanelAPI mixpanel = newApi(true);
         mixpanel.identify(new MixpanelIdentity("user_123", "acme"));

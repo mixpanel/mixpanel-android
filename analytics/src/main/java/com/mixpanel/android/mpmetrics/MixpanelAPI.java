@@ -3750,6 +3750,9 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         // On a hierarchical groups project the user is $user_id and $company_id, so no distinct_id
         if (userId == null || companyId == null) {
             messageProps.put("distinct_id", distinctId);
+        } else {
+            // Not one inherited from super properties either; the caller's properties may still set it
+            messageProps.remove("distinct_id");
         }
         messageProps.put(
                 "$had_persisted_distinct_id", mPersistentIdentity.getHadPersistedDistinctId());
