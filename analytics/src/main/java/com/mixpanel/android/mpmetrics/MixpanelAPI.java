@@ -649,7 +649,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
             if (null == sReferrerPrefs) {
                 sReferrerPrefs = sPrefsLoader.loadPreferences(context, MPConfig.REFERRER_PREFS_NAME, null);
             }
-            String instanceKey = options.getInstanceName() != null ? options.getInstanceName() : token;
+            String instanceKey = MPConfig.resolveInstanceKey(options.getInstanceName(), token);
             Map<Context, MixpanelAPI> instances = sInstanceMap.get(instanceKey);
             if (null == instances) {
                 instances = new HashMap<Context, MixpanelAPI>();
@@ -797,7 +797,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      * @param listener
      */
     public void setNetworkErrorListener(MixpanelNetworkErrorListener listener) {
-        AnalyticsMessages.getInstance(mContext, mConfig).setNetworkErrorListener(listener);
+        AnalyticsMessages.getInstance(mContext, mConfig, mToken).setNetworkErrorListener(listener);
     }
 
     public Boolean getTrackAutomaticEvents() {
@@ -3071,7 +3071,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
     // non-test client code.
 
     /* package */ AnalyticsMessages getAnalyticsMessages() {
-        return AnalyticsMessages.getInstance(mContext, mConfig);
+        return AnalyticsMessages.getInstance(mContext, mConfig, mToken);
     }
 
     /* package */ PersistentIdentity getPersistentIdentity(
@@ -3107,7 +3107,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                     }
                 };
 
-        String instanceKey = instanceName != null ? instanceName : token;
+        String instanceKey = MPConfig.resolveInstanceKey(instanceName, token);
         final Future<SharedPreferences> storedPreferences =
                 sPrefsLoader.loadPreferences(context, storedPrefsName(token, instanceName), listener);
 
@@ -3125,8 +3125,8 @@ public class MixpanelAPI implements FeatureFlagDelegate {
     }
 
     private static String storedPrefsName(String token, String instanceName) {
-        final String instanceKey = instanceName != null ? instanceName : token;
-        return "com.mixpanel.android.mpmetrics.MixpanelAPI_" + instanceKey;
+        return "com.mixpanel.android.mpmetrics.MixpanelAPI_"
+                + MPConfig.resolveInstanceKey(instanceName, token);
     }
 
     // Hierarchical groups ingestion requires $company_id, so it is never stripped there

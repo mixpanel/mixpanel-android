@@ -52,13 +52,7 @@ class AutocaptureComposeInstrumentedTest {
     fun setUp() {
         mContext = InstrumentationRegistry.getInstrumentation().context
 
-        val messages = AnalyticsMessages.getInstance(
-            mContext,
-            MPConfig.getInstance(mContext, null)
-        )
-        messages.hardKill()
-        var attempts = 0
-        while (!messages.isDead && attempts++ < 40) Thread.sleep(50)
+        AnalyticsMessages.hardKillAllInstancesForTesting(mContext)
 
         mEvents.clear()
 

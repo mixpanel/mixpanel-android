@@ -42,7 +42,7 @@ public class TestUtils {
 
         @Override
             /* package */ PersistentIdentity getPersistentIdentity(final Context context, final Future<SharedPreferences> referrerPreferences, final String token, final String instanceName, final DeviceIdProvider deviceIdProvider) {
-            String instanceKey = instanceName != null ? instanceName : token;
+            String instanceKey = MPConfig.resolveInstanceKey(instanceName, token);
             final String prefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI_" + instanceKey;
             final SharedPreferences ret = context.getSharedPreferences(prefsName, Context.MODE_PRIVATE);
             ret.edit().clear().commit();
