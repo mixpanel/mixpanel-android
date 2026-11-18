@@ -9,7 +9,7 @@ The main file loaded by Copilot for every coding session. Contains:
 - Critical SDK principles (never crash, thread-safe, minimal deps)
 - Essential code patterns (visibility, error handling, threading)
 - Architecture rules (public API, data flow)
-- Testing approach (instrumented only)
+- Testing approach (JVM unit tests + instrumented tests)
 
 Kept under 500 lines to fit in Copilot's context window alongside your actual code.
 
