@@ -1763,7 +1763,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         updateSuperProperties(
                 new SuperPropertyUpdate() {
                     public JSONObject update(JSONObject in) {
-                        if (in.has(groupKey) && isSameGroup(singleGroup(in.opt(groupKey)), groupID)) {
+                        if (in.has(groupKey) && isSameGroup(in.opt(groupKey), groupID)) {
                             in.remove(groupKey);
                             removed[0] = true;
                         }
@@ -1790,15 +1790,6 @@ public class MixpanelAPI implements FeatureFlagDelegate {
             }
         }
         return groupID.equals(stored);
-    }
-
-    // A group key's value as one group. A one-item list, stored by an earlier version or before
-    // hierarchical groups was enabled, counts as that item.
-    private static Object singleGroup(Object value) {
-        if (value instanceof JSONArray && ((JSONArray) value).length() == 1) {
-            return ((JSONArray) value).opt(0);
-        }
-        return value;
     }
 
     /**

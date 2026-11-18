@@ -826,17 +826,6 @@ public class HierarchicalGroupsTest {
     }
 
     @Test
-    public void testRemoveGroupClearsListStoredBeforeHierarchicalGroups() throws JSONException {
-        MixpanelAPI mixpanel = newApi(true);
-        mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
-        mixpanel.registerSuperProperties(new JSONObject().put("team", new JSONArray().put("finance")));
-        mixpanel.removeGroup("team", "finance");
-        mixpanel.track("Viewed Report");
-
-        assertFalse(lastEventProperties("Viewed Report").has("team"));
-    }
-
-    @Test
     public void testDisabledGroupMembershipStaysAList() throws JSONException {
         MixpanelAPI mixpanel = newApi(false);
         mixpanel.setGroup("team", "finance");
@@ -1082,6 +1071,48 @@ public class HierarchicalGroupsTest {
                 return false;
             }
         };
+    }
+
+    // An identity survives a restart
+
+    @Test
+    public void testIdentitySurvivesRestart() throws JSONException {
+        String token = UUID.randomUUID().toString();
+        MixpanelAPI first = newPersistentApi(true, token);
+        first.getPeople().set("plan", "pro");
+        first.identify(new MixpanelIdentity("user_123", "acme"));
+        String deviceId = first.getAnonymousId();
+        mPushes.clear();
+
+        MixpanelAPI mixpanel = newPersistentApi(true, token);
+        MixpanelIdentity identity = mixpanel.getIdentity();
+        assertEquals("user_123", identity.getUserId());
+        assertEquals("acme", identity.getCompanyId());
+
+        // Loading the stored identity sends updates still queued from before identify to the
+        // user's profile in their company
+        assertEquals(1, mPushes.size());
+        assertEquals("user_123", mPushes.get(0).getDistinctId());
+        assertEquals("acme", mPushes.get(0).getCompanyId());
+
+        mixpanel.track("Viewed Report");
+        JSONObject props = lastEventProperties("Viewed Report");
+        assertEquals("user_123", props.getString("$user_id"));
+        assertEquals("acme", props.getString("$company_id"));
+        assertEquals(deviceId, props.getString("$device_id"));
+        assertFalse(props.has("distinct_id"));
+
+        mPeople.clear();
+        mGroups.clear();
+        mixpanel.getPeople().set("plan", "enterprise");
+        assertEquals(0, mPeople.size());
+        assertEquals(1, mGroups.size());
+        JSONObject message = mGroups.get(0).getMessage();
+        assertEquals("$user_id", message.getString("$group_key"));
+        assertEquals("user_123", message.getString("$group_id"));
+        assertEquals("acme", message.getString("$company_id"));
+        assertFalse(message.has("$distinct_id"));
+        assertEquals("enterprise", message.getJSONObject("$set").getString("plan"));
     }
 
     @Test
