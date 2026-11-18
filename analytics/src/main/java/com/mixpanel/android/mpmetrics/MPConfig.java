@@ -124,14 +124,26 @@ public class MPConfig {
      * The MixpanelAPI will use the system default SSL socket settings under ordinary circumstances.
      * That means it will ignore settings you associated with the default SSLSocketFactory in the
      * schema registry or in underlying HTTP libraries. If you'd prefer for Mixpanel to use your own
-     * SSL settings, you'll need to call setSSLSocketFactory early in your code, like this
+     * SSL settings, pass your factory through {@link MixpanelOptions.Builder#sslSocketFactory} so it
+     * is in place before the first network request:
      *
-     * <p>{@code <pre> MPConfig.getInstance(context).setSSLSocketFactory(someCustomizedSocketFactory);
-     * </pre> }
+     * <pre>{@code
+     * MixpanelOptions options = new MixpanelOptions.Builder()
+     *     .sslSocketFactory(someCustomizedSocketFactory)
+     *     .build();
+     * MixpanelAPI mixpanel = MixpanelAPI.getInstance(context, token, trackAutomaticEvents, options);
+     * }</pre>
      *
-     * <p>Your settings will be globally available to all Mixpanel instances, and will be used for all
-     * SSL connections in the library. The call is thread safe, but should be done before your first
-     * call to MixpanelAPI.getInstance to insure that the library never uses it's default.
+     * <p>Or set it on the configuration of an existing instance:
+     *
+     * <pre>{@code
+     * mixpanel.getMPConfig().setSSLSocketFactory(someCustomizedSocketFactory);
+     * }</pre>
+     *
+     * <p>{@link #getInstance(Context, String)} returns a new, unattached configuration on every call,
+     * so calling this method on that result has no effect on any {@link MixpanelAPI} instance. The
+     * factory applies only to the instance whose configuration you change, and is used for all SSL
+     * connections made by that instance. The call is thread safe.
      *
      * <p>The given socket factory may be used from multiple threads, which is safe for the system
      * SSLSocketFactory class, but if you pass a subclass you should ensure that it is thread-safe
@@ -146,14 +158,16 @@ public class MPConfig {
     /**
      * {@link OfflineMode} allows Mixpanel to be in-sync with client offline internal logic. If you
      * want to integrate your own logic with Mixpanel you'll need to call {@link
-     * #setOfflineMode(OfflineMode)} early in your code, like this
+     * #setOfflineMode(OfflineMode)} on the configuration of your {@link MixpanelAPI} instance, like
+     * this
      *
-     * <p>{@code <pre> MPConfig.getInstance(context).setOfflineMode(OfflineModeImplementation); </pre>
-     * }
+     * <pre>{@code
+     * mixpanel.getMPConfig().setOfflineMode(offlineModeImplementation);
+     * }</pre>
      *
-     * <p>Your settings will be globally available to all Mixpanel instances, and will be used across
-     * all the library. The call is thread safe, but should be done before your first call to
-     * MixpanelAPI.getInstance to insure that the library never uses it's default.
+     * <p>{@link #getInstance(Context, String)} returns a new, unattached configuration on every call,
+     * so calling this method on that result has no effect on any {@link MixpanelAPI} instance. The
+     * setting applies only to the instance whose configuration you change. The call is thread safe.
      *
      * <p>The given {@link OfflineMode} may be used from multiple threads, you should ensure that your
      * implementation is thread-safe before passing it to Mixpanel.

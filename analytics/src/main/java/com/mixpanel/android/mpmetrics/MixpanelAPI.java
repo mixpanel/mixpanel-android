@@ -212,6 +212,12 @@ public class MixpanelAPI implements FeatureFlagDelegate {
             mConfig.setServerURL(options.getServerURL(), options.getProxyServerInteractor());
         }
 
+        // Apply a custom SSL socket factory before AnalyticsMessages and FeatureFlagManager are
+        // created, so that the first event and flags requests already use it.
+        if (options.getSSLSocketFactory() != null) {
+            mConfig.setSSLSocketFactory(options.getSSLSocketFactory());
+        }
+
         mTrackAutomaticEvents = trackAutomaticEvents;
 
         final Map<String, String> deviceInfo = new HashMap<String, String>();
