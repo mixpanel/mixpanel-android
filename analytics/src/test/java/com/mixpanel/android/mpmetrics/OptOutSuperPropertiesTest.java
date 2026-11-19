@@ -10,6 +10,8 @@ import android.content.SharedPreferences;
 
 import androidx.test.core.app.ApplicationProvider;
 
+import com.mixpanel.android.util.MPLog;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.junit.After;
@@ -58,6 +60,13 @@ public class OptOutSuperPropertiesTest {
 
     @After
     public void tearDown() {
+        // Stop the worker thread so it can't outlive this test and hang a later one.
+        try {
+            mAnalyticsMessages.hardKill();
+        } catch (RuntimeException e) {
+            MPLog.w("MixpanelAPI.OptOutSuperPropertiesTest", "Ignoring exception during teardown", e);
+        }
+        LooperTestUtils.idleAllLoopers();
         if (mPersistentIdentity != null) {
             mPersistentIdentity.clearPreferences();
             mPersistentIdentity.removeOptOutFlag(TOKEN);
@@ -290,5 +299,65 @@ public class OptOutSuperPropertiesTest {
 
         mixpanel.track("Event");
         assertEquals("pro", lastEventProperties("Event").getString("plan"));
+    }
+
+    @Test
+    public void testRepeatedRegistersOfSameKeyKeepOneEntry() throws JSONException {
+        MixpanelAPI mixpanel = newOptedOutMixpanel();
+        for (int i = 0; i < 100; i++) {
+            mixpanel.registerSuperProperties(new JSONObject().put("screen", "screen " + i));
+        }
+        assertEquals(1, mixpanel.getPendingSuperPropertyCountForTesting());
+
+        mixpanel.optInTracking();
+        assertEquals(0, mixpanel.getPendingSuperPropertyCountForTesting());
+        assertEquals("screen 99", lastEventProperties("$opt_in").getString("screen"));
+    }
+
+    @Test
+    public void testRegisterThenUnregisterLeavesKeyUnset() throws JSONException {
+        MixpanelAPI mixpanel = newOptedOutMixpanel();
+        mPersistentIdentity.registerSuperProperties(new JSONObject().put("plan", "persisted"));
+        mixpanel.registerSuperProperties(new JSONObject().put("plan", "pro"));
+        mixpanel.unregisterSuperProperty("plan");
+        assertEquals(1, mixpanel.getPendingSuperPropertyCountForTesting());
+
+        mixpanel.optInTracking();
+        assertFalse(lastEventProperties("$opt_in").has("plan"));
+        assertFalse(mixpanel.getSuperProperties().has("plan"));
+    }
+
+    @Test
+    public void testUnregisterThenRegisterOnceOverridesPersisted() throws JSONException {
+        MixpanelAPI mixpanel = newOptedOutMixpanel();
+        mPersistentIdentity.registerSuperProperties(new JSONObject().put("plan", "persisted"));
+        mixpanel.unregisterSuperProperty("plan");
+        mixpanel.registerSuperPropertiesOnce(new JSONObject().put("plan", "once"));
+
+        mixpanel.optInTracking();
+        assertEquals("once", lastEventProperties("$opt_in").getString("plan"));
+    }
+
+    @Test
+    public void testRegisterOnceDoesNotOverwritePersistedKey() throws JSONException {
+        MixpanelAPI mixpanel = newOptedOutMixpanel();
+        mPersistentIdentity.registerSuperProperties(new JSONObject().put("plan", "persisted"));
+        mixpanel.registerSuperPropertiesOnce(new JSONObject().put("plan", "once"));
+        mixpanel.registerSuperPropertiesOnce(new JSONObject().put("plan", "once again"));
+        assertEquals(1, mixpanel.getPendingSuperPropertyCountForTesting());
+
+        mixpanel.optInTracking();
+        assertEquals("persisted", lastEventProperties("$opt_in").getString("plan"));
+    }
+
+    @Test
+    public void testRegisterOnceAfterRegisterKeepsRegisteredValue() throws JSONException {
+        MixpanelAPI mixpanel = newOptedOutMixpanel();
+        mPersistentIdentity.registerSuperProperties(new JSONObject().put("plan", "persisted"));
+        mixpanel.registerSuperProperties(new JSONObject().put("plan", "pro"));
+        mixpanel.registerSuperPropertiesOnce(new JSONObject().put("plan", "once"));
+
+        mixpanel.optInTracking();
+        assertEquals("pro", lastEventProperties("$opt_in").getString("plan"));
     }
 }
