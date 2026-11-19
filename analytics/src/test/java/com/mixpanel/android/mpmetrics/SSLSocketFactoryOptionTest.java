@@ -10,6 +10,7 @@ import androidx.test.core.app.ApplicationProvider;
 import java.util.concurrent.Future;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocketFactory;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -29,6 +30,12 @@ public class SSLSocketFactoryOptionTest {
     public void setUp() {
         mContext = ApplicationProvider.getApplicationContext();
         mPrefs = new TestUtils.EmptyPreferences(mContext);
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        // Stop the AnalyticsMessages workers these tests start so they don't outlive the test.
+        AnalyticsMessages.hardKillAllInstancesForTesting(mContext);
     }
 
     @Test
