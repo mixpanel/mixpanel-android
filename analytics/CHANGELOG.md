@@ -1,5 +1,13 @@
 # Changelog
 
+## [v8.12.1](https://github.com/mixpanel/mixpanel-android/tree/v8.12.1) (2026-11-20)
+
+### Fixes
+- isolate AnalyticsMessages and HttpService per instance [SDK-109] ([#985](https://github.com/mixpanel/mixpanel-android/pull/985))
+- flush on first background after deferred init ([#1022](https://github.com/mixpanel/mixpanel-android/pull/1022))
+
+[Full Changelog](https://github.com/mixpanel/mixpanel-android/compare/v8.12.0...v8.12.1)
+
 ## [v8.12.0](https://github.com/mixpanel/mixpanel-android/tree/v8.12.0) (2026-10-30)
 
 ### Features
