@@ -1,5 +1,6 @@
 package com.mixpanel.android.sessionreplay
 
+import com.mixpanel.android.sessionreplay.utils.ReplayIdentifiers
 import com.mixpanel.android.sessionreplay.network.APIRequest
 import com.mixpanel.android.sessionreplay.network.FlushRequest
 import com.mixpanel.android.sessionreplay.network.Network
@@ -81,9 +82,8 @@ class FlushRequestTests {
         }
 
     @Test
-    fun testUpdateDistinctId() {
-        // Test the updateDistinctId method - it should execute without throwing an exception
-        flushRequest.updateDistinctId("newDistinctId")
+    fun testUpdateIdentifiers() {
+        flushRequest.updateIdentifiers(ReplayIdentifiers.DistinctId("newDistinctId"))
 
         // Verify that the distinctId was updated correctly
         assertEquals("newDistinctId", flushRequest.distinctId)

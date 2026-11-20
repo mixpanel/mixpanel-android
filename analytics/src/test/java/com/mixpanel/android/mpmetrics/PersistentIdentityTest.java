@@ -860,6 +860,19 @@ public class PersistentIdentityTest {
         assertFalse(target.has("thing"));
     }
 
+    @Test
+    public void testEventsCompanyIdPersistsAndClears() {
+        assertNull(mPersistentIdentity.getEventsCompanyId());
+
+        mPersistentIdentity.setEventsCompanyId("acme");
+        assertEquals("acme", mPersistentIdentity.getEventsCompanyId());
+        SharedPreferences testPreferences = ApplicationProvider.getApplicationContext().getSharedPreferences(TEST_PREFERENCES, Context.MODE_PRIVATE);
+        assertEquals("acme", testPreferences.getString("events_company_id", null));
+
+        mPersistentIdentity.clearPreferences();
+        assertNull(mPersistentIdentity.getEventsCompanyId());
+    }
+
     private PersistentIdentity mPersistentIdentity;
     private static final String TEST_PREFERENCES = "TEST PERSISTENT PROPERTIES PREFS";
     private static final String TEST_REFERRER_PREFERENCES  = "TEST REFERRER PREFS";
