@@ -45,6 +45,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -1178,7 +1179,6 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      *     <p>See also {@link #registerSuperProperties(org.json.JSONObject)}
      */
     public void registerSuperPropertiesMap(Map<String, Object> superProperties) {
-        if (hasOptedOutTracking()) return;
         if (null == superProperties) {
             MPLog.e(LOGTAG, "registerSuperPropertiesMap does not accept null properties");
             return;
@@ -1212,7 +1212,9 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      * @see #clearSuperProperties()
      */
     public void registerSuperProperties(JSONObject superProperties) {
-        if (hasOptedOutTracking()) return;
+        if (deferSuperPropertyChangeIfOptedOut(PendingSuperProperty.SET, superProperties, null)) {
+            return;
+        }
         mPersistentIdentity.registerSuperProperties(superProperties);
     }
 
@@ -1228,7 +1230,10 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      * @see #registerSuperProperties(JSONObject)
      */
     public void unregisterSuperProperty(String superPropertyName) {
-        if (hasOptedOutTracking()) return;
+        if (deferSuperPropertyChangeIfOptedOut(
+                PendingSuperProperty.REMOVE, null, superPropertyName)) {
+            return;
+        }
         mPersistentIdentity.unregisterSuperProperty(superPropertyName);
     }
 
@@ -1242,7 +1247,6 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      *     <p>See also {@link #registerSuperPropertiesOnce(org.json.JSONObject)}
      */
     public void registerSuperPropertiesOnceMap(Map<String, Object> superProperties) {
-        if (hasOptedOutTracking()) return;
         if (null == superProperties) {
             MPLog.e(LOGTAG, "registerSuperPropertiesOnceMap does not accept null properties");
             return;
@@ -1265,7 +1269,10 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      * @see #registerSuperProperties(JSONObject)
      */
     public void registerSuperPropertiesOnce(JSONObject superProperties) {
-        if (hasOptedOutTracking()) return;
+        if (deferSuperPropertyChangeIfOptedOut(
+                PendingSuperProperty.SET_ONCE, superProperties, null)) {
+            return;
+        }
         mPersistentIdentity.registerSuperPropertiesOnce(superProperties);
     }
 
@@ -1280,7 +1287,115 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      * @see #registerSuperProperties(JSONObject)
      */
     public void clearSuperProperties() {
+        clearPendingSuperProperties();
         mPersistentIdentity.clearSuperProperties();
+    }
+
+    /**
+     * While the user is opted out, super property changes are not persisted. Instead they are
+     * kept here, one entry per property name, and applied in {@link #optInTracking(String,
+     * JSONObject)} so that the opt-in event and later events carry them. Each entry holds the net
+     * effect of the calls made for that name, so applying the entries leaves the same super
+     * properties as replaying every call in order would, and memory use is bounded by the number of
+     * distinct names rather than the number of calls.
+     *
+     * <p>Pending changes live only in memory: they are lost if the process dies before opt-in, and
+     * are discarded by {@link #optOutTracking()}, {@link #reset()} and {@link
+     * #clearSuperProperties()}.
+     *
+     * @return true if the user is opted out and the change was recorded (or dropped because it was
+     *     invalid), false if the caller should apply it now.
+     */
+    private boolean deferSuperPropertyChangeIfOptedOut(
+            int action, JSONObject superProperties, String superPropertyName) {
+        synchronized (mPendingSuperProperties) {
+            if (!hasOptedOutTracking()) {
+                return false;
+            }
+            if (action == PendingSuperProperty.REMOVE) {
+                if (superPropertyName != null) {
+                    mPendingSuperProperties.put(
+                            superPropertyName, new PendingSuperProperty(action, null));
+                }
+            } else if (superProperties != null) {
+                for (final Iterator<String> keys = superProperties.keys(); keys.hasNext(); ) {
+                    final String key = keys.next();
+                    final Object value = superProperties.opt(key);
+                    if (action == PendingSuperProperty.SET) {
+                        mPendingSuperProperties.put(key, new PendingSuperProperty(action, value));
+                        continue;
+                    }
+                    // Register-once: an earlier set (once or not) for this name already wins, and
+                    // after a removal the name is unset, so the once value always applies.
+                    final PendingSuperProperty existing = mPendingSuperProperties.get(key);
+                    if (existing == null) {
+                        mPendingSuperProperties.put(key, new PendingSuperProperty(action, value));
+                    } else if (existing.action == PendingSuperProperty.REMOVE) {
+                        mPendingSuperProperties.put(
+                                key, new PendingSuperProperty(PendingSuperProperty.SET, value));
+                    }
+                }
+            }
+            return true;
+        }
+    }
+
+    private void clearPendingSuperProperties() {
+        synchronized (mPendingSuperProperties) {
+            mPendingSuperProperties.clear();
+        }
+    }
+
+    /* package */ int getPendingSuperPropertyCountForTesting() {
+        synchronized (mPendingSuperProperties) {
+            return mPendingSuperProperties.size();
+        }
+    }
+
+    /** Must be called while holding the mPendingSuperProperties lock. */
+    private void applyPendingSuperProperties() {
+        if (mPendingSuperProperties.isEmpty()) {
+            return;
+        }
+        // Entries are for distinct names, so applying them grouped by action gives the same
+        // result as applying them one by one.
+        final JSONObject toSet = new JSONObject();
+        final JSONObject toSetOnce = new JSONObject();
+        for (final Entry<String, PendingSuperProperty> entry : mPendingSuperProperties.entrySet()) {
+            final PendingSuperProperty pending = entry.getValue();
+            try {
+                if (pending.action == PendingSuperProperty.SET) {
+                    toSet.put(entry.getKey(), pending.value);
+                } else if (pending.action == PendingSuperProperty.SET_ONCE) {
+                    toSetOnce.put(entry.getKey(), pending.value);
+                } else {
+                    mPersistentIdentity.unregisterSuperProperty(entry.getKey());
+                }
+            } catch (JSONException e) {
+                MPLog.e(LOGTAG, "Exception applying super property after opt-in.", e);
+            }
+        }
+        if (toSet.length() > 0) {
+            mPersistentIdentity.registerSuperProperties(toSet);
+        }
+        if (toSetOnce.length() > 0) {
+            mPersistentIdentity.registerSuperPropertiesOnce(toSetOnce);
+        }
+        mPendingSuperProperties.clear();
+    }
+
+    private static final class PendingSuperProperty {
+        static final int SET = 0;
+        static final int SET_ONCE = 1;
+        static final int REMOVE = 2;
+
+        final int action;
+        final Object value;
+
+        PendingSuperProperty(int action, Object value) {
+            this.action = action;
+            this.value = value;
+        }
     }
 
     /**
@@ -1477,6 +1592,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         // Will clear distinct_ids, superProperties,
         // and waiting People Analytics properties. Will have no effect
         // on messages already queued to send with AnalyticsMessages.
+        clearPendingSuperProperties();
         mPersistentIdentity.clearPreferences();
         getAnalyticsMessages()
                 .clearAnonymousUpdatesMessage(new AnalyticsMessages.MixpanelDescription(mToken));
@@ -1523,7 +1639,10 @@ public class MixpanelAPI implements FeatureFlagDelegate {
             mPersistentIdentity.clearTimedEvents();
         }
         mPersistentIdentity.clearReferrerProperties();
-        mPersistentIdentity.setOptOutTracking(true, mToken);
+        synchronized (mPendingSuperProperties) {
+            mPersistentIdentity.setOptOutTracking(true, mToken);
+            mPendingSuperProperties.clear();
+        }
         // Drop in-memory feature flag state (and any persisted variants) so the prior user's
         // variants can't be served via getVariant after they've opted out.
         mFeatureFlagManager.reset();
@@ -1564,6 +1683,9 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      * calls will be sent to Mixpanel after using this method. This method will internally track an
      * opt-in event to your project.
      *
+     * <p>Super properties registered or unregistered while the user was opted out, in this process,
+     * are applied before the opt-in event is tracked.
+     *
      * @param distinctId Optional string to use as the distinct ID for events. This will call {@link
      *     #identify(String)}.
      * @param properties Optional JSONObject that could be passed to add properties to the opt-in
@@ -1571,7 +1693,10 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      *     <p>See also {@link #optInTracking()} and {@link #optOutTracking()}.
      */
     public void optInTracking(String distinctId, JSONObject properties) {
-        mPersistentIdentity.setOptOutTracking(false, mToken);
+        synchronized (mPendingSuperProperties) {
+            mPersistentIdentity.setOptOutTracking(false, mToken);
+            applyPendingSuperProperties();
+        }
         if (distinctId != null) {
             identify(distinctId);
         }
@@ -3331,6 +3456,8 @@ public class MixpanelAPI implements FeatureFlagDelegate {
     private final PersistentIdentity mPersistentIdentity;
     private final Map<String, String> mDeviceInfo;
     private final Map<String, Long> mEventTimings;
+    // Super property changes made while opted out, by property name; also used as their lock.
+    private final Map<String, PendingSuperProperty> mPendingSuperProperties = new LinkedHashMap<>();
     private MixpanelActivityLifecycleCallbacks mMixpanelActivityLifecycleCallbacks;
     private final SessionMetadata mSessionMetadata;
     private final FeatureFlagOptions mFeatureFlagOptions;
