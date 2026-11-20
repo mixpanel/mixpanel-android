@@ -15,6 +15,8 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
+import javax.net.ssl.SSLSocketFactory;
+
 public class MixpanelOptions {
 
     /**
@@ -36,6 +38,7 @@ public class MixpanelOptions {
     private final String serverURL;
     private final ProxyServerInteractor proxyServerInteractor;
     private final Set<String> excludeProperties;
+    private final SSLSocketFactory sslSocketFactory;
 
     private MixpanelOptions(Builder builder) {
         this.instanceName = builder.instanceName;
@@ -47,6 +50,7 @@ public class MixpanelOptions {
         this.mFeatureFlagOptions = builder.mFeatureFlagOptions;
         this.mAutocaptureOptions = builder.mAutocaptureOptions;
         this.excludeProperties = builder.excludeProperties;
+        this.sslSocketFactory = builder.sslSocketFactory;
     }
 
     public String getInstanceName() {
@@ -141,6 +145,16 @@ public class MixpanelOptions {
         return excludeProperties;
     }
 
+    /**
+     * Returns the custom SSL socket factory configured for this Mixpanel instance.
+     *
+     * @return The SSLSocketFactory, or null if not configured (the SDK default is used).
+     */
+    @Nullable
+    public SSLSocketFactory getSSLSocketFactory() {
+        return sslSocketFactory;
+    }
+
     public static class Builder {
         private String instanceName;
         private boolean optOutTrackingDefault = false;
@@ -153,6 +167,7 @@ public class MixpanelOptions {
         private String serverURL;
         private ProxyServerInteractor proxyServerInteractor;
         private Set<String> excludeProperties = Collections.emptySet();
+        private SSLSocketFactory sslSocketFactory;
 
         public Builder() {
         }
@@ -406,6 +421,26 @@ public class MixpanelOptions {
                 // Defensive copy + immutable wrapper so callers can't mutate post-build.
                 this.excludeProperties = Collections.unmodifiableSet(new HashSet<>(excludeProperties));
             }
+            return this;
+        }
+
+        /**
+         * Sets a custom {@link SSLSocketFactory} for all HTTPS requests made by this Mixpanel
+         * instance, such as event and profile uploads and feature flag requests.
+         *
+         * <p>The factory is applied before the instance makes its first network request. Use it
+         * for certificate pinning or custom TLS settings. It may be used from multiple threads, so
+         * it must be thread-safe.
+         *
+         * <pre>{@code
+         * .sslSocketFactory(sslContext.getSocketFactory())
+         * }</pre>
+         *
+         * @param sslSocketFactory The factory to use, or null to keep the SDK default.
+         * @return This Builder instance for chaining.
+         */
+        public Builder sslSocketFactory(@Nullable SSLSocketFactory sslSocketFactory) {
+            this.sslSocketFactory = sslSocketFactory;
             return this;
         }
 

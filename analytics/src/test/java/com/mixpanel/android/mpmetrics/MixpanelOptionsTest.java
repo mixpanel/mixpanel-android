@@ -11,6 +11,9 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocketFactory;
+
 import static org.junit.Assert.*;
 
 public class MixpanelOptionsTest {
@@ -30,6 +33,20 @@ public class MixpanelOptionsTest {
         assertNull(options.getProxyServerInteractor());
         assertNotNull(options.getExcludeProperties());
         assertTrue(options.getExcludeProperties().isEmpty());
+        assertNull(options.getSSLSocketFactory());
+    }
+
+    @Test
+    public void testSSLSocketFactory() throws Exception {
+        SSLContext sslContext = SSLContext.getInstance("TLS");
+        sslContext.init(null, null, null);
+        SSLSocketFactory factory = sslContext.getSocketFactory();
+
+        MixpanelOptions options = new MixpanelOptions.Builder()
+                .sslSocketFactory(factory)
+                .build();
+
+        assertSame(factory, options.getSSLSocketFactory());
     }
 
     @Test
