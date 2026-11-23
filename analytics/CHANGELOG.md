@@ -1,5 +1,12 @@
 # Changelog
 
+## [v8.13.0](https://github.com/mixpanel/mixpanel-android/tree/v8.13.0) (2026-11-23)
+
+### Features
+- tag OpenFeature exposures with $openfeature_provider (SDK-448) ([#1027](https://github.com/mixpanel/mixpanel-android/pull/1027))
+
+[Full Changelog](https://github.com/mixpanel/mixpanel-android/compare/v8.12.1...v8.13.0)
+
 ## [v8.12.1](https://github.com/mixpanel/mixpanel-android/tree/v8.12.1) (2026-11-20)
 
 ### Fixes
