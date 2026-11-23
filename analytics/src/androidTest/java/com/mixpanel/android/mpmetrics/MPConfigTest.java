@@ -2,6 +2,7 @@ package com.mixpanel.android.mpmetrics;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import android.os.Bundle;
@@ -13,6 +14,9 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.util.UUID;
+
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocketFactory;
 
 @RunWith(AndroidJUnit4.class)
 public class MPConfigTest {
@@ -261,6 +265,26 @@ public class MPConfigTest {
         assertEquals("https://api-eu.mixpanel.com/engage/?ip=1", config.getPeopleEndpoint());
         assertEquals("https://api-eu.mixpanel.com/groups/?ip=1", config.getGroupsEndpoint());
         assertEquals("https://api-eu.mixpanel.com/flags/", config.getFlagsEndpoint());
+    }
+
+    @Test
+    public void testSSLSocketFactoryFromMixpanelOptions() throws Exception {
+        SSLContext sslContext = SSLContext.getInstance("TLS");
+        sslContext.init(null, null, null);
+        SSLSocketFactory factory = sslContext.getSocketFactory();
+
+        MixpanelOptions options = new MixpanelOptions.Builder()
+                .sslSocketFactory(factory)
+                .build();
+
+        MixpanelAPI mixpanel = MixpanelAPI.getInstance(
+                InstrumentationRegistry.getInstrumentation().getContext(),
+                UUID.randomUUID().toString(),
+                true,
+                options
+        );
+
+        assertSame(factory, mixpanel.getMPConfig().getSSLSocketFactory());
     }
 
     @Test

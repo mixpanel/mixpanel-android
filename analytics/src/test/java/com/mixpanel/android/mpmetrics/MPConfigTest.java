@@ -15,6 +15,7 @@ import org.robolectric.RobolectricTestRunner;
 import java.util.Collections;
 import java.util.Map;
 
+import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocketFactory;
 
 import static org.junit.Assert.*;
@@ -175,6 +176,26 @@ public class MPConfigTest {
         SSLSocketFactory customFactory = (SSLSocketFactory) SSLSocketFactory.getDefault();
         config.setSSLSocketFactory(customFactory);
         assertSame(customFactory, config.getSSLSocketFactory());
+    }
+
+    @Test
+    public void testGetInstanceReturnsUnattachedConfig() throws Exception {
+        // MPConfig.getInstance builds a fresh config on every call, so a factory set on one
+        // result is not visible through another. Use MixpanelOptions or getMPConfig() instead.
+        MPConfig first = MPConfig.getInstance(ApplicationProvider.getApplicationContext(), null);
+        MPConfig second = MPConfig.getInstance(ApplicationProvider.getApplicationContext(), null);
+        assertNotSame(first, second);
+
+        SSLSocketFactory customFactory = newSSLSocketFactory();
+        first.setSSLSocketFactory(customFactory);
+        assertSame(customFactory, first.getSSLSocketFactory());
+        assertNotSame(customFactory, second.getSSLSocketFactory());
+    }
+
+    private static SSLSocketFactory newSSLSocketFactory() throws Exception {
+        SSLContext sslContext = SSLContext.getInstance("TLS");
+        sslContext.init(null, null, null);
+        return sslContext.getSocketFactory();
     }
 
     @Test
