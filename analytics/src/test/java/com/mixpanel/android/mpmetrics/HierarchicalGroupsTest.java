@@ -512,6 +512,34 @@ public class HierarchicalGroupsTest {
     }
 
     @Test
+    public void testSessionTotalsAreSkipped() {
+        MixpanelAPI mixpanel = newApi(true);
+        mixpanel.identify(new MixpanelIdentity("user_123", "acme"));
+        int groupsBefore = mGroups.size();
+        ShadowLog.reset();
+        mixpanel.trackSessionTotals(12.5);
+
+        assertEquals(groupsBefore, mGroups.size());
+        assertEquals(0, mPeople.size());
+        for (ShadowLog.LogItem item : ShadowLog.getLogs()) {
+            assertFalse(item.msg, item.msg != null && item.msg.contains("is not supported for hierarchical groups"));
+        }
+    }
+
+    @Test
+    public void testDisabledKeepsSessionTotals() throws JSONException {
+        MixpanelAPI mixpanel = newApi(false);
+        mixpanel.identify("user_123");
+        mixpanel.trackSessionTotals(12.5);
+
+        assertEquals(2, mPeople.size());
+        JSONObject sessions = mPeople.get(0).getMessage().getJSONObject("$add");
+        assertEquals(1, sessions.getInt(AutomaticEvents.TOTAL_SESSIONS));
+        JSONObject length = mPeople.get(1).getMessage().getJSONObject("$add");
+        assertEquals(12.5, length.getDouble(AutomaticEvents.TOTAL_SESSIONS_LENGTH), 0.0);
+    }
+
+    @Test
     public void testDisabledSendsPeopleToEngage() throws JSONException {
         MixpanelAPI mixpanel = newApi(false);
         mixpanel.identify("user_123");

@@ -3011,6 +3011,19 @@ public class MixpanelAPI implements FeatureFlagDelegate {
     }
 
     /**
+     * Adds a finished session to the user profile's session totals. Hierarchical groups user
+     * profiles have no $add, so they're skipped there rather than logging an error at the end of
+     * every session.
+     */
+    /* package */ void trackSessionTotals(double sessionLengthSeconds) {
+        if (mHierarchicalGroups) {
+            return;
+        }
+        getPeople().increment(AutomaticEvents.TOTAL_SESSIONS, 1);
+        getPeople().increment(AutomaticEvents.TOTAL_SESSIONS_LENGTH, sessionLengthSeconds);
+    }
+
+    /**
      * Uses ProcessLifecycleOwner to track when the app first enters the foreground.
      * Sets mHasAppForegrounded (used to guard network calls from background wakes),
      * and prefetches feature flags if enabled.
