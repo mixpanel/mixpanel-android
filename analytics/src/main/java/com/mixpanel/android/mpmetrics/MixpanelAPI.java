@@ -969,6 +969,10 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                 return "Can't identify " + identity + ": hierarchical groups projects identify a user by "
                         + "company and user id, so both are required.";
             }
+            if (userId.contains("|") || companyId.contains("|")) {
+                return "Can't identify " + identity + ": hierarchical groups projects reserve '|', so a user "
+                        + "or company id can't contain it.";
+            }
         } else {
             if (isBlankId(userId)) {
                 return "Can't identify " + identity + " without a user id.";

@@ -1122,6 +1122,29 @@ public class HierarchicalGroupsTest {
         assertEquals(" acme ", mixpanel.getIdentity().getCompanyId());
     }
 
+    @Test
+    public void testIdsContainingPipeAreRefused() {
+        MixpanelAPI hierarchical = newApi(true);
+        hierarchical.identify(new MixpanelIdentity("user|123", "acme"));
+        hierarchical.identify(new MixpanelIdentity("user_123", "ac|me"));
+        assertNull(hierarchical.getIdentity().getUserId());
+        assertNull(hierarchical.getIdentity().getCompanyId());
+        assertEquals(0, countEvents("$identify"));
+
+        hierarchical.optOutTracking();
+        hierarchical.optInTrackingWithIdentity(new MixpanelIdentity("user|123", "acme"));
+        assertTrue(hierarchical.hasOptedOutTracking());
+        assertEquals(0, countEvents("$opt_in"));
+    }
+
+    @Test
+    public void testIdsContainingPipeAreAcceptedWhenDisabled() {
+        MixpanelAPI legacy = newApi(false);
+        legacy.identify(new MixpanelIdentity("user|123"));
+
+        assertEquals("user|123", legacy.getIdentity().getUserId());
+    }
+
     // $company_id is reserved for identify on a hierarchical groups project
 
     // An instance whose stored preferences survive, so a second one on the token reloads them
