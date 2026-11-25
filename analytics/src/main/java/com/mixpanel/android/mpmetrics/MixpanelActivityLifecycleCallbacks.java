@@ -60,8 +60,7 @@ import java.lang.ref.WeakReference;
                             double elapsedTimeRounded = Math.round(elapsedTime * 10.0) / 10.0;
                             JSONObject sessionProperties = new JSONObject();
                             sessionProperties.put(AutomaticEvents.SESSION_LENGTH, elapsedTimeRounded);
-                            mMpInstance.getPeople().increment(AutomaticEvents.TOTAL_SESSIONS, 1);
-                            mMpInstance.getPeople().increment(AutomaticEvents.TOTAL_SESSIONS_LENGTH, elapsedTimeRounded);
+                            mMpInstance.trackSessionTotals(elapsedTimeRounded);
                             mMpInstance.track(AutomaticEvents.SESSION, sessionProperties, true);
                         }
                     } catch (JSONException e) {

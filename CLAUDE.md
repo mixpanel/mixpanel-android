@@ -39,7 +39,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Testing
 
-- **No unit tests**: The SDK uses instrumented tests only for real device validation
+- **JVM unit tests**: Located in `/analytics/src/test/` and run on Robolectric, with no device needed
+  - Run all: `./gradlew :analytics:test` (CI runs these on every push)
+  - Run one class: `./gradlew :analytics:testDebugUnitTest --tests 'com.mixpanel.android.mpmetrics.TestClassName'`
+  - Hierarchical groups coverage lives here (`HierarchicalGroupsTest`, `HierarchicalGroupsScenariosTest`, `HierarchicalGroupsKotlinTest`)
 - **Instrumented tests**: Located in `/analytics/src/androidTest/` (require Android device/emulator)
   - Use AndroidJUnit4 runner
   - **IMPORTANT**: Run tests from the analytics module (not `:analytics:mixpaneldemo`) using `:analytics:connectedAndroidTest`
@@ -198,7 +201,7 @@ For local iteration on `:common` against `:analytics` or `:openfeature-provider`
 - WeakReference for activity/callback references
 
 ### Testing Approach
-- Instrumented tests only (no unit tests)
+- JVM unit tests (Robolectric) in `src/test`, plus instrumented tests in `src/androidTest` for real device validation
 - BlockingQueue pattern for async verification
 - Real database testing (not mocked)
 - Thread safety validation in tests

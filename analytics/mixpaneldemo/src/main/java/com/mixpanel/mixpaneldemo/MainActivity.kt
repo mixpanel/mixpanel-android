@@ -18,6 +18,11 @@ import com.mixpanel.mixpaneldemo.ui.theme.MixpanelandroidTheme
 
 const val MIXPANEL_PROJECT_TOKEN = "YOUR_PROJECT_TOKEN"
 
+// Off while documenting hierarchical groups requests, so the main instance's autocapture and
+// screen events don't mix into the Hierarchical Groups page's logs. Pages other than that one
+// still create the main instance when they're opened.
+const val MAIN_INSTANCE_ENABLED = false
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,6 +43,7 @@ fun MyApp() {
     var previousRoute by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(currentRoute) {
+        if (!MAIN_INSTANCE_ENABLED) return@LaunchedEffect
         currentRoute?.let { route ->
             val mixpanel = MixpanelAPI.getInstance(context, MIXPANEL_PROJECT_TOKEN, true)
 

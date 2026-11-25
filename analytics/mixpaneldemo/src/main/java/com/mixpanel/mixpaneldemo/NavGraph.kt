@@ -19,6 +19,7 @@ fun NavGraph(navController: NavHostController, modifier: Modifier = Modifier) {
         composable("utilityPage") { UtilityPage(navController) }
         composable("gdprPage") { GDPRPage(navController) }
         composable("groupsPage") { GroupsPage(navController) }
+        composable("hierarchicalGroupsPage") { HierarchicalGroupsPage(navController) }
         composable("autocaptureTestPage") { AutocaptureMenuScreen(navController) }
         composable("composeAutocaptureTest") { ComposeAutocaptureTestScreen(navController) }
         composable("complexUIStressTest") { ComplexUIStressTestScreen(navController) }

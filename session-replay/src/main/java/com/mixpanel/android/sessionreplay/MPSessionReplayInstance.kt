@@ -1,5 +1,7 @@
 package com.mixpanel.android.sessionreplay
 
+import com.mixpanel.android.identity.MixpanelIdentity
+import com.mixpanel.android.sessionreplay.utils.ReplayIdentifiers
 import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
@@ -40,25 +42,63 @@ import java.util.Random
 import java.util.Timer
 import kotlin.concurrent.timer
 
-class MPSessionReplayInstance(
+class MPSessionReplayInstance internal constructor(
     private val appContext: Context,
     var token: String,
-    distinctId: String,
+    identifiers: ReplayIdentifiers,
     var config: MPSessionReplayConfig,
     val sessionReplaySender: SessionReplaySender = SessionReplaySender,
     private val lifecycleScope: CoroutineScope = ProcessLifecycleOwner.get().lifecycleScope,
     private val eventService: EventService = EventService(),
-    val flushService: FlushService = FlushService(
-        token,
-        distinctId,
-        config.wifiOnly,
-        networkMonitor = NetworkMonitor(appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager),
-        lifecycleScope = lifecycleScope,
-        flushInterval = config.flushInterval,
-        eventService = eventService,
-        serverUrl = config.serverUrl
-    )
+    val flushService: FlushService = defaultFlushService(appContext, token, identifiers, config, lifecycleScope, eventService)
 ) : TouchEventListener {
+    constructor(
+        appContext: Context,
+        token: String,
+        distinctId: String,
+        config: MPSessionReplayConfig,
+        sessionReplaySender: SessionReplaySender = SessionReplaySender,
+        lifecycleScope: CoroutineScope = ProcessLifecycleOwner.get().lifecycleScope,
+        eventService: EventService = EventService(),
+        flushService: FlushService = defaultFlushService(
+            appContext,
+            token,
+            ReplayIdentifiers.DistinctId(distinctId),
+            config,
+            lifecycleScope,
+            eventService
+        )
+    ) : this(
+        appContext,
+        token,
+        ReplayIdentifiers.DistinctId(distinctId),
+        config,
+        sessionReplaySender,
+        lifecycleScope,
+        eventService,
+        flushService
+    )
+
+    private companion object {
+        fun defaultFlushService(
+            appContext: Context,
+            token: String,
+            identifiers: ReplayIdentifiers,
+            config: MPSessionReplayConfig,
+            lifecycleScope: CoroutineScope,
+            eventService: EventService
+        ) = FlushService(
+            token,
+            identifiers,
+            config.wifiOnly,
+            networkMonitor = NetworkMonitor(appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager),
+            lifecycleScope = lifecycleScope,
+            flushInterval = config.flushInterval,
+            eventService = eventService,
+            serverUrl = config.serverUrl
+        )
+    }
+
     private val minIntervalBetweenScreenshots = 500L // 500ms = 2 times per second max
     private val minimalScreenshotDelayMs = 10L // Minimal delay when screenshot can be captured immediately
     private var lastScreenshotTime = 0L
@@ -155,7 +195,7 @@ class MPSessionReplayInstance(
         }
 
     init {
-        Logger.info("Initializing Session Replay with token: $token, distinctId: $distinctId")
+        Logger.info("Initializing Session Replay with token: $token, distinctId: ${identifiers.distinctId}")
         Logger.info("Session Replay Config: $config")
 
         SensitiveViewManager.autoMaskedViews = config.autoMaskedViews
@@ -250,7 +290,23 @@ class MPSessionReplayInstance(
 
     fun getReplayId(): String = flushService.replayId
 
-    fun getDistinctId(): String = flushService.getDistinctId()
+    /**
+     * Returns the distinct id recordings are attributed to.
+     *
+     * This should not be used for an identity with both a user and a company, as on a hierarchical
+     * groups project, where Mixpanel identifies the user by company and user id: use the identity
+     * passed to [identify] instead. It logs a warning there.
+     */
+    fun getDistinctId(): String {
+        val identifiers = flushService.getIdentifiers()
+        if (identifiers.namedByUserAndCompany) {
+            Logger.warn(
+                "getDistinctId() should not be used for an identity with a user and a company, which " +
+                    "Mixpanel identifies by company and user id. Use the identity passed to identify instead."
+            )
+        }
+        return identifiers.distinctId
+    }
 
     /**
      * Returns the URL to view the current session replay in the Mixpanel dashboard.
@@ -260,18 +316,36 @@ class MPSessionReplayInstance(
     fun getSessionReplayUrl(): String? {
         if (!hasStartedRecording) return null
 
-        return EndPoints.SESSION_REPLAY_REDIRECT.toUri().buildUpon()
+        val builder = EndPoints.SESSION_REPLAY_REDIRECT.toUri().buildUpon()
             .appendQueryParameter("replay_id", getReplayId())
-            .appendQueryParameter("distinct_id", getDistinctId())
-            .appendQueryParameter("token", token)
-            .build()
-            .toString()
+        flushService.getIdentifiers().redirectParams().forEach { (key, value) ->
+            builder.appendQueryParameter(key, value)
+        }
+        return builder.appendQueryParameter("token", token).build().toString()
     }
 
     fun isRecording(): Boolean = hasStartedRecording
 
     fun identify(distinctId: String) {
-        flushService.updateDistinctId(distinctId)
+        flushService.updateIdentifiers(ReplayIdentifiers.DistinctId(distinctId))
+    }
+
+    /**
+     * Attributes recordings to the given identity, typically the one analytics reports through
+     * `MixpanelAPI.getIdentity()`. Replays then carry `$user_id`, `$company_id` and `$device_id`
+     * alongside `distinct_id`, so they resolve to the same user as the app's events, including on
+     * a project that uses hierarchical groups. An identity with both a user and a company sends no
+     * `distinct_id`, as its events don't. Call it again whenever analytics identifies.
+     *
+     * An identity with neither a user id nor a device id is logged and ignored.
+     */
+    fun identify(identity: MixpanelIdentity) {
+        val identifiers = ReplayIdentifiers.Identity.of(identity)
+        if (identifiers == null) {
+            Logger.warn("Can't identify Session Replay with $identity: it needs a user id or a device id")
+            return
+        }
+        flushService.updateIdentifiers(identifiers)
     }
 
     fun addSensitiveView(view: View) {

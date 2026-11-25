@@ -7,6 +7,10 @@ import android.os.Looper
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleObserver
 import androidx.lifecycle.ProcessLifecycleOwner
+import com.mixpanel.android.sessionreplay.logging.LogLevel
+import com.mixpanel.android.sessionreplay.logging.LogMessage
+import com.mixpanel.android.sessionreplay.logging.Logger
+import com.mixpanel.android.sessionreplay.logging.Logging
 import com.mixpanel.android.sessionreplay.models.MPSessionReplayConfig
 import com.mixpanel.android.sessionreplay.sensitive_views.AutoMaskedView
 import com.mixpanel.android.sessionreplay.sensitive_views.SensitiveViewManager
@@ -14,6 +18,8 @@ import com.mixpanel.android.sessionreplay.services.FlushService
 import com.mixpanel.android.sessionreplay.tracking.ScreenRecorder
 import com.mixpanel.android.sessionreplay.wireframe.WireframeEmitter
 import io.mockk.Runs
+import com.mixpanel.android.identity.MixpanelIdentity
+import com.mixpanel.android.sessionreplay.utils.ReplayIdentifiers
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
@@ -218,10 +224,10 @@ class MPSessionReplayInstanceTest {
         var currentDistinctId = "originalDistinctId"
 
         // Mock the methods
-        every { mockFlushService.updateDistinctId(any()) } answers {
-            currentDistinctId = firstArg<String>()
+        every { mockFlushService.updateIdentifiers(any()) } answers {
+            currentDistinctId = firstArg<ReplayIdentifiers>().distinctId
         }
-        every { mockFlushService.getDistinctId() } answers { currentDistinctId }
+        every { mockFlushService.getIdentifiers() } answers { ReplayIdentifiers.DistinctId(currentDistinctId) }
         every { mockFlushService.replayId } returns "test-replay-id"
 
         // Create instance with mocked FlushService and lifecycleScope
@@ -238,10 +244,78 @@ class MPSessionReplayInstanceTest {
         // Test the identify method
         instance.identify("newDistinctId")
 
-        // Verify that updateDistinctId was called
-        verify { mockFlushService.updateDistinctId("newDistinctId") }
+        // Verify that the distinct id was passed on, with no identity
+        verify {
+            mockFlushService.updateIdentifiers(
+                match { it is ReplayIdentifiers.DistinctId && it.distinctId == "newDistinctId" }
+            )
+        }
 
         // Verify that the distinctId was updated
         assertEquals("newDistinctId", instance.getDistinctId())
+    }
+
+    @Test
+    fun testIdentifyWithIdentityUpdatesIdentityAndDistinctId() {
+        val mockFlushService = mockk<FlushService>(relaxed = true)
+        val instance =
+            MPSessionReplayInstance(
+                mockContext,
+                "token",
+                "originalDistinctId",
+                MPSessionReplayConfig(),
+                flushService = mockFlushService,
+                lifecycleScope = testScope
+            )
+
+        val identity = MixpanelIdentity("user_123", "acme", "device_abc")
+        instance.identify(identity)
+        verify {
+            mockFlushService.updateIdentifiers(
+                match { (it as? ReplayIdentifiers.Identity)?.identity === identity && it.distinctId == "user_123" }
+            )
+        }
+
+        // Neither a user nor a device: nothing to attribute recordings to
+        instance.identify(MixpanelIdentity(null, "acme"))
+        verify(exactly = 1) { mockFlushService.updateIdentifiers(any()) }
+    }
+
+    @Test
+    fun testGetDistinctIdWarnsOnlyForAUserAndCompany() {
+        val warnings = mutableListOf<String>()
+        val logging = object : Logging {
+            override fun addMessage(message: LogMessage) {
+                if (message.level == LogLevel.WARNING) warnings.add(message.text)
+            }
+        }
+        Logger.addLogging(logging)
+        Logger.enableLevel(LogLevel.WARNING)
+        try {
+            val mockFlushService = mockk<FlushService>()
+            var current: ReplayIdentifiers = ReplayIdentifiers.DistinctId("plain")
+            every { mockFlushService.getIdentifiers() } answers { current }
+            val instance = MPSessionReplayInstance(
+                mockContext,
+                "token",
+                "plain",
+                MPSessionReplayConfig(),
+                flushService = mockFlushService,
+                lifecycleScope = testScope
+            )
+            fun distinctIdWarnings() = warnings.count { it.contains("getDistinctId() should not be used") }
+
+            assertEquals("plain", instance.getDistinctId())
+            current = ReplayIdentifiers.Identity.of(MixpanelIdentity("user_123", null, "device_abc"))!!
+            assertEquals("user_123", instance.getDistinctId())
+            assertEquals(0, distinctIdWarnings())
+
+            current = ReplayIdentifiers.Identity.of(MixpanelIdentity("user_123", "acme", "device_abc"))!!
+            assertEquals("user_123", instance.getDistinctId())
+            assertEquals(1, distinctIdWarnings())
+        } finally {
+            Logger.removeLogging(logging)
+            Logger.disableLevel(LogLevel.WARNING)
+        }
     }
 }
