@@ -519,4 +519,64 @@ class MixpanelProviderTest {
         assertEquals(Reason.ERROR.toString(), result.reason)
     }
 
+    // --- OpenFeature provider marker on the fallback key (SDK-448) ---
+
+    /** Records every fallback the provider passes to getVariantSync and returns it as FLAG_NOT_FOUND. */
+    private fun recordFallbacks(flagName: String): MutableList<MixpanelFlagVariant> {
+        val recorded = mutableListOf<MixpanelFlagVariant>()
+        `when`(mockFlags.getVariantSync(eq(flagName), any(MixpanelFlagVariant::class.java)))
+            .thenAnswer { invocation ->
+                val fallback = invocation.getArgument<MixpanelFlagVariant>(1)
+                recorded.add(fallback)
+                fallback.withSource(
+                    MixpanelFlagVariant.Source.fallback(
+                        MixpanelFlagVariant.Source.Fallback.Reason.FLAG_NOT_FOUND
+                    )
+                )
+            }
+        return recorded
+    }
+
+    @Test
+    fun `passes fallback keyed openfeature_provider for every evaluation type`() {
+        val recorded = recordFallbacks("flag")
+        val objectDefault = Value.String("obj-default")
+
+        provider.getBooleanEvaluation("flag", true, ImmutableContext())
+        provider.getStringEvaluation("flag", "str-default", ImmutableContext())
+        provider.getIntegerEvaluation("flag", 7, ImmutableContext())
+        provider.getDoubleEvaluation("flag", 1.5, ImmutableContext())
+        provider.getObjectEvaluation("flag", objectDefault, ImmutableContext())
+
+        assertEquals(5, recorded.size)
+        recorded.forEach { assertEquals("\$openfeature_provider", it.key) }
+        assertEquals(true, recorded[0].value)
+        assertEquals("str-default", recorded[1].value)
+        assertEquals(7, recorded[2].value)
+        assertEquals(1.5, recorded[3].value)
+        assertNull(recorded[4].value)
+    }
+
+    @Test
+    fun `missing flag returns default with FLAG_NOT_FOUND and does not surface marker key`() {
+        recordFallbacks("missing")
+
+        val boolResult = provider.getBooleanEvaluation("missing", true, ImmutableContext())
+        assertEquals(true, boolResult.value)
+        assertEquals(ErrorCode.FLAG_NOT_FOUND, boolResult.errorCode)
+        assertEquals(Reason.DEFAULT.toString(), boolResult.reason)
+        assertNull(boolResult.variant)
+
+        val strResult = provider.getStringEvaluation("missing", "default", ImmutableContext())
+        assertEquals("default", strResult.value)
+        assertEquals(ErrorCode.FLAG_NOT_FOUND, strResult.errorCode)
+        assertNull(strResult.variant)
+
+        val objectDefault = Value.String("obj-default")
+        val objResult = provider.getObjectEvaluation("missing", objectDefault, ImmutableContext())
+        assertEquals(objectDefault, objResult.value)
+        assertEquals(ErrorCode.FLAG_NOT_FOUND, objResult.errorCode)
+        assertNull(objResult.variant)
+    }
+
 }

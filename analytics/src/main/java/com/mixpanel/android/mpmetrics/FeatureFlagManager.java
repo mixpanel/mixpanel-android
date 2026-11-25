@@ -38,6 +38,11 @@ import org.json.JSONObject;
 class FeatureFlagManager implements MixpanelAPI.Flags {
   private static final String LOGTAG = "MixpanelAPI.FeatureFlagManager";
 
+  // SDK-448: the Mixpanel OpenFeature provider passes a fallback variant with this key to
+  // getVariantSync. When present, the resulting $experiment_started exposure is tagged with
+  // "$openfeature_provider": true. The same string is also the exposure property name.
+  static final String OPENFEATURE_PROVIDER_MARKER = "$openfeature_provider";
+
   private final WeakReference<FeatureFlagDelegate> mDelegate;
   private final FlagsConfig mFlagsConfig;
   private final String mFlagsEndpoint; // e.g. https://api.mixpanel.com/flags/
@@ -397,7 +402,10 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
       if (resultContainer.tracked) {
         // If tracking was performed *in this call*, trigger the delegate call helper
         // (This runs on the *calling* thread, but performTrackingDelegateCall dispatches to main)
-        performTrackingDelegateCall(flagName, resultContainer.flagVariant);
+        performTrackingDelegateCall(
+            flagName,
+            resultContainer.flagVariant,
+            OPENFEATURE_PROVIDER_MARKER.equals(fallback.key));
       }
       return resultContainer.flagVariant;
     } else {
@@ -503,7 +511,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
                     () -> {
                       completion.onComplete(result);
                       if (variantForLambda != null && needsTracking) {
-                        performTrackingDelegateCall(flagName, result);
+                        performTrackingDelegateCall(flagName, result, false);
                       }
                     });
           } else {
@@ -566,7 +574,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
                         () -> {
                           completion.onComplete(finalResult);
                           if (variantForLambda != null && tracked) {
-                            performTrackingDelegateCall(flagName, finalResult);
+                            performTrackingDelegateCall(flagName, finalResult, false);
                           }
                         });
               });
@@ -1051,8 +1059,11 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
    *
    * @param flagName Name of the feature flag.
    * @param variant The specific variant received.
+   * @param fromOpenFeatureProvider Whether the evaluation came through the Mixpanel OpenFeature
+   *     provider (see {@link #OPENFEATURE_PROVIDER_MARKER}).
    */
-  private void performTrackingDelegateCall(String flagName, MixpanelFlagVariant variant) {
+  private void performTrackingDelegateCall(
+      String flagName, MixpanelFlagVariant variant, boolean fromOpenFeatureProvider) {
     final FeatureFlagDelegate delegate = mDelegate.get();
     if (delegate == null) {
       MPLog.w(LOGTAG, "Delegate is null, cannot track $experiment_started.");
@@ -1095,6 +1106,9 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
             ((MixpanelFlagVariant.Source.Persistence) variant.source).persistedAtMillis;
         properties.put("$persisted_at_in_ms", persistedAt);
         properties.put("$ttl_in_ms", persistenceTtlMillis());
+      }
+      if (fromOpenFeatureProvider) {
+        properties.put(OPENFEATURE_PROVIDER_MARKER, true);
       }
     } catch (JSONException e) {
       MPLog.e(LOGTAG, "Failed to create JSON properties for $experiment_started event", e);
