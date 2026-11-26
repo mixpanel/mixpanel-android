@@ -17,11 +17,11 @@ public void newFeature(String param1, JSONObject properties) {
                 return;
             }
             
-            // Queue for processing
-            Message msg = Message.obtain();
-            msg.what = NEW_FEATURE_MESSAGE;
-            msg.obj = new NewFeatureDescription(param1, properties, mToken);
-            mMessages.enqueueMessage(msg);
+            // Queue for processing via a typed AnalyticsMessages method
+            // (which internally does mWorker.runMessage(msg) — there is no
+            // public enqueueMessage; add a typed method for new message types)
+            mMessages.newFeatureMessage(
+                new NewFeatureDescription(param1, properties, mToken));
             
         } catch (Exception e) {
             MPLog.e(LOGTAG, "Exception in newFeature", e);
