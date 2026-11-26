@@ -165,6 +165,34 @@ class FlushServiceTests {
         }
 
     @Test
+    fun testDrainAfterRestartKeepsPreviousReplayId() =
+        testScope.runTest {
+            val payloads = mutableListOf<PayloadInfo>()
+            coEvery { mockFlushRequest.sendRequest(capture(payloads)) } returns true
+
+            flushService.start()
+            val firstReplayId = flushService.replayId
+            eventService.enqueueEvent(screenshotEvent)
+
+            // Background: stop and drain. Foreground before the drain runs.
+            flushService.stop()
+            flushService.flushEvents(forAll = true)
+            flushService.start()
+            flushService.stop()
+            val secondReplayId = flushService.replayId
+            advanceUntilIdle()
+
+            eventService.enqueueEvent(screenshotEvent)
+            flushService.flushEvents(forAll = true)
+            advanceUntilIdle()
+
+            assertEquals(2, payloads.size)
+            assertEquals(firstReplayId, payloads[0].replayId)
+            assertEquals(secondReplayId, payloads[1].replayId)
+            assertEquals(0, payloads[1].seq)
+        }
+
+    @Test
     fun testUpdateDistinctId() =
         testScope.runTest {
             // Test the updateDistinctId method
